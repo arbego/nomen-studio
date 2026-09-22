@@ -13,10 +13,10 @@ const ACCENT_WIDTH_RATIO = 0.28;
 
 /**
  * Builds every pick's main geometry (word, number, optional accent) — the
- * expensive, async, font-dependent part. Deliberately excludes the stick: stick
- * position/size changes shouldn't have to re-run font extrusion, and the live
- * scene needs to regenerate the stick cheaply on every drag frame (see
- * stickForPick below).
+ * expensive, async, font-dependent part. Deliberately excludes sticks: stick
+ * position/size/count changes shouldn't have to re-run font extrusion, and the
+ * live scene needs to regenerate sticks cheaply on every drag frame (see
+ * sticksForPick below).
  */
 export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick[]> {
   const [wordMain, numberMain] = await Promise.all([
@@ -37,19 +37,21 @@ export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick
   return picks;
 }
 
-/** The stick for one pick, at its current (clamped) offset — cheap and synchronous, safe to call every drag frame. */
-export function stickForPick(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry {
-  const offset = clampStickOffsetToBounds(mainGeometry, config.stickOffsets[pickId], config.stickWidthMm, config.stickEmbedMm);
-  return stickToGeometry({
-    widthMm: config.stickWidthMm,
-    thicknessMm: config.extrudeDepthMm,
-    lengthMm: config.stickLengthMm,
-    embedMm: config.stickEmbedMm,
-    offset,
+/** Every stick for one pick, at their current (clamped) offsets — cheap and synchronous, safe to call every drag frame. */
+export function sticksForPick(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry[] {
+  return config.stickOffsets[pickId].map((rawOffset) => {
+    const offset = clampStickOffsetToBounds(mainGeometry, rawOffset, config.stickWidthMm, config.stickEmbedMm);
+    return stickToGeometry({
+      widthMm: config.stickWidthMm,
+      thicknessMm: config.extrudeDepthMm,
+      lengthMm: config.stickLengthMm,
+      embedMm: config.stickEmbedMm,
+      offset,
+    });
   });
 }
 
-/** The final printable solid for one pick — main geometry merged with its stick. Used at export time. */
+/** The final printable solid for one pick — main geometry merged with all its sticks. Used at export time. */
 export function mergedPickGeometry(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry {
-  return combinePickGeometry(mainGeometry, stickForPick(mainGeometry, config, pickId));
+  return combinePickGeometry(mainGeometry, sticksForPick(mainGeometry, config, pickId));
 }

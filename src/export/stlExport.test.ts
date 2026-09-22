@@ -14,7 +14,7 @@ const config: TopperConfig = {
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: { x: 0, y: 0 }, number: { x: 0, y: 0 }, accent: { x: 0, y: 0 } },
+  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
   previewColor: '#f0c6d0',
 };
 
@@ -31,6 +31,21 @@ describe('STL export', () => {
       const vertexCount = mergedPickGeometry(pick.mainGeometry, config, pick.id).getAttribute('position').count;
       expect(triangleCount).toBe(vertexCount / 3);
     }
+  }, 30000);
+
+  it('exports a pick with multiple sticks as one merged, valid STL', async () => {
+    const multiStickConfig: TopperConfig = {
+      ...config,
+      stickOffsets: { ...config.stickOffsets, word: [{ x: -20, y: 0 }, { x: 20, y: 0 }] },
+    };
+    const picks = await buildTopperPicks(multiStickConfig);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+
+    const dv = pickToStlBinary(wordPick, multiStickConfig);
+    const triangleCount = dv.getUint32(80, true);
+    const vertexCount = mergedPickGeometry(wordPick.mainGeometry, multiStickConfig, 'word').getAttribute('position').count;
+    expect(triangleCount).toBe(vertexCount / 3);
+    expect(dv.byteLength).toBe(84 + triangleCount * 50);
   }, 30000);
 
   it('combines all picks into one STL with a triangle count equal to the sum of the parts', async () => {

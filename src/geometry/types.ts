@@ -23,8 +23,9 @@ export interface TopperConfig extends MainGeometryConfig {
   stickLengthMm: number;
   stickWidthMm: number;
   stickEmbedMm: number;
-  /** Where each pick's stick attaches, in mm from that pick's own local origin — user-set by dragging the piece in the 3D preview. */
-  stickOffsets: Record<PickId, StickOffset>;
+  /** Where each pick's sticks attach, in mm from that pick's own local origin —
+   * one or more per pick, each independently draggable. */
+  stickOffsets: Record<PickId, StickOffset[]>;
   /** Cosmetic only — the physical color comes from 3D printer filament, not the file. */
   previewColor: string;
 }

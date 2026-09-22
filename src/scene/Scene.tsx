@@ -10,8 +10,8 @@ interface SceneProps {
   picks: Pick[];
   color: string;
   stick: StickParams;
-  stickOffsets: Record<PickId, StickOffset>;
-  onStickOffsetCommit: (pickId: PickId, offset: StickOffset) => void;
+  stickOffsets: Record<PickId, StickOffset[]>;
+  onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
 }
 
 export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit }: SceneProps) {
@@ -39,8 +39,8 @@ export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit }
           color={color}
           positionX={layout[i] ?? 0}
           stick={stick}
-          offset={stickOffsets[pick.id]}
-          onOffsetCommit={(offset) => onStickOffsetCommit(pick.id, offset)}
+          offsets={stickOffsets[pick.id]}
+          onOffsetCommit={(index, offset) => onStickOffsetCommit(pick.id, index, offset)}
         />
       ))}
     </group>

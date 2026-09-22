@@ -11,6 +11,8 @@ function App() {
   const mainConfig = useTopperStore(useShallow(selectMainGeometryConfig));
   const setConfig = useTopperStore((s) => s.setConfig);
   const setStickOffset = useTopperStore((s) => s.setStickOffset);
+  const addStick = useTopperStore((s) => s.addStick);
+  const removeStick = useTopperStore((s) => s.removeStick);
   const { picks, loading, error } = useTopperPicks(mainConfig);
 
   const stick = useMemo(
@@ -25,7 +27,17 @@ function App() {
 
   return (
     <AppShell
-      sidebar={<ControlsPanel config={config} onChange={setConfig} picks={picks} loading={loading} error={error} />}
+      sidebar={
+        <ControlsPanel
+          config={config}
+          onChange={setConfig}
+          picks={picks}
+          loading={loading}
+          error={error}
+          onAddStick={addStick}
+          onRemoveStick={removeStick}
+        />
+      }
       main={<TopperCanvas picks={picks} color={config.previewColor} stick={stick} stickOffsets={config.stickOffsets} onStickOffsetCommit={setStickOffset} />}
     />
   );

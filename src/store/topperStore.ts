@@ -23,20 +23,47 @@ const DEFAULT_CONFIG: TopperConfig = {
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: { x: 0, y: 0 }, number: { x: 0, y: 0 }, accent: { x: 0, y: 0 } },
+  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
   previewColor: COLOR_PRESETS[2].hex,
 };
 
+/** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
+const NEW_STICK_SPACING_MM = 15;
+/** Sanity cap — matches the disabled state of the "+" button in StickControls, enforced here too in case of other future callers. */
+const MAX_STICKS_PER_PICK = 5;
+
 interface TopperStore extends TopperConfig {
   setConfig: (partial: Partial<TopperConfig>) => void;
-  setStickOffset: (pickId: PickId, offset: StickOffset) => void;
+  setStickOffset: (pickId: PickId, index: number, offset: StickOffset) => void;
+  addStick: (pickId: PickId) => void;
+  removeStick: (pickId: PickId, index: number) => void;
   reset: () => void;
 }
 
 export const useTopperStore = create<TopperStore>((set) => ({
   ...DEFAULT_CONFIG,
   setConfig: (partial) => set(partial),
-  setStickOffset: (pickId, offset) => set((state) => ({ stickOffsets: { ...state.stickOffsets, [pickId]: offset } })),
+  setStickOffset: (pickId, index, offset) =>
+    set((state) => ({
+      stickOffsets: {
+        ...state.stickOffsets,
+        [pickId]: state.stickOffsets[pickId].map((existing, i) => (i === index ? offset : existing)),
+      },
+    })),
+  addStick: (pickId) =>
+    set((state) => {
+      const existing = state.stickOffsets[pickId];
+      if (existing.length >= MAX_STICKS_PER_PICK) return {};
+      const last = existing[existing.length - 1];
+      const next: StickOffset = { x: (last?.x ?? 0) + NEW_STICK_SPACING_MM, y: last?.y ?? 0 };
+      return { stickOffsets: { ...state.stickOffsets, [pickId]: [...existing, next] } };
+    }),
+  removeStick: (pickId, index) =>
+    set((state) => {
+      const existing = state.stickOffsets[pickId];
+      if (existing.length <= 1) return {}; // always keep at least one stick per pick
+      return { stickOffsets: { ...state.stickOffsets, [pickId]: existing.filter((_, i) => i !== index) } };
+    }),
   reset: () => set(DEFAULT_CONFIG),
 }));
 

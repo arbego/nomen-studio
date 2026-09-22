@@ -1,4 +1,4 @@
-import type { Pick, TopperConfig } from '../../geometry/types';
+import type { Pick, PickId, TopperConfig } from '../../geometry/types';
 import { TextField } from './TextField';
 import { FontPicker } from './FontPicker';
 import { AccentShapePicker } from './AccentShapePicker';
@@ -13,9 +13,11 @@ interface ControlsPanelProps {
   picks: Pick[];
   loading: boolean;
   error: string | null;
+  onAddStick: (pickId: PickId) => void;
+  onRemoveStick: (pickId: PickId, index: number) => void;
 }
 
-export function ControlsPanel({ config, onChange, picks, loading, error }: ControlsPanelProps) {
+export function ControlsPanel({ config, onChange, picks, loading, error, onAddStick, onRemoveStick }: ControlsPanelProps) {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div>
@@ -38,6 +40,14 @@ export function ControlsPanel({ config, onChange, picks, loading, error }: Contr
           lengthMm={config.stickLengthMm}
           onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
           onChangeLength={(stickLengthMm) => onChange({ stickLengthMm })}
+          stickCounts={{
+            word: config.stickOffsets.word.length,
+            number: config.stickOffsets.number.length,
+            accent: config.stickOffsets.accent.length,
+          }}
+          hasAccent={config.accentShapeId !== null}
+          onAddStick={onAddStick}
+          onRemoveStick={(pickId) => onRemoveStick(pickId, config.stickOffsets[pickId].length - 1)}
         />
       </div>
 
