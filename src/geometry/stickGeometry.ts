@@ -16,6 +16,13 @@ export interface StickOptions {
 
 const DEFAULT_CURVE_SEGMENTS = 12;
 const DEFAULT_OFFSET: StickOffset = { x: 0, y: 0 };
+// Requiring the drag range to keep the *full* embed depth inside the piece (often
+// 15mm+) left very little vertical room to drag on typical letter heights, making
+// vertical dragging feel broken even though it worked. A smaller minimum overlap
+// is enough for a solid bond and gives the drag much more usable range — the
+// generated stick still always uses the full embedMm, only the allowed *range of
+// attach points* is more permissive near the top edge.
+const MIN_Y_OVERLAP_MM = 5;
 
 /**
  * A pick stick with a flat top (embedded in the piece above, so its shape doesn't
@@ -65,8 +72,9 @@ export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
 /**
  * Keeps a (possibly stale, e.g. from before the word/size changed, or a drag that
  * momentarily went past the edge) stick offset within the piece it's attached to:
- * x is clamped so the stick's full width stays under the piece, and y so the
- * whole embedded portion stays within the piece's vertical extent. Falls back to
+ * x is clamped so the stick's full width stays under the piece, and y so at least
+ * MIN_Y_OVERLAP_MM of the embedded portion stays within the piece's vertical
+ * extent (not the full embedMm — see the constant's comment). Falls back to
  * centering on that axis when the piece is smaller than the stick itself.
  */
 export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
@@ -78,8 +86,9 @@ export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, off
   const xMax = bb.max.x - xMargin;
   const x = xMin > xMax ? (bb.min.x + bb.max.x) / 2 : Math.min(Math.max(offset.x, xMin), xMax);
 
+  const yMargin = Math.min(embedMm, MIN_Y_OVERLAP_MM);
   const yMin = bb.min.y;
-  const yMax = bb.max.y - embedMm;
+  const yMax = bb.max.y - yMargin;
   const y = yMin > yMax ? (bb.min.y + bb.max.y) / 2 : Math.min(Math.max(offset.y, yMin), yMax);
 
   return { x, y };

@@ -85,6 +85,15 @@ describe('clampStickOffsetToBounds', () => {
     expect(clampStickOffsetToBounds(main, { x: 0, y: 1 }, 4, 2).y).toBeCloseTo(1, 5);
   });
 
+  it('only requires a small minimum overlap near the top, not the full embed depth, so a tall embed still leaves real drag room', () => {
+    const main = boxGeometry(-20, 20, 0, 30); // 30mm-tall piece
+    // embedMm=15 would (with the old "full embed must fit" rule) cap yMax at 30-15=15;
+    // the actual cap should now use the much smaller MIN_Y_OVERLAP_MM instead.
+    const clamped = clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 15);
+    expect(clamped.y).toBeGreaterThan(20); // well above the old, over-conservative cap of 15
+    expect(clamped.y).toBeLessThan(30); // but still leaves a nonzero overlap under the top
+  });
+
   it('falls back to centering on an axis where the piece is smaller than the stick needs', () => {
     const narrow = boxGeometry(-1, 1, -5, 5); // 2mm wide piece, 4mm wide stick
     expect(clampStickOffsetToBounds(narrow, { x: 0.5, y: 0 }, 4, 2).x).toBeCloseTo(0, 5);

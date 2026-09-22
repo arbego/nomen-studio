@@ -12,7 +12,7 @@ export function StickControls({ widthMm, lengthMm, onChangeWidth, onChangeLength
   return (
     <div className="flex flex-col gap-3">
       <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Stick</span>
-      <p className="text-xs text-stone-400">Click a piece in the preview to move its stick sideways.</p>
+      <p className="text-xs text-stone-400">Drag a piece in the preview to reposition its stick.</p>
 
       <label className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-sm text-stone-600">
