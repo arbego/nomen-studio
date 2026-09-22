@@ -14,6 +14,7 @@ const config: TopperConfig = {
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
+  stickOffsets: { word: 0, number: 0, accent: 0 },
   previewColor: '#f0c6d0',
 };
 

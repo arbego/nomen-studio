@@ -4,6 +4,7 @@ import { FontPicker } from './FontPicker';
 import { AccentShapePicker } from './AccentShapePicker';
 import { SizePicker } from './SizePicker';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
+import { StickControls } from './StickControls';
 import { ExportButtons } from './ExportButtons';
 
 interface ControlsPanelProps {
@@ -32,6 +33,12 @@ export function ControlsPanel({ config, onChange, picks, loading, error }: Contr
         <AccentShapePicker value={config.accentShapeId} onChange={(accentShapeId) => onChange({ accentShapeId })} />
         <SizePicker value={config.sizeMm} onChange={(sizeMm) => onChange({ sizeMm })} />
         <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
+        <StickControls
+          widthMm={config.stickWidthMm}
+          lengthMm={config.stickLengthMm}
+          onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
+          onChangeLength={(stickLengthMm) => onChange({ stickLengthMm })}
+        />
       </div>
 
       <div className="mt-auto border-t border-stone-200 pt-4">

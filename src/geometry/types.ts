@@ -1,3 +1,5 @@
+export type PickId = 'word' | 'number' | 'accent';
+
 export interface TopperConfig {
   word: string;
   wordFontId: string;
@@ -10,11 +12,11 @@ export interface TopperConfig {
   stickLengthMm: number;
   stickWidthMm: number;
   stickEmbedMm: number;
+  /** Horizontal offset (mm, from each pick's own center) of where its stick attaches — user-set by clicking the piece in the 3D preview. */
+  stickOffsets: Record<PickId, number>;
   /** Cosmetic only — the physical color comes from 3D printer filament, not the file. */
   previewColor: string;
 }
-
-export type PickId = 'word' | 'number' | 'accent';
 
 export interface Pick {
   id: PickId;

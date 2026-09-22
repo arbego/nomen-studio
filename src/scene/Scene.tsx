@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import type { Pick } from '../geometry/types';
+import type { Pick, PickId } from '../geometry/types';
 import { PickMesh } from './PickMesh';
 
 const PICK_GAP_MM = 12;
@@ -8,9 +8,10 @@ const PICK_GAP_MM = 12;
 interface SceneProps {
   picks: Pick[];
   color: string;
+  onPickStickPosition?: (pickId: PickId, localX: number) => void;
 }
 
-export function Scene({ picks, color }: SceneProps) {
+export function Scene({ picks, color, onPickStickPosition }: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
     const positions: number[] = [];
@@ -29,7 +30,13 @@ export function Scene({ picks, color }: SceneProps) {
   return (
     <group>
       {picks.map((pick, i) => (
-        <PickMesh key={pick.id} geometry={pick.geometry} color={color} positionX={layout[i] ?? 0} />
+        <PickMesh
+          key={pick.id}
+          geometry={pick.geometry}
+          color={color}
+          positionX={layout[i] ?? 0}
+          onPickStickPosition={onPickStickPosition ? (localX) => onPickStickPosition(pick.id, localX) : undefined}
+        />
       ))}
     </group>
   );

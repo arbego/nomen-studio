@@ -1,14 +1,15 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Center } from '@react-three/drei';
-import type { Pick } from '../geometry/types';
+import type { Pick, PickId } from '../geometry/types';
 import { Scene } from './Scene';
 
 interface TopperCanvasProps {
   picks: Pick[];
   color: string;
+  onPickStickPosition?: (pickId: PickId, localX: number) => void;
 }
 
-export function TopperCanvas({ picks, color }: TopperCanvasProps) {
+export function TopperCanvas({ picks, color, onPickStickPosition }: TopperCanvasProps) {
   return (
     <Canvas shadows camera={{ position: [0, 60, 220], fov: 35, near: 1, far: 2000 }} gl={{ antialias: true }}>
       <color attach="background" args={['#f3f1ec']} />
@@ -17,7 +18,7 @@ export function TopperCanvas({ picks, color }: TopperCanvasProps) {
       <directionalLight position={[-100, 60, -80]} intensity={0.35} />
 
       <Center bottom>
-        <Scene picks={picks} color={color} />
+        <Scene picks={picks} color={color} onPickStickPosition={onPickStickPosition} />
       </Center>
       <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
 
