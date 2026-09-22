@@ -94,6 +94,17 @@ describe('clampStickOffsetToBounds', () => {
     expect(clamped.y).toBeLessThan(30); // but still leaves a nonzero overlap under the top
   });
 
+  it('symmetrically allows the attach point well below the bottom edge too, not just near the top', () => {
+    const main = boxGeometry(-20, 20, 0, 30); // 30mm-tall piece, bottom edge at y=0
+    // With the old "full embed must fit" rule this would be clamped to 0 exactly
+    // (no room below the piece at all). The new rule allows going well below,
+    // symmetric to the top-side relaxation, while keeping a minimum overlap.
+    const clamped = clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 15);
+    expect(clamped.y).toBeLessThan(-5); // real room below the piece's bottom edge
+    // the embedded interval [y, y+15] must still overlap the piece by >= MIN_Y_OVERLAP_MM
+    expect(clamped.y + 15).toBeGreaterThanOrEqual(5 - 1e-6);
+  });
+
   it('falls back to centering on an axis where the piece is smaller than the stick needs', () => {
     const narrow = boxGeometry(-1, 1, -5, 5); // 2mm wide piece, 4mm wide stick
     expect(clampStickOffsetToBounds(narrow, { x: 0.5, y: 0 }, 4, 2).x).toBeCloseTo(0, 5);

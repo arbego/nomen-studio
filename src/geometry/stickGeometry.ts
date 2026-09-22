@@ -72,10 +72,14 @@ export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
 /**
  * Keeps a (possibly stale, e.g. from before the word/size changed, or a drag that
  * momentarily went past the edge) stick offset within the piece it's attached to:
- * x is clamped so the stick's full width stays under the piece, and y so at least
- * MIN_Y_OVERLAP_MM of the embedded portion stays within the piece's vertical
- * extent (not the full embedMm — see the constant's comment). Falls back to
- * centering on that axis when the piece is smaller than the stick itself.
+ * x is clamped so the stick's full width stays under the piece. y is clamped
+ * symmetrically at top and bottom so the embedded interval [y, y+embedMm]
+ * always overlaps the piece's vertical extent by at least MIN_Y_OVERLAP_MM (or
+ * the full embedMm, if that's smaller) — not the full embed depth, which would
+ * leave almost no drag room on a typical letter (see the constant's comment).
+ * This lets the attach point go a real distance below the piece's bottom edge
+ * too, not just up near its top. Falls back to centering on an axis where the
+ * piece is smaller than the stick needs.
  */
 export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
   mainGeometry.computeBoundingBox();
@@ -87,7 +91,7 @@ export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, off
   const x = xMin > xMax ? (bb.min.x + bb.max.x) / 2 : Math.min(Math.max(offset.x, xMin), xMax);
 
   const yMargin = Math.min(embedMm, MIN_Y_OVERLAP_MM);
-  const yMin = bb.min.y;
+  const yMin = bb.min.y + yMargin - embedMm;
   const yMax = bb.max.y - yMargin;
   const y = yMin > yMax ? (bb.min.y + bb.max.y) / 2 : Math.min(Math.max(offset.y, yMin), yMax);
 
