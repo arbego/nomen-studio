@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { stickToGeometry, clampStickOffsetToBounds } from './stickGeometry';
 
 describe('stickToGeometry', () => {
-  it('spans from below y=0 (the handle) to above y=0 (the embedded overlap)', () => {
+  it('spans from below the attach point (the handle) to above it (the embedded overlap)', () => {
     const geometry = stickToGeometry({ lengthMm: 70, widthMm: 4, thicknessMm: 3, embedMm: 15 });
     geometry.computeBoundingBox();
     const bb = geometry.boundingBox!;
@@ -49,34 +49,47 @@ describe('stickToGeometry', () => {
     expect(geometry.index).toBeNull();
   });
 
-  it('places the tip at the requested horizontal offset', () => {
-    const geometry = stickToGeometry({ lengthMm: 70, widthMm: 4, thicknessMm: 3, embedMm: 15, offsetXMm: 12 });
+  it('places the tip at the requested (x, y) attach offset', () => {
+    const geometry = stickToGeometry({ lengthMm: 70, widthMm: 4, thicknessMm: 3, embedMm: 15, offset: { x: 12, y: 8 } });
     geometry.computeBoundingBox();
     const bb = geometry.boundingBox!;
     expect((bb.min.x + bb.max.x) / 2).toBeCloseTo(12, 5);
+    expect(bb.max.y).toBeCloseTo(8 + 15, 5);
+    expect(bb.min.y).toBeCloseTo(8 - (70 - 15), 5);
   });
 });
 
-function boxGeometry(minX: number, maxX: number): THREE.BufferGeometry {
-  const geometry = new THREE.BoxGeometry(maxX - minX, 10, 3);
-  geometry.translate((minX + maxX) / 2, 0, 0);
+function boxGeometry(minX: number, maxX: number, minY: number, maxY: number): THREE.BufferGeometry {
+  const geometry = new THREE.BoxGeometry(maxX - minX, maxY - minY, 3);
+  geometry.translate((minX + maxX) / 2, (minY + maxY) / 2, 0);
   return geometry;
 }
 
 describe('clampStickOffsetToBounds', () => {
   it('passes an offset through unchanged when it is already within bounds', () => {
-    const main = boxGeometry(-20, 20);
-    expect(clampStickOffsetToBounds(main, 5, 4)).toBeCloseTo(5, 5);
+    const main = boxGeometry(-20, 20, -5, 5);
+    expect(clampStickOffsetToBounds(main, { x: 5, y: 1 }, 4, 2)).toMatchObject({ x: 5, y: 1 });
   });
 
-  it('clamps an offset that would push the stick past the edge of the piece', () => {
-    const main = boxGeometry(-20, 20);
-    expect(clampStickOffsetToBounds(main, 1000, 4)).toBeCloseTo(18, 5); // 20 - width/2
-    expect(clampStickOffsetToBounds(main, -1000, 4)).toBeCloseTo(-18, 5);
+  it('clamps x that would push the stick past the side of the piece', () => {
+    const main = boxGeometry(-20, 20, -5, 5);
+    expect(clampStickOffsetToBounds(main, { x: 1000, y: 0 }, 4, 2).x).toBeCloseTo(18, 5); // 20 - width/2
+    expect(clampStickOffsetToBounds(main, { x: -1000, y: 0 }, 4, 2).x).toBeCloseTo(-18, 5);
   });
 
-  it('falls back to centering when the piece is narrower than the stick itself', () => {
-    const main = boxGeometry(-1, 1); // 2mm wide piece, 4mm wide stick
-    expect(clampStickOffsetToBounds(main, 0.5, 4)).toBeCloseTo(0, 5);
+  it('clamps y so the whole embed depth stays within the piece, and allows attaching below the piece', () => {
+    const main = boxGeometry(-20, 20, -5, 5);
+    // embed=2: attach point y can range from the piece's bottom (-5) up to (top - embed) = 5-2=3
+    expect(clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 2).y).toBeCloseTo(3, 5);
+    expect(clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 2).y).toBeCloseTo(-5, 5);
+    expect(clampStickOffsetToBounds(main, { x: 0, y: 1 }, 4, 2).y).toBeCloseTo(1, 5);
+  });
+
+  it('falls back to centering on an axis where the piece is smaller than the stick needs', () => {
+    const narrow = boxGeometry(-1, 1, -5, 5); // 2mm wide piece, 4mm wide stick
+    expect(clampStickOffsetToBounds(narrow, { x: 0.5, y: 0 }, 4, 2).x).toBeCloseTo(0, 5);
+
+    const short = boxGeometry(-20, 20, -1, 1); // 2mm tall piece, 3mm embed doesn't fit at all
+    expect(clampStickOffsetToBounds(short, { x: 0, y: 0.5 }, 4, 3).y).toBeCloseTo(0, 5);
   });
 });

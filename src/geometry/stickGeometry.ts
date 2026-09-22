@@ -1,32 +1,35 @@
 import * as THREE from 'three';
+import type { StickOffset } from './types';
 
 export interface StickOptions {
   /** Total visible length of the stick, in mm (handle + embedded portion). */
   lengthMm: number;
   widthMm: number;
   thicknessMm: number;
-  /** How far the stick extends upward past y=0 to overlap into the piece above it. */
+  /** How far the stick extends upward past the attach point to overlap into the piece above it. */
   embedMm: number;
-  /** Horizontal offset of the stick's center from x=0. */
-  offsetXMm?: number;
+  /** Where the stick attaches to the piece above it, in the piece's local mm space. */
+  offset?: StickOffset;
   /** Number of segments used to approximate the rounded tip's curve. */
   curveSegments?: number;
 }
 
 const DEFAULT_CURVE_SEGMENTS = 12;
+const DEFAULT_OFFSET: StickOffset = { x: 0, y: 0 };
 
 /**
  * A pick stick with a flat top (embedded in the piece above, so its shape doesn't
  * matter) and a rounded, bullet-nose bottom tip — both easier and safer to push
  * into a cake, and free of the sharp edges a plain box tip leaves.
  *
- * Anchored at the same origin convention as extrudeShapesToMm: y=0 is where the
- * piece above it starts. The stick spans from y = -(lengthMm - embedMm) up to
- * y = +embedMm, so it has real volumetric overlap with the piece it's merged
- * with (see combine.ts) rather than a bare tangent touch.
+ * `offset` is the attach point, anywhere on the piece above (not just its bottom
+ * center) — the stick spans from `offset.y - (lengthMm - embedMm)` up to
+ * `offset.y + embedMm`, so it always has real volumetric overlap with the piece
+ * it's merged with (see combine.ts) rather than a bare tangent touch, no matter
+ * where on the piece it attaches.
  */
 export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
-  const { lengthMm, widthMm, thicknessMm, embedMm, offsetXMm = 0, curveSegments = DEFAULT_CURVE_SEGMENTS } = options;
+  const { lengthMm, widthMm, thicknessMm, embedMm, offset = DEFAULT_OFFSET, curveSegments = DEFAULT_CURVE_SEGMENTS } = options;
   if (embedMm >= lengthMm) {
     throw new Error('embedMm must be smaller than the total stick lengthMm');
   }
@@ -53,26 +56,31 @@ export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
     geometry = geometry.toNonIndexed();
   }
 
-  const bottomY = -(lengthMm - embedMm);
-  geometry.translate(offsetXMm, bottomY, 0);
+  const bottomY = offset.y - (lengthMm - embedMm);
+  geometry.translate(offset.x, bottomY, 0);
   geometry.computeVertexNormals();
   return geometry;
 }
 
 /**
- * Keeps a (possibly stale, e.g. from before the word/size changed) stick offset
- * within the piece it's attached to, so the stick can never end up hanging off
- * the side into empty space. Falls back to centering when the piece is narrower
- * than the stick itself.
+ * Keeps a (possibly stale, e.g. from before the word/size changed, or a drag that
+ * momentarily went past the edge) stick offset within the piece it's attached to:
+ * x is clamped so the stick's full width stays under the piece, and y so the
+ * whole embedded portion stays within the piece's vertical extent. Falls back to
+ * centering on that axis when the piece is smaller than the stick itself.
  */
-export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, offsetXMm: number, stickWidthMm: number): number {
+export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
   mainGeometry.computeBoundingBox();
   const bb = mainGeometry.boundingBox!;
-  const margin = stickWidthMm / 2;
-  const min = bb.min.x + margin;
-  const max = bb.max.x - margin;
-  if (min > max) {
-    return (bb.min.x + bb.max.x) / 2;
-  }
-  return Math.min(Math.max(offsetXMm, min), max);
+
+  const xMargin = stickWidthMm / 2;
+  const xMin = bb.min.x + xMargin;
+  const xMax = bb.max.x - xMargin;
+  const x = xMin > xMax ? (bb.min.x + bb.max.x) / 2 : Math.min(Math.max(offset.x, xMin), xMax);
+
+  const yMin = bb.min.y;
+  const yMax = bb.max.y - embedMm;
+  const y = yMin > yMax ? (bb.min.y + bb.max.y) / 2 : Math.min(Math.max(offset.y, yMin), yMax);
+
+  return { x, y };
 }

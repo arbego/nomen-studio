@@ -44,7 +44,7 @@ export function ControlsPanel({ config, onChange, picks, loading, error }: Contr
       <div className="mt-auto border-t border-stone-200 pt-4">
         {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
         {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
-        <ExportButtons picks={picks} designName={`${config.word}-${config.number}`} disabled={loading || !!error} />
+        <ExportButtons picks={picks} config={config} designName={`${config.word}-${config.number}`} disabled={loading || !!error} />
       </div>
     </div>
   );

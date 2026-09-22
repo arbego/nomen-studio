@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useTopperStore, selectTopperConfig } from './store/topperStore';
+import { useTopperStore, selectTopperConfig, selectMainGeometryConfig } from './store/topperStore';
 import { useTopperPicks } from './hooks/useTopperPicks';
 import { AppShell } from './ui/Layout/AppShell';
 import { ControlsPanel } from './ui/ControlsPanel';
@@ -7,15 +8,25 @@ import { TopperCanvas } from './scene/TopperCanvas';
 
 function App() {
   const config = useTopperStore(useShallow(selectTopperConfig));
-  const previewColor = useTopperStore((s) => s.previewColor);
+  const mainConfig = useTopperStore(useShallow(selectMainGeometryConfig));
   const setConfig = useTopperStore((s) => s.setConfig);
   const setStickOffset = useTopperStore((s) => s.setStickOffset);
-  const { picks, loading, error } = useTopperPicks(config);
+  const { picks, loading, error } = useTopperPicks(mainConfig);
+
+  const stick = useMemo(
+    () => ({
+      lengthMm: config.stickLengthMm,
+      widthMm: config.stickWidthMm,
+      embedMm: config.stickEmbedMm,
+      thicknessMm: config.extrudeDepthMm,
+    }),
+    [config.stickLengthMm, config.stickWidthMm, config.stickEmbedMm, config.extrudeDepthMm],
+  );
 
   return (
     <AppShell
       sidebar={<ControlsPanel config={config} onChange={setConfig} picks={picks} loading={loading} error={error} />}
-      main={<TopperCanvas picks={picks} color={previewColor} onPickStickPosition={setStickOffset} />}
+      main={<TopperCanvas picks={picks} color={config.previewColor} stick={stick} stickOffsets={config.stickOffsets} onStickOffsetCommit={setStickOffset} />}
     />
   );
 }

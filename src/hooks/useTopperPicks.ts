@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Pick, TopperConfig } from '../geometry/types';
+import type { MainGeometryConfig, Pick } from '../geometry/types';
 import { buildTopperPicks } from '../geometry/buildTopper';
 
 interface TopperPicksState {
@@ -14,7 +14,7 @@ interface TopperPicksState {
  * resolution (a fast edit followed by a slow one must not let the slow one's
  * stale result overwrite the fast one's).
  */
-export function useTopperPicks(config: TopperConfig): TopperPicksState {
+export function useTopperPicks(config: MainGeometryConfig): TopperPicksState {
   const [state, setState] = useState<TopperPicksState>({ picks: [], loading: true, error: null });
   const requestId = useRef(0);
 

@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import type { Pick } from '../../geometry/types';
+import type { Pick, TopperConfig } from '../../geometry/types';
 import { exportPicksAsZip, exportPicksAsCombinedStl } from '../../export/zipPackage';
 
 interface ExportButtonsProps {
   picks: Pick[];
+  config: TopperConfig;
   designName: string;
   disabled: boolean;
 }
 
-export function ExportButtons({ picks, designName, disabled }: ExportButtonsProps) {
+export function ExportButtons({ picks, config, designName, disabled }: ExportButtonsProps) {
   const [busy, setBusy] = useState<'zip' | 'combined' | null>(null);
 
   async function handleZip() {
     setBusy('zip');
     try {
-      await exportPicksAsZip(picks, designName);
+      await exportPicksAsZip(picks, config, designName);
     } finally {
       setBusy(null);
     }
@@ -23,7 +24,7 @@ export function ExportButtons({ picks, designName, disabled }: ExportButtonsProp
   function handleCombined() {
     setBusy('combined');
     try {
-      exportPicksAsCombinedStl(picks, designName);
+      exportPicksAsCombinedStl(picks, config, designName);
     } finally {
       setBusy(null);
     }

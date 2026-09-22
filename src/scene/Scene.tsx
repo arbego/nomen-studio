@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import type { Pick, PickId } from '../geometry/types';
+import type { Pick, PickId, StickOffset } from '../geometry/types';
+import type { StickParams } from './PickMesh';
 import { PickMesh } from './PickMesh';
 
 const PICK_GAP_MM = 12;
@@ -8,16 +9,18 @@ const PICK_GAP_MM = 12;
 interface SceneProps {
   picks: Pick[];
   color: string;
-  onPickStickPosition?: (pickId: PickId, localX: number) => void;
+  stick: StickParams;
+  stickOffsets: Record<PickId, StickOffset>;
+  onStickOffsetCommit: (pickId: PickId, offset: StickOffset) => void;
 }
 
-export function Scene({ picks, color, onPickStickPosition }: SceneProps) {
+export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit }: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
     const positions: number[] = [];
     for (const pick of picks) {
-      pick.geometry.computeBoundingBox();
-      const bb = pick.geometry.boundingBox as THREE.Box3;
+      pick.mainGeometry.computeBoundingBox();
+      const bb = pick.mainGeometry.boundingBox as THREE.Box3;
       const width = bb.max.x - bb.min.x;
       positions.push(cursor - bb.min.x);
       cursor += width + PICK_GAP_MM;
@@ -32,10 +35,12 @@ export function Scene({ picks, color, onPickStickPosition }: SceneProps) {
       {picks.map((pick, i) => (
         <PickMesh
           key={pick.id}
-          geometry={pick.geometry}
+          mainGeometry={pick.mainGeometry}
           color={color}
           positionX={layout[i] ?? 0}
-          onPickStickPosition={onPickStickPosition ? (localX) => onPickStickPosition(pick.id, localX) : undefined}
+          stick={stick}
+          offset={stickOffsets[pick.id]}
+          onOffsetCommit={(offset) => onStickOffsetCommit(pick.id, offset)}
         />
       ))}
     </group>

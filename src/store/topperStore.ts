@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PickId, TopperConfig } from '../geometry/types';
+import type { MainGeometryConfig, PickId, StickOffset, TopperConfig } from '../geometry/types';
 
 export const SIZE_PRESETS_MM = [100, 120, 150] as const;
 
@@ -23,25 +23,38 @@ const DEFAULT_CONFIG: TopperConfig = {
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: 0, number: 0, accent: 0 },
+  stickOffsets: { word: { x: 0, y: 0 }, number: { x: 0, y: 0 }, accent: { x: 0, y: 0 } },
   previewColor: COLOR_PRESETS[2].hex,
 };
 
 interface TopperStore extends TopperConfig {
   setConfig: (partial: Partial<TopperConfig>) => void;
-  setStickOffset: (pickId: PickId, offsetXMm: number) => void;
+  setStickOffset: (pickId: PickId, offset: StickOffset) => void;
   reset: () => void;
 }
 
 export const useTopperStore = create<TopperStore>((set) => ({
   ...DEFAULT_CONFIG,
   setConfig: (partial) => set(partial),
-  setStickOffset: (pickId, offsetXMm) =>
-    set((state) => ({ stickOffsets: { ...state.stickOffsets, [pickId]: offsetXMm } })),
+  setStickOffset: (pickId, offset) => set((state) => ({ stickOffsets: { ...state.stickOffsets, [pickId]: offset } })),
   reset: () => set(DEFAULT_CONFIG),
 }));
 
-/** Pulls just the fields that affect generated geometry, for effect dependency arrays. */
+/** The subset that drives the expensive async geometry build — excludes stick fields on purpose. */
+export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig {
+  const { word, wordFontId, number, numberFontId, accentShapeId, sizeMm, extrudeDepthMm } = state;
+  return { word, wordFontId, number, numberFontId, accentShapeId, sizeMm, extrudeDepthMm };
+}
+
+/** The stick-related fields the scene needs to render/reposition sticks — cheap to recompute on every change. */
+export function selectStickConfig(
+  state: TopperStore,
+): Pick<TopperConfig, 'stickLengthMm' | 'stickWidthMm' | 'stickEmbedMm' | 'stickOffsets' | 'extrudeDepthMm'> {
+  const { stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, extrudeDepthMm } = state;
+  return { stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, extrudeDepthMm };
+}
+
+/** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
 export function selectTopperConfig(state: TopperStore): TopperConfig {
   const {
     word,

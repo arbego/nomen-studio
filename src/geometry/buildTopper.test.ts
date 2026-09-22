@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTopperPicks } from './buildTopper';
+import { buildTopperPicks, stickForPick, mergedPickGeometry } from './buildTopper';
 import type { TopperConfig } from './types';
 
 const baseConfig: TopperConfig = {
@@ -13,7 +13,7 @@ const baseConfig: TopperConfig = {
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: 0, number: 0, accent: 0 },
+  stickOffsets: { word: { x: 0, y: 0 }, number: { x: 0, y: 0 }, accent: { x: 0, y: 0 } },
   previewColor: '#f0c6d0',
 };
 
@@ -22,9 +22,9 @@ describe('buildTopperPicks', () => {
     const picks = await buildTopperPicks(baseConfig);
     expect(picks.map((p) => p.id)).toEqual(['word', 'number', 'accent']);
     for (const pick of picks) {
-      pick.geometry.computeBoundingBox();
-      expect(pick.geometry.boundingBox).not.toBeNull();
-      expect(pick.geometry.getAttribute('position').count).toBeGreaterThan(0);
+      pick.mainGeometry.computeBoundingBox();
+      expect(pick.mainGeometry.boundingBox).not.toBeNull();
+      expect(pick.mainGeometry.getAttribute('position').count).toBeGreaterThan(0);
     }
   }, 30000);
 
@@ -33,40 +33,49 @@ describe('buildTopperPicks', () => {
     expect(picks.map((p) => p.id)).toEqual(['word', 'number']);
   }, 30000);
 
-  it("moves a pick's stick to the requested x offset", async () => {
-    const picks = await buildTopperPicks({ ...baseConfig, stickOffsets: { word: 15, number: 0, accent: 0 } });
-    const wordPick = picks.find((p) => p.id === 'word')!;
-
-    // Below y=0 only the stick exists (the letters start at y=0 and go up), so
-    // the bottom tip's x tells us where the stick actually ended up.
-    const tipY = -(baseConfig.stickLengthMm - baseConfig.stickEmbedMm);
-    const position = wordPick.geometry.getAttribute('position');
-    let tipX: number | null = null;
-    for (let i = 0; i < position.count; i++) {
-      if (Math.abs(position.getY(i) - tipY) < 0.05) {
-        tipX = position.getX(i);
-        break;
-      }
+  it('never includes a stick — main geometry alone stays bottom-anchored at y=0', async () => {
+    const picks = await buildTopperPicks(baseConfig);
+    for (const pick of picks) {
+      pick.mainGeometry.computeBoundingBox();
+      expect(pick.mainGeometry.boundingBox!.min.y).toBeGreaterThanOrEqual(-0.01);
     }
-    expect(tipX).not.toBeNull();
-    expect(tipX).toBeCloseTo(15, 0);
+  }, 30000);
+});
+
+describe('stickForPick / mergedPickGeometry', () => {
+  it("moves a pick's stick to its configured (x, y) attach offset", async () => {
+    const picks = await buildTopperPicks(baseConfig);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const config = { ...baseConfig, stickOffsets: { ...baseConfig.stickOffsets, word: { x: 15, y: 5 } } };
+
+    const stick = stickForPick(wordPick.mainGeometry, config, 'word');
+    stick.computeBoundingBox();
+    const bb = stick.boundingBox!;
+    expect((bb.min.x + bb.max.x) / 2).toBeCloseTo(15, 1);
+    expect(bb.max.y).toBeCloseTo(5 + config.stickEmbedMm, 1);
   }, 30000);
 
   it('clamps an absurd stick offset to stay under the piece instead of floating off to the side', async () => {
-    const picks = await buildTopperPicks({ ...baseConfig, stickOffsets: { word: 100000, number: 0, accent: 0 } });
+    const picks = await buildTopperPicks(baseConfig);
     const wordPick = picks.find((p) => p.id === 'word')!;
-    wordPick.geometry.computeBoundingBox();
-    const bb = wordPick.geometry.boundingBox!;
+    wordPick.mainGeometry.computeBoundingBox();
+    const mainBb = wordPick.mainGeometry.boundingBox!;
+    const config = { ...baseConfig, stickOffsets: { ...baseConfig.stickOffsets, word: { x: 100000, y: 0 } } };
 
-    const tipY = -(baseConfig.stickLengthMm - baseConfig.stickEmbedMm);
-    const position = wordPick.geometry.getAttribute('position');
-    let tipX = -Infinity;
-    for (let i = 0; i < position.count; i++) {
-      if (Math.abs(position.getY(i) - tipY) < 0.05) {
-        tipX = Math.max(tipX, position.getX(i));
-      }
-    }
-    // the clamped stick must still sit within the word's own footprint
-    expect(tipX).toBeLessThanOrEqual(bb.max.x + 0.01);
+    const stick = stickForPick(wordPick.mainGeometry, config, 'word');
+    stick.computeBoundingBox();
+    const stickBb = stick.boundingBox!;
+    expect(stickBb.max.x).toBeLessThanOrEqual(mainBb.max.x + 0.01);
+  }, 30000);
+
+  it('merges main geometry and stick into one printable solid with more vertices than either alone', async () => {
+    const picks = await buildTopperPicks(baseConfig);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const stick = stickForPick(wordPick.mainGeometry, baseConfig, 'word');
+    const merged = mergedPickGeometry(wordPick.mainGeometry, baseConfig, 'word');
+
+    const mainCount = wordPick.mainGeometry.getAttribute('position').count;
+    const stickCount = stick.getAttribute('position').count;
+    expect(merged.getAttribute('position').count).toBe(mainCount + stickCount);
   }, 30000);
 });

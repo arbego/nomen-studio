@@ -1,9 +1,9 @@
-import type { Pick, PickId, TopperConfig } from './types';
+import type * as THREE from 'three';
+import type { MainGeometryConfig, Pick, PickId, TopperConfig } from './types';
 import { textToGeometry } from './textGeometry';
 import { accentShapeToGeometry } from './shapeGeometry';
 import { stickToGeometry, clampStickOffsetToBounds } from './stickGeometry';
 import { combinePickGeometry } from './combine';
-import type * as THREE from 'three';
 
 // The word's sizeMm is the one user-facing size control; the number and accent
 // are proportioned relative to it, matching the reference product's look. These
@@ -11,31 +11,45 @@ import type * as THREE from 'three';
 const NUMBER_WIDTH_RATIO = 0.4;
 const ACCENT_WIDTH_RATIO = 0.28;
 
-function buildPick(id: PickId, label: string, mainGeometry: THREE.BufferGeometry, config: TopperConfig): Pick {
-  const offsetXMm = clampStickOffsetToBounds(mainGeometry, config.stickOffsets[id], config.stickWidthMm);
-  const stick = stickToGeometry({
-    widthMm: config.stickWidthMm,
-    thicknessMm: config.extrudeDepthMm,
-    lengthMm: config.stickLengthMm,
-    embedMm: config.stickEmbedMm,
-    offsetXMm,
-  });
-  return { id, label, geometry: combinePickGeometry(mainGeometry, stick) };
-}
-
-/** Builds every pick (word, number, optional accent) for a topper config, each a single merged, printable solid. */
-export async function buildTopperPicks(config: TopperConfig): Promise<Pick[]> {
+/**
+ * Builds every pick's main geometry (word, number, optional accent) — the
+ * expensive, async, font-dependent part. Deliberately excludes the stick: stick
+ * position/size changes shouldn't have to re-run font extrusion, and the live
+ * scene needs to regenerate the stick cheaply on every drag frame (see
+ * stickForPick below).
+ */
+export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick[]> {
   const [wordMain, numberMain] = await Promise.all([
     textToGeometry(config.word, config.wordFontId, config.sizeMm, config.extrudeDepthMm),
     textToGeometry(config.number, config.numberFontId, config.sizeMm * NUMBER_WIDTH_RATIO, config.extrudeDepthMm),
   ]);
 
-  const picks: Pick[] = [buildPick('word', config.word, wordMain, config), buildPick('number', config.number, numberMain, config)];
+  const picks: Pick[] = [
+    { id: 'word', label: config.word, mainGeometry: wordMain },
+    { id: 'number', label: config.number, mainGeometry: numberMain },
+  ];
 
   if (config.accentShapeId) {
     const accentMain = accentShapeToGeometry(config.accentShapeId, config.sizeMm * ACCENT_WIDTH_RATIO, config.extrudeDepthMm);
-    picks.push(buildPick('accent', config.accentShapeId, accentMain, config));
+    picks.push({ id: 'accent', label: config.accentShapeId, mainGeometry: accentMain });
   }
 
   return picks;
+}
+
+/** The stick for one pick, at its current (clamped) offset — cheap and synchronous, safe to call every drag frame. */
+export function stickForPick(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry {
+  const offset = clampStickOffsetToBounds(mainGeometry, config.stickOffsets[pickId], config.stickWidthMm, config.stickEmbedMm);
+  return stickToGeometry({
+    widthMm: config.stickWidthMm,
+    thicknessMm: config.extrudeDepthMm,
+    lengthMm: config.stickLengthMm,
+    embedMm: config.stickEmbedMm,
+    offset,
+  });
+}
+
+/** The final printable solid for one pick — main geometry merged with its stick. Used at export time. */
+export function mergedPickGeometry(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry {
+  return combinePickGeometry(mainGeometry, stickForPick(mainGeometry, config, pickId));
 }
