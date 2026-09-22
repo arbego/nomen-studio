@@ -1,0 +1,43 @@
+{
+  "name": "Node + TypeScript",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
+
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+
+  // Runs on the HOST before the container starts: exports your current
+  // Claude Code session (macOS Keychain or ~/.claude fallback) so the
+  // container can reuse it instead of prompting you to log in again.
+  "initializeCommand": "bash ${localWorkspaceFolder}/.devcontainer/export-claude-auth.sh",
+
+  "mounts": [
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=${localEnv:HOME}/.claude-devcontainer-auth,target=/tmp/host-claude-auth,type=bind,consistency=cached,readonly"
+  ],
+
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  },
+
+  "postCreateCommand": "if [ -f package.json ]; then npm install; fi",
+  "postStartCommand": "bash .devcontainer/import-claude-auth.sh",
+
+  "remoteUser": "node"
+}
