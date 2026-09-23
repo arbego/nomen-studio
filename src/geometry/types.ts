@@ -41,6 +41,14 @@ export interface TopperConfig extends MainGeometryConfig {
   outlineColor: string;
   /** The outline card's own thickness (mm), independent of extrudeDepthMm (the word's) — kept shallower by default so the letters visibly stand proud of the card instead of being flush with (and so, from the front, hidden behind) it. */
   outlineDepthMm: number;
+  /**
+   * Counter holes (e.g. the "a" in a script font — see keyholeSplit.ts) the
+   * user has manually chosen to fill in solid, as `outlineHoleKey(letterIndex,
+   * contourIndex)` strings (see outline.ts). Reset whenever `word` or
+   * `wordFontId` changes, since a different letter/glyph at that index
+   * invalidates the key.
+   */
+  closedOutlineHoles: string[];
 }
 
 export interface LetterGeometry {
@@ -57,11 +65,13 @@ export interface LetterGeometry {
   /** This letter's natural resting x (mm), before any gap override. */
   naturalXMm: number;
   /**
-   * The outer boundary of each of this glyph's disconnected shapes (ignoring
-   * internal holes/counters — irrelevant to an outline that only traces
-   * outside the letters), in the same mm-space/natural-position convention as
-   * `geometry`. Almost always one contour; a glyph like "i"/"j" has two (the
-   * stem and the dot) — see outline.ts, which is the only consumer of this.
+   * The outer boundary of each of this glyph's disconnected shapes, in the
+   * same mm-space/natural-position convention as `geometry`. Almost always
+   * one contour; a glyph like "i"/"j" has two (the stem and the dot). Some
+   * script fonts draw a letter's counter (the hole in "a"/"e"/"o"...) as a
+   * single self-approaching contour rather than a separate hole subpath —
+   * see keyholeSplit.ts, which recovers that hole from here when needed. See
+   * outline.ts, which is the only consumer of this.
    */
   outlineContours: import('three').Vector2[][];
 }

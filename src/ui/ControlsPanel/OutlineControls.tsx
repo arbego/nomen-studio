@@ -1,4 +1,5 @@
 import { ColorSwatchPicker } from './ColorSwatchPicker';
+import type { OutlineHoleCandidate } from '../../geometry/outline';
 
 interface OutlineControlsProps {
   enabled: boolean;
@@ -11,6 +12,10 @@ interface OutlineControlsProps {
   onChangeDepth: (depthMm: number) => void;
   /** The word's own thickness — the card's height is capped here so it can never grow tall enough to become flush with (and so hide) the letters. */
   maxDepthMm: number;
+  /** Every counter hole (e.g. the "a" in a script font — see keyholeSplit.ts) currently detected at this growMm. */
+  holeCandidates: OutlineHoleCandidate[];
+  closedOutlineHoles: string[];
+  onToggleHole: (key: string) => void;
 }
 
 const GROW_RANGE = { min: 0.5, max: 20, step: 0.5 };
@@ -26,6 +31,9 @@ export function OutlineControls({
   depthMm,
   onChangeDepth,
   maxDepthMm,
+  holeCandidates,
+  closedOutlineHoles,
+  onToggleHole,
 }: OutlineControlsProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -76,6 +84,31 @@ export function OutlineControls({
             />
           </label>
           <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} />
+          {holeCandidates.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm text-stone-600">Counter holes</span>
+              <p className="text-xs text-stone-400">Fill one in if you'd rather it print solid, like the rest of the card.</p>
+              <div className="flex flex-col gap-1">
+                {holeCandidates.map((candidate) => {
+                  const closed = closedOutlineHoles.includes(candidate.key);
+                  return (
+                    <label key={candidate.key} className="flex items-center justify-between text-sm text-stone-600">
+                      <span>
+                        “{candidate.char}” (letter {candidate.letterIndex + 1})
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={closed}
+                        onChange={() => onToggleHole(candidate.key)}
+                        className="h-4 w-4 accent-stone-800"
+                        aria-label={`Fill the "${candidate.char}" hole (letter ${candidate.letterIndex + 1}) solid`}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

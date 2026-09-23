@@ -17,6 +17,7 @@ const baseConfig: TopperConfig = {
   outlineGrowMm: 3,
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
+  closedOutlineHoles: [],
 };
 
 function letterVertexTotal(pick: Awaited<ReturnType<typeof buildTopperPicks>>[number]): number {

@@ -18,6 +18,7 @@ const config: TopperConfig = {
   outlineGrowMm: 3,
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
+  closedOutlineHoles: [],
 };
 
 describe('STL export', () => {

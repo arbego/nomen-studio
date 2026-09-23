@@ -19,6 +19,7 @@ interface SceneProps {
   outlineGrowMm: number;
   outlineColor: string;
   outlineDepthMm: number;
+  closedOutlineHoles: string[];
 }
 
 export function Scene({
@@ -33,6 +34,7 @@ export function Scene({
   outlineGrowMm,
   outlineColor,
   outlineDepthMm,
+  closedOutlineHoles,
 }: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
@@ -77,6 +79,7 @@ export function Scene({
           growMm={outlineGrowMm}
           depthMm={outlineDepthMm}
           color={outlineColor}
+          closedOutlineHoles={closedOutlineHoles}
         />
       )}
     </group>

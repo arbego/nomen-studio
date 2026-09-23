@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildOutlineShapes, buildOutlineGeometry } from './outline';
+import { buildOutlineShapes, buildOutlineGeometry, detectOutlineHoleCandidates, outlineHoleKey } from './outline';
 import { shapesBoundingBox } from './svgPathToShapes';
 import { combinedLetterBounds } from './letterLayout';
 import { wordToLetterGeometries } from './textGeometry';
@@ -107,6 +107,98 @@ describe('buildOutlineGeometry (integration, real font)', () => {
   it('returns null when disabled (growMm = 0)', async () => {
     const letters = await wordToLetterGeometries('Emma', 'dancing-script', 100, 3);
     expect(buildOutlineGeometry(fakePick(letters), [0, 0, 0], 0, 3)).toBeNull();
+  }, 30000);
+
+  it('keeps a genuine hole where a script letter draws its counter as a single self-approaching contour (e.g. the "a" in "Lara")', async () => {
+    // Dancing Script draws "a" as one simple contour with a thin near-self-touching
+    // channel forming the counter, rather than a separate hole subpath — Clipper's
+    // own offsetting (read through the PolyTree overload, not the flat one) finds
+    // the resulting enclosed counter as a genuine hole on its own, with no manual
+    // pre-processing of the input needed.
+    const letters = await wordToLetterGeometries('Lara', 'dancing-script', 100, 3);
+    const pick = fakePick(letters);
+
+    const shapes = buildOutlineShapes(pick, [0, 0, 0], 1);
+    const totalHoles = shapes.reduce((sum, s) => sum + s.holes.length, 0);
+    expect(totalHoles).toBeGreaterThan(0);
+  }, 30000);
+
+  it('shrinks (and can eventually close) a counter hole as growMm increases, instead of it staying a fixed size', async () => {
+    const letters = await wordToLetterGeometries('Lara', 'dancing-script', 100, 3);
+    const pick = fakePick(letters);
+
+    const holeArea = (grow: number) => {
+      const shapes = buildOutlineShapes(pick, [0, 0, 0], grow);
+      let area = 0;
+      for (const shape of shapes) {
+        for (const hole of shape.holes) {
+          const pts = hole.getPoints(32);
+          let sum = 0;
+          for (let i = 0; i < pts.length; i++) {
+            const p = pts[i];
+            const q = pts[(i + 1) % pts.length];
+            sum += p.x * q.y - q.x * p.y;
+          }
+          area += Math.abs(sum) / 2;
+        }
+      }
+      return area;
+    };
+
+    const smallGrowArea = holeArea(1);
+    const biggerGrowArea = holeArea(2);
+    expect(smallGrowArea).toBeGreaterThan(0);
+    expect(biggerGrowArea).toBeLessThan(smallGrowArea);
+  }, 30000);
+
+  it('lets a manually-closed hole render solid, and detects it again once reopened (the "Fill" checklist)', async () => {
+    const letters = await wordToLetterGeometries('Lara', 'dancing-script', 100, 3);
+    const pick = fakePick(letters);
+    const grow = 1;
+
+    const candidates = detectOutlineHoleCandidates(pick, [0, 0, 0], grow);
+    const aIndex = letters.findIndex((l) => l.char === 'a');
+    expect(candidates.some((c) => c.letterIndex === aIndex && c.char === 'a')).toBe(true);
+
+    const key = candidates.find((c) => c.letterIndex === aIndex)!.key;
+    expect(key).toBe(outlineHoleKey(aIndex));
+
+    const openHoleCount = buildOutlineShapes(pick, [0, 0, 0], grow).reduce((sum, s) => sum + s.holes.length, 0);
+    expect(openHoleCount).toBeGreaterThan(0); // "Lara" has two "a"s, so two counters
+
+    const closedHoleCount = buildOutlineShapes(pick, [0, 0, 0], grow, [key]).reduce((sum, s) => sum + s.holes.length, 0);
+    expect(closedHoleCount).toBe(openHoleCount - 1); // only the one we closed goes away
+
+    // Detection itself is unaffected by the manual override — the checklist
+    // keeps listing a closed hole so the user can reopen it.
+    const candidatesWhileClosed = detectOutlineHoleCandidates(pick, [0, 0, 0], grow);
+    expect(candidatesWhileClosed).toEqual(candidates);
+  }, 30000);
+
+  it('ignores a closed-hole key that no longer applies (e.g. after the word changed)', async () => {
+    const letters = await wordToLetterGeometries('Lara', 'dancing-script', 100, 3);
+    const pick = fakePick(letters);
+
+    const withBogusKey = buildOutlineShapes(pick, [0, 0, 0], 1, ['letter-99']);
+    const withoutIt = buildOutlineShapes(pick, [0, 0, 0], 1, []);
+    expect(withBogusKey.reduce((sum, s) => sum + s.holes.length, 0)).toBe(withoutIt.reduce((sum, s) => sum + s.holes.length, 0));
+  }, 30000);
+
+  it('never mistakes a small round accent (the "i" dot) for a letter with a real counter, at any grow amount', async () => {
+    // Regression test: an earlier version of this feature pre-processed each
+    // contour with a heuristic "is this a keyhole channel" check that could
+    // misfire on a small round shape and slice a flat chord out of the dot's
+    // outline. Clipper's own offsetting (no pre-processing at all) correctly
+    // never finds a hole in a simple round contour. Of "L", "i", "a", "m",
+    // only "a" has a real counter, so the total hole count must never exceed 1.
+    const letters = await wordToLetterGeometries('Liam', 'dancing-script', 100, 3);
+    const pick = fakePick(letters);
+
+    for (const grow of [0.5, 1, 1.5, 2, 3]) {
+      const shapes = buildOutlineShapes(pick, [0, 0, 0, 0], grow);
+      const totalHoles = shapes.reduce((sum, s) => sum + s.holes.length, 0);
+      expect(totalHoles).toBeLessThanOrEqual(1);
+    }
   }, 30000);
 
   it('encompasses the word once grown', async () => {

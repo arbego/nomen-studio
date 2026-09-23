@@ -18,6 +18,7 @@ interface TopperCanvasProps {
   outlineGrowMm: number;
   outlineColor: string;
   outlineDepthMm: number;
+  closedOutlineHoles: string[];
 }
 
 // The straight-on front view — matches the initial camera so "home" returns to
@@ -37,6 +38,7 @@ export function TopperCanvas({
   outlineGrowMm,
   outlineColor,
   outlineDepthMm,
+  closedOutlineHoles,
 }: TopperCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
@@ -69,6 +71,7 @@ export function TopperCanvas({
             outlineGrowMm={outlineGrowMm}
             outlineColor={outlineColor}
             outlineDepthMm={outlineDepthMm}
+            closedOutlineHoles={closedOutlineHoles}
           />
         </Center>
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />

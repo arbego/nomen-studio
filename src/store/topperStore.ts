@@ -34,6 +34,7 @@ const DEFAULT_CONFIG: TopperConfig = {
   outlineGrowMm: 3,
   outlineColor: COLOR_PRESETS[0].hex,
   outlineDepthMm: 1.5,
+  closedOutlineHoles: [],
 };
 
 /** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
@@ -48,6 +49,7 @@ interface TopperStore extends TopperConfig {
   removeStick: (pickId: PickId, index: number) => void;
   setLetterGap: (index: number, gapMm: number) => void;
   resetLetterGaps: () => void;
+  toggleClosedOutlineHole: (key: string) => void;
   reset: () => void;
 }
 
@@ -55,12 +57,19 @@ export const useTopperStore = create<TopperStore>((set) => ({
   ...DEFAULT_CONFIG,
   setConfig: (partial) =>
     set((state) => {
-      // Per-letter gap tweaks are a fine-tuning pass over a specific string of
-      // text — re-mapping them onto an edited word is ambiguous (which old gap
-      // corresponds to which new one?), so any word edit resets them rather
-      // than risk stale/misapplied offsets.
-      if (partial.word !== undefined && partial.word !== state.word) {
-        return { ...partial, letterGapsMm: defaultLetterGaps(partial.word) };
+      // Per-letter gap tweaks and manually-closed outline holes are both a
+      // fine-tuning pass keyed by letter index over a specific string of text
+      // (and, for holes, a specific font's glyph shapes) — re-mapping either
+      // onto an edited word or font is ambiguous, so both reset rather than
+      // risk stale/misapplied overrides.
+      const wordChanged = partial.word !== undefined && partial.word !== state.word;
+      const fontChanged = partial.wordFontId !== undefined && partial.wordFontId !== state.wordFontId;
+      if (wordChanged || fontChanged) {
+        return {
+          ...partial,
+          letterGapsMm: wordChanged ? defaultLetterGaps(partial.word!) : state.letterGapsMm,
+          closedOutlineHoles: [],
+        };
       }
       return partial;
     }),
@@ -90,6 +99,12 @@ export const useTopperStore = create<TopperStore>((set) => ({
       letterGapsMm: state.letterGapsMm.map((existing, i) => (i === index ? gapMm : existing)),
     })),
   resetLetterGaps: () => set((state) => ({ letterGapsMm: defaultLetterGaps(state.word) })),
+  toggleClosedOutlineHole: (key) =>
+    set((state) => ({
+      closedOutlineHoles: state.closedOutlineHoles.includes(key)
+        ? state.closedOutlineHoles.filter((existing) => existing !== key)
+        : [...state.closedOutlineHoles, key],
+    })),
   reset: () => set(DEFAULT_CONFIG),
 }));
 
@@ -116,6 +131,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     outlineGrowMm,
     outlineColor,
     outlineDepthMm,
+    closedOutlineHoles,
   } = state;
   return {
     word,
@@ -132,5 +148,6 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     outlineGrowMm,
     outlineColor,
     outlineDepthMm,
+    closedOutlineHoles,
   };
 }

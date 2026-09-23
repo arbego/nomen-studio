@@ -25,6 +25,7 @@ const config: TopperConfig = {
   outlineGrowMm: 3,
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
+  closedOutlineHoles: [],
 };
 
 const stickParams: StickParams = {
@@ -39,7 +40,7 @@ function renderScene(
   stickOffsets: Record<PickId, StickOffset[]> = config.stickOffsets,
   letterGapsMm: number[] = config.letterGapsMm,
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void = () => {},
-  outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string; outlineDepthMm: number } = config,
+  outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string; outlineDepthMm: number; closedOutlineHoles?: string[] } = config,
 ) {
   return buildTopperPicks(config).then((picks) =>
     ReactThreeTestRenderer.create(
@@ -55,6 +56,7 @@ function renderScene(
         outlineGrowMm={outline.outlineGrowMm}
         outlineColor={outline.outlineColor}
         outlineDepthMm={outline.outlineDepthMm}
+        closedOutlineHoles={outline.closedOutlineHoles ?? []}
       />,
     ).then((renderer) => ({ renderer, picks })),
   );

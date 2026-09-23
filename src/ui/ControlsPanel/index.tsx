@@ -1,4 +1,5 @@
 import type { Pick, PickId, TopperConfig } from '../../geometry/types';
+import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import { TextField } from './TextField';
 import { FontPicker } from './FontPicker';
 import { SizePicker } from './SizePicker';
@@ -16,10 +17,23 @@ interface ControlsPanelProps {
   onAddStick: (pickId: PickId) => void;
   onRemoveStick: (pickId: PickId, index: number) => void;
   onResetLetterGaps: () => void;
+  onToggleClosedOutlineHole: (key: string) => void;
 }
 
-export function ControlsPanel({ config, onChange, picks, loading, error, onAddStick, onRemoveStick, onResetLetterGaps }: ControlsPanelProps) {
+export function ControlsPanel({
+  config,
+  onChange,
+  picks,
+  loading,
+  error,
+  onAddStick,
+  onRemoveStick,
+  onResetLetterGaps,
+  onToggleClosedOutlineHole,
+}: ControlsPanelProps) {
   const hasCustomLetterGaps = config.letterGapsMm.some((gap) => gap !== 0);
+  const wordPick = picks.find((p) => p.id === 'word');
+  const outlineHoleCandidates = config.outlineEnabled && wordPick ? detectOutlineHoleCandidates(wordPick, config.letterGapsMm, config.outlineGrowMm) : [];
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -61,6 +75,9 @@ export function ControlsPanel({ config, onChange, picks, loading, error, onAddSt
           depthMm={config.outlineDepthMm}
           onChangeDepth={(outlineDepthMm) => onChange({ outlineDepthMm })}
           maxDepthMm={config.extrudeDepthMm}
+          holeCandidates={outlineHoleCandidates}
+          closedOutlineHoles={config.closedOutlineHoles}
+          onToggleHole={onToggleClosedOutlineHole}
         />
       </div>
 

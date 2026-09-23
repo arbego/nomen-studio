@@ -15,6 +15,7 @@ function App() {
   const removeStick = useTopperStore((s) => s.removeStick);
   const setLetterGap = useTopperStore((s) => s.setLetterGap);
   const resetLetterGaps = useTopperStore((s) => s.resetLetterGaps);
+  const toggleClosedOutlineHole = useTopperStore((s) => s.toggleClosedOutlineHole);
   const { picks, loading, error } = useTopperPicks(mainConfig);
 
   const stick = useMemo(
@@ -39,6 +40,7 @@ function App() {
           onAddStick={addStick}
           onRemoveStick={removeStick}
           onResetLetterGaps={resetLetterGaps}
+          onToggleClosedOutlineHole={toggleClosedOutlineHole}
         />
       }
       main={
@@ -54,6 +56,7 @@ function App() {
           outlineGrowMm={config.outlineGrowMm}
           outlineColor={config.outlineColor}
           outlineDepthMm={config.outlineDepthMm}
+          closedOutlineHoles={config.closedOutlineHoles}
         />
       }
     />
