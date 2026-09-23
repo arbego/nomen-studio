@@ -3,6 +3,7 @@ import type { Pick, PickId, StickOffset } from '../geometry/types';
 import { combinedLetterBounds } from '../geometry/letterLayout';
 import type { StickParams } from './PickMesh';
 import { PickMesh } from './PickMesh';
+import { OutlineMesh } from './OutlineMesh';
 
 const PICK_GAP_MM = 12;
 
@@ -14,9 +15,25 @@ interface SceneProps {
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
+  extrudeDepthMm: number;
+  outlineEnabled: boolean;
+  outlineGrowMm: number;
+  outlineColor: string;
 }
 
-export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit, letterGapsMm, onLetterGapCommit }: SceneProps) {
+export function Scene({
+  picks,
+  color,
+  stick,
+  stickOffsets,
+  onStickOffsetCommit,
+  letterGapsMm,
+  onLetterGapCommit,
+  extrudeDepthMm,
+  outlineEnabled,
+  outlineGrowMm,
+  outlineColor,
+}: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
     const positions: number[] = [];
@@ -30,6 +47,9 @@ export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit, 
     const centerOffset = totalWidth / 2;
     return positions.map((p) => p - centerOffset);
   }, [picks, letterGapsMm]);
+
+  const wordIndex = picks.findIndex((p) => p.id === 'word');
+  const wordPick = picks[wordIndex];
 
   return (
     <group>
@@ -46,6 +66,19 @@ export function Scene({ picks, color, stick, stickOffsets, onStickOffsetCommit, 
           onLetterGapCommit={(index, gapMm) => onLetterGapCommit(pick.id, index, gapMm)}
         />
       ))}
+      {outlineEnabled && wordPick && (
+        // Shares the word's own positionX (not laid out side-by-side like a
+        // separate pick would be) so it visually surrounds the word instead
+        // of sitting next to it.
+        <OutlineMesh
+          pick={wordPick}
+          positionX={layout[wordIndex] ?? 0}
+          letterGapsMm={letterGapsMm}
+          growMm={outlineGrowMm}
+          extrudeDepthMm={extrudeDepthMm}
+          color={outlineColor}
+        />
+      )}
     </group>
   );
 }

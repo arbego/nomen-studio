@@ -4,6 +4,7 @@ import { FontPicker } from './FontPicker';
 import { SizePicker } from './SizePicker';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import { StickControls } from './StickControls';
+import { OutlineControls } from './OutlineControls';
 import { ExportButtons } from './ExportButtons';
 
 interface ControlsPanelProps {
@@ -49,6 +50,14 @@ export function ControlsPanel({ config, onChange, picks, loading, error, onAddSt
           stickCounts={{ word: config.stickOffsets.word.length }}
           onAddStick={onAddStick}
           onRemoveStick={(pickId) => onRemoveStick(pickId, config.stickOffsets[pickId].length - 1)}
+        />
+        <OutlineControls
+          enabled={config.outlineEnabled}
+          onChangeEnabled={(outlineEnabled) => onChange({ outlineEnabled })}
+          growMm={config.outlineGrowMm}
+          onChangeGrow={(outlineGrowMm) => onChange({ outlineGrowMm })}
+          color={config.outlineColor}
+          onChangeColor={(outlineColor) => onChange({ outlineColor })}
         />
       </div>
 

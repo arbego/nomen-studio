@@ -52,6 +52,8 @@ export interface ExtrudedGlyph {
   geometry: THREE.BufferGeometry;
   /** `anchorX` carried through the same scale/center this function derives internally — the mm-space x a caller can treat as this glyph's natural resting position, since it's not otherwise recoverable from the geometry's own bounding box (which reflects the glyph's shape extent, not its layout anchor). */
   anchorMm: number;
+  /** The outer boundary of each of this glyph's shapes (ignoring holes), transformed into the same final mm-space as `geometry` — raw material for building a growable outline around the word (see outline.ts). Almost always one contour; a glyph like "i"/"j" has two. */
+  outlineContours: THREE.Vector2[][];
 }
 
 /**
@@ -93,6 +95,13 @@ export function extrudeGlyphShapesToMm(glyphs: AnchoredGlyphShapes[], options: E
     geometry.scale(scale, -scale, scale);
     geometry.translate(centerXMm, bottomYMm, 0);
     geometry.computeVertexNormals();
-    return { geometry, anchorMm: anchorX * scale + centerXMm };
+
+    // Same (scale, -scale) + translate transform as the geometry above, applied
+    // to each shape's own outer boundary points instead of a full extrusion.
+    const outlineContours = shapes.map((shape) =>
+      shape.getPoints(curveSegments).map((p) => new THREE.Vector2(p.x * scale + centerXMm, -p.y * scale + bottomYMm)),
+    );
+
+    return { geometry, anchorMm: anchorX * scale + centerXMm, outlineContours };
   });
 }

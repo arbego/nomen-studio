@@ -21,6 +21,9 @@ const config: TopperConfig = {
   stickOffsets: { word: [{ x: 0, y: 0 }] },
   letterGapsMm: [0, 0, 0],
   previewColor: '#f0c6d0',
+  outlineEnabled: false,
+  outlineGrowMm: 3,
+  outlineColor: '#f7f5f2',
 };
 
 const stickParams: StickParams = {
@@ -35,6 +38,7 @@ function renderScene(
   stickOffsets: Record<PickId, StickOffset[]> = config.stickOffsets,
   letterGapsMm: number[] = config.letterGapsMm,
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void = () => {},
+  outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string } = config,
 ) {
   return buildTopperPicks(config).then((picks) =>
     ReactThreeTestRenderer.create(
@@ -46,6 +50,10 @@ function renderScene(
         onStickOffsetCommit={onStickOffsetCommit}
         letterGapsMm={letterGapsMm}
         onLetterGapCommit={onLetterGapCommit}
+        extrudeDepthMm={config.extrudeDepthMm}
+        outlineEnabled={outline.outlineEnabled}
+        outlineGrowMm={outline.outlineGrowMm}
+        outlineColor={outline.outlineColor}
       />,
     ).then((renderer) => ({ renderer, picks })),
   );
@@ -287,5 +295,31 @@ describe('Scene (React Three Fiber wiring)', () => {
     // delta as letter 1 — not stayed at their natural position.
     expect(meshPositionX(findLetter(2))).toBeCloseTo(draggedDelta, 3);
     expect(meshPositionX(findLetter(3))).toBeCloseTo(draggedDelta, 3);
+  }, 30000);
+
+  it('renders no outline mesh when outlineEnabled is false', async () => {
+    const { renderer } = await renderScene();
+    const topLevelMeshes = renderer.scene.children[0].children.filter((c) => c.type === 'Mesh');
+    expect(topLevelMeshes).toHaveLength(0);
+  }, 30000);
+
+  it('renders an outline mesh, in its own color and sharing the word\'s position, when enabled', async () => {
+    const { renderer } = await renderScene(undefined, undefined, undefined, undefined, {
+      outlineEnabled: true,
+      outlineGrowMm: 3,
+      outlineColor: '#123456',
+    });
+
+    const topLevelMeshes = renderer.scene.children[0].children.filter((c) => c.type === 'Mesh');
+    expect(topLevelMeshes).toHaveLength(1);
+    const [outlineMesh] = topLevelMeshes;
+
+    const wordGroup = findPickGroups(renderer)[0];
+    const outlineX = (outlineMesh.instance as unknown as { position: { x: number } }).position.x;
+    const wordX = (wordGroup.instance as unknown as { position: { x: number } }).position.x;
+    expect(outlineX).toBeCloseTo(wordX, 5);
+
+    const material = (outlineMesh.instance as unknown as { material: { color: { getHexString: () => string } } }).material;
+    expect(`#${material.color.getHexString()}`).toBe('#123456');
   }, 30000);
 });

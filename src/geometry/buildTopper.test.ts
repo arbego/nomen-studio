@@ -13,6 +13,9 @@ const baseConfig: TopperConfig = {
   stickOffsets: { word: [{ x: 0, y: 0 }] },
   letterGapsMm: [0, 0, 0],
   previewColor: '#f0c6d0',
+  outlineEnabled: false,
+  outlineGrowMm: 3,
+  outlineColor: '#f7f5f2',
 };
 
 function letterVertexTotal(pick: Awaited<ReturnType<typeof buildTopperPicks>>[number]): number {

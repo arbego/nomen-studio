@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTopperPicks, mergedPickGeometry } from '../geometry/buildTopper';
 import type { TopperConfig } from '../geometry/types';
-import { pickToStlBinary, slugifyFilename } from './stlExport';
+import { pickToStlBinary, outlineToStlBinary, slugifyFilename } from './stlExport';
 
 const config: TopperConfig = {
   word: 'Emma',
@@ -14,6 +14,9 @@ const config: TopperConfig = {
   stickOffsets: { word: [{ x: 0, y: 0 }] },
   letterGapsMm: [0, 0, 0],
   previewColor: '#f0c6d0',
+  outlineEnabled: false,
+  outlineGrowMm: 3,
+  outlineColor: '#f7f5f2',
 };
 
 describe('STL export', () => {
@@ -57,6 +60,21 @@ describe('STL export', () => {
     expect(tightenedDv.getUint32(80, true)).toBe(naturalDv.getUint32(80, true));
     expect(tightenedDv.byteLength).toBe(naturalDv.byteLength);
     expect(new Uint8Array(tightenedDv.buffer)).not.toEqual(new Uint8Array(naturalDv.buffer));
+  }, 30000);
+
+  it('returns null for the outline when it is disabled', async () => {
+    const picks = await buildTopperPicks(config);
+    expect(outlineToStlBinary(picks[0], config)).toBeNull();
+  }, 30000);
+
+  it('produces a valid binary STL for the outline when enabled', async () => {
+    const withOutline: TopperConfig = { ...config, outlineEnabled: true };
+    const picks = await buildTopperPicks(withOutline);
+    const dv = outlineToStlBinary(picks[0], withOutline);
+    expect(dv).not.toBeNull();
+    const triangleCount = dv!.getUint32(80, true);
+    expect(triangleCount).toBeGreaterThan(0);
+    expect(dv!.byteLength).toBe(84 + triangleCount * 50);
   }, 30000);
 });
 

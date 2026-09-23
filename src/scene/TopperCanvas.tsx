@@ -14,6 +14,10 @@ interface TopperCanvasProps {
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
+  extrudeDepthMm: number;
+  outlineEnabled: boolean;
+  outlineGrowMm: number;
+  outlineColor: string;
 }
 
 // The straight-on front view — matches the initial camera so "home" returns to
@@ -21,7 +25,19 @@ interface TopperCanvasProps {
 const HOME_CAMERA_POSITION: [number, number, number] = [0, 60, 220];
 const HOME_TARGET: [number, number, number] = [0, 0, 0];
 
-export function TopperCanvas({ picks, color, stick, stickOffsets, onStickOffsetCommit, letterGapsMm, onLetterGapCommit }: TopperCanvasProps) {
+export function TopperCanvas({
+  picks,
+  color,
+  stick,
+  stickOffsets,
+  onStickOffsetCommit,
+  letterGapsMm,
+  onLetterGapCommit,
+  extrudeDepthMm,
+  outlineEnabled,
+  outlineGrowMm,
+  outlineColor,
+}: TopperCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
   function resetToFrontView() {
@@ -49,6 +65,10 @@ export function TopperCanvas({ picks, color, stick, stickOffsets, onStickOffsetC
             onStickOffsetCommit={onStickOffsetCommit}
             letterGapsMm={letterGapsMm}
             onLetterGapCommit={onLetterGapCommit}
+            extrudeDepthMm={extrudeDepthMm}
+            outlineEnabled={outlineEnabled}
+            outlineGrowMm={outlineGrowMm}
+            outlineColor={outlineColor}
           />
         </Center>
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />

@@ -54,9 +54,10 @@ export async function wordToLetterGeometries(word: string, fontId: string, targe
     curveSegments: DEFAULT_CURVE_SEGMENTS,
   });
 
-  return extruded.map(({ geometry, anchorMm }, i) => ({
+  return extruded.map(({ geometry, anchorMm, outlineContours }, i) => ({
     char: word[i] ?? '',
     geometry,
     naturalXMm: anchorMm,
+    outlineContours,
   }));
 }

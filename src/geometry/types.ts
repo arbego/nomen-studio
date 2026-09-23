@@ -33,6 +33,12 @@ export interface TopperConfig extends MainGeometryConfig {
   letterGapsMm: number[];
   /** Cosmetic only — the physical color comes from 3D printer filament, not the file. */
   previewColor: string;
+  /** Whether a growable solid backing card is added under the word — see outline.ts. */
+  outlineEnabled: boolean;
+  /** How far the outline card extends past the letters, in mm. Growing it far enough merges nearby disconnected pieces (e.g. an "i"'s dot and its stem) into one connected card — see outline.ts. */
+  outlineGrowMm: number;
+  /** The outline's own color, independent of previewColor (the word's). */
+  outlineColor: string;
 }
 
 export interface LetterGeometry {
@@ -48,6 +54,14 @@ export interface LetterGeometry {
   geometry: import('three').BufferGeometry;
   /** This letter's natural resting x (mm), before any gap override. */
   naturalXMm: number;
+  /**
+   * The outer boundary of each of this glyph's disconnected shapes (ignoring
+   * internal holes/counters — irrelevant to an outline that only traces
+   * outside the letters), in the same mm-space/natural-position convention as
+   * `geometry`. Almost always one contour; a glyph like "i"/"j" has two (the
+   * stem and the dot) — see outline.ts, which is the only consumer of this.
+   */
+  outlineContours: import('three').Vector2[][];
 }
 
 export interface Pick {

@@ -30,6 +30,9 @@ const DEFAULT_CONFIG: TopperConfig = {
   stickOffsets: { word: [{ x: 0, y: 0 }] },
   letterGapsMm: defaultLetterGaps(DEFAULT_WORD),
   previewColor: COLOR_PRESETS[2].hex,
+  outlineEnabled: false,
+  outlineGrowMm: 3,
+  outlineColor: COLOR_PRESETS[0].hex,
 };
 
 /** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
@@ -97,7 +100,21 @@ export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig
 
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
 export function selectTopperConfig(state: TopperStore): TopperConfig {
-  const { word, wordFontId, sizeMm, extrudeDepthMm, stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, letterGapsMm, previewColor } = state;
+  const {
+    word,
+    wordFontId,
+    sizeMm,
+    extrudeDepthMm,
+    stickLengthMm,
+    stickWidthMm,
+    stickEmbedMm,
+    stickOffsets,
+    letterGapsMm,
+    previewColor,
+    outlineEnabled,
+    outlineGrowMm,
+    outlineColor,
+  } = state;
   return {
     word,
     wordFontId,
@@ -109,5 +126,8 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     stickOffsets,
     letterGapsMm,
     previewColor,
+    outlineEnabled,
+    outlineGrowMm,
+    outlineColor,
   };
 }

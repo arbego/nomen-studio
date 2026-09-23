@@ -91,7 +91,7 @@ describe('normalizedLetterGaps', () => {
 function fakeLetter(minX: number, maxX: number, minY: number, maxY: number): LetterGeometry {
   const geometry = new THREE.BoxGeometry(maxX - minX, maxY - minY, 3);
   geometry.translate((minX + maxX) / 2, (minY + maxY) / 2, 0);
-  return { char: '?', geometry, naturalXMm: minX };
+  return { char: '?', geometry, naturalXMm: minX, outlineContours: [] };
 }
 
 describe('combinedLetterBounds', () => {
