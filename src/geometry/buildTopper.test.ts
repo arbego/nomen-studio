@@ -79,6 +79,23 @@ describe('sticksForPick / mergedPickGeometry', () => {
     expect(merged.getAttribute('position').count).toBe(mainCount + stickCount);
   }, 30000);
 
+  it('keeps every stick tip in a pick level with the others, even when they attach at different heights', async () => {
+    const picks = await buildTopperPicks(baseConfig);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const config = {
+      ...baseConfig,
+      stickOffsets: { ...baseConfig.stickOffsets, word: [{ x: -20, y: -8 }, { x: 0, y: 4 }, { x: 20, y: 12 }] },
+    };
+
+    const sticks = sticksForPick(wordPick.mainGeometry, config, 'word');
+    const tipYs = sticks.map((s) => {
+      s.computeBoundingBox();
+      return s.boundingBox!.min.y;
+    });
+    expect(tipYs[1]).toBeCloseTo(tipYs[0], 5);
+    expect(tipYs[2]).toBeCloseTo(tipYs[0], 5);
+  }, 30000);
+
   it('builds and merges multiple independently-positioned sticks for a single pick', async () => {
     const picks = await buildTopperPicks(baseConfig);
     const wordPick = picks.find((p) => p.id === 'word')!;

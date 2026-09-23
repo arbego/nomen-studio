@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import type { MainGeometryConfig, Pick, PickId, TopperConfig } from './types';
 import { textToGeometry } from './textGeometry';
 import { accentShapeToGeometry } from './shapeGeometry';
-import { stickToGeometry, clampStickOffsetToBounds } from './stickGeometry';
+import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from './stickGeometry';
 import { combinePickGeometry } from './combine';
 
 // The word's sizeMm is the one user-facing size control; the number and accent
@@ -37,14 +37,20 @@ export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick
   return picks;
 }
 
-/** Every stick for one pick, at their current (clamped) offsets — cheap and synchronous, safe to call every drag frame. */
+/**
+ * Every stick for one pick, at their current (clamped) offsets — cheap and
+ * synchronous, safe to call every drag frame. Each stick's extruded length is
+ * individually adjusted so all of a pick's tips land level with each other
+ * (see stickLengthForLevelTip) regardless of where each one was dragged.
+ */
 export function sticksForPick(mainGeometry: THREE.BufferGeometry, config: TopperConfig, pickId: PickId): THREE.BufferGeometry[] {
   return config.stickOffsets[pickId].map((rawOffset) => {
     const offset = clampStickOffsetToBounds(mainGeometry, rawOffset, config.stickWidthMm, config.stickEmbedMm);
+    const lengthMm = stickLengthForLevelTip(config.stickLengthMm, config.stickEmbedMm, offset.y);
     return stickToGeometry({
       widthMm: config.stickWidthMm,
       thicknessMm: config.extrudeDepthMm,
-      lengthMm: config.stickLengthMm,
+      lengthMm,
       embedMm: config.stickEmbedMm,
       offset,
     });

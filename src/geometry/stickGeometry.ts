@@ -23,6 +23,10 @@ const DEFAULT_OFFSET: StickOffset = { x: 0, y: 0 };
 // generated stick still always uses the full embedMm, only the allowed *range of
 // attach points* is more permissive near the top edge.
 const MIN_Y_OVERLAP_MM = 5;
+// However short a stick's computed length ends up after leveling (see
+// stickLengthForLevelTip below), it must still stick out past its embed
+// portion by a real, printable amount.
+const MIN_VISIBLE_STICK_MM = 5;
 
 /**
  * A pick stick with a flat top (embedded in the piece above, so its shape doesn't
@@ -67,6 +71,24 @@ export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
   geometry.translate(offset.x, bottomY, 0);
   geometry.computeVertexNormals();
   return geometry;
+}
+
+/**
+ * The extruded length to actually use for a stick attached at `offsetY`, so that
+ * every stick on the same pick has its rounded tip land at the same absolute
+ * height — level with each other, like legs of the same height — no matter how
+ * high or low each one was individually dragged. Without this, two sticks at
+ * different attach heights but the same `baseLengthMm` would have tips at
+ * different elevations, so the printed piece would rock instead of standing flat.
+ *
+ * A stick attached at `offsetY = 0` (the piece's bottom-anchor — see
+ * extrudeToMm.ts) is the reference: it always uses exactly `baseLengthMm`. Every
+ * other attach height adds or subtracts that same `offsetY` from the extruded
+ * length so its tip lines up with that same reference elevation, which is also
+ * what moving the length slider raises or lowers for every stick at once.
+ */
+export function stickLengthForLevelTip(baseLengthMm: number, embedMm: number, offsetY: number): number {
+  return Math.max(baseLengthMm + offsetY, embedMm + MIN_VISIBLE_STICK_MM);
 }
 
 /**

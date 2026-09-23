@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { stickToGeometry, clampStickOffsetToBounds } from './stickGeometry';
+import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from './stickGeometry';
 
 describe('stickToGeometry', () => {
   it('spans from below the attach point (the handle) to above it (the embedded overlap)', () => {
@@ -56,6 +56,35 @@ describe('stickToGeometry', () => {
     expect((bb.min.x + bb.max.x) / 2).toBeCloseTo(12, 5);
     expect(bb.max.y).toBeCloseTo(8 + 15, 5);
     expect(bb.min.y).toBeCloseTo(8 - (70 - 15), 5);
+  });
+});
+
+describe('stickLengthForLevelTip', () => {
+  it('uses the base length unchanged for a stick attached at the reference offset (y=0)', () => {
+    expect(stickLengthForLevelTip(70, 15, 0)).toBe(70);
+  });
+
+  it('lengthens a stick attached higher up, by exactly the extra height, so its tip stays level', () => {
+    expect(stickLengthForLevelTip(70, 15, 10)).toBe(80);
+  });
+
+  it('shortens a stick attached lower down, by exactly the difference, so its tip stays level', () => {
+    expect(stickLengthForLevelTip(70, 15, -10)).toBe(60);
+  });
+
+  it('two sticks with different attach offsets produce tips at the same absolute height', () => {
+    const embedMm = 15;
+    const base = 70;
+    const higher = { offsetY: 12, lengthMm: stickLengthForLevelTip(base, embedMm, 12) };
+    const lower = { offsetY: -8, lengthMm: stickLengthForLevelTip(base, embedMm, -8) };
+
+    const tipY = (s: typeof higher) => s.offsetY - (s.lengthMm - embedMm);
+    expect(tipY(higher)).toBeCloseTo(tipY(lower), 10);
+  });
+
+  it('never collapses to less than a small, still-printable stub even for an extreme downward offset', () => {
+    const result = stickLengthForLevelTip(70, 15, -1000);
+    expect(result).toBeGreaterThan(15); // must still exceed embedMm
   });
 });
 
