@@ -9,6 +9,40 @@ export interface ExtrudeToMmOptions {
 }
 
 /**
+ * Negating exactly one axis (as the y-flip below does) mirrors the geometry,
+ * which reverses every triangle's effective winding — but only in the sense
+ * that matters for face culling (the on-screen orientation of its vertices).
+ * `BufferGeometry.scale()` bakes the mirror into vertex positions without
+ * touching vertex *order*, so nothing about the triangle list itself changes;
+ * left alone, every face (including the front cap) ends up "facing" the
+ * wrong way and gets backface-culled — normally invisible against an empty
+ * background (an extrusion's back cap ends up flipped to face front instead
+ * and looks identical from a distance), but not once something else, like an
+ * outline card, sits behind it where the missing front cap should have been.
+ * Swapping each triangle's last two vertices restores correct winding
+ * without changing the geometry's shape. Must run on a non-indexed geometry
+ * (every 3 consecutive vertices are one triangle) — call after toNonIndexed().
+ */
+function reverseTriangleWinding(geometry: THREE.BufferGeometry): void {
+  for (const name of Object.keys(geometry.attributes)) {
+    const attribute = geometry.getAttribute(name);
+    const itemSize = attribute.itemSize;
+    const array = attribute.array;
+    const triangleCount = array.length / itemSize / 3;
+    for (let tri = 0; tri < triangleCount; tri++) {
+      const v1 = (tri * 3 + 1) * itemSize;
+      const v2 = (tri * 3 + 2) * itemSize;
+      for (let k = 0; k < itemSize; k++) {
+        const tmp = array[v1 + k];
+        array[v1 + k] = array[v2 + k];
+        array[v2 + k] = tmp;
+      }
+    }
+    attribute.needsUpdate = true;
+  }
+}
+
+/**
  * Extrudes flat (SVG-space, y-down) shapes into a solid sized to real millimeters,
  * flipped into Three.js's y-up world, and anchored at local origin = bottom-center
  * of the piece — the convention every pick's geometry shares, so a stick can always
@@ -34,6 +68,7 @@ export function extrudeShapesToMm(shapes: THREE.Shape[], options: ExtrudeToMmOpt
 
   // SVG/font space is y-down; negate y to become Three's y-up, and scale to mm.
   geometry.scale(scale, -scale, scale);
+  reverseTriangleWinding(geometry);
   geometry.computeBoundingBox();
   const bb = geometry.boundingBox!;
   geometry.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, 0);
@@ -93,6 +128,7 @@ export function extrudeGlyphShapesToMm(glyphs: AnchoredGlyphShapes[], options: E
       geometry = geometry.toNonIndexed();
     }
     geometry.scale(scale, -scale, scale);
+    reverseTriangleWinding(geometry);
     geometry.translate(centerXMm, bottomYMm, 0);
     geometry.computeVertexNormals();
 
