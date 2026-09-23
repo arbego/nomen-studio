@@ -6,7 +6,6 @@ interface StickControlsProps {
   onChangeWidth: (widthMm: number) => void;
   onChangeLength: (lengthMm: number) => void;
   stickCounts: Record<PickId, number>;
-  hasAccent: boolean;
   onAddStick: (pickId: PickId) => void;
   onRemoveStick: (pickId: PickId) => void;
 }
@@ -15,19 +14,10 @@ const WIDTH_RANGE = { min: 2, max: 10, step: 0.5 };
 const LENGTH_RANGE = { min: 40, max: 120, step: 1 };
 const MAX_STICKS_PER_PICK = 5;
 
-const PICK_LABELS: Record<PickId, string> = { word: 'Name', number: 'Age', accent: 'Accent' };
+const PICK_LABELS: Record<PickId, string> = { word: 'Name' };
 
-export function StickControls({
-  widthMm,
-  lengthMm,
-  onChangeWidth,
-  onChangeLength,
-  stickCounts,
-  hasAccent,
-  onAddStick,
-  onRemoveStick,
-}: StickControlsProps) {
-  const pickIds: PickId[] = hasAccent ? ['word', 'number', 'accent'] : ['word', 'number'];
+export function StickControls({ widthMm, lengthMm, onChangeWidth, onChangeLength, stickCounts, onAddStick, onRemoveStick }: StickControlsProps) {
+  const pickIds: PickId[] = ['word'];
 
   return (
     <div className="flex flex-col gap-3">

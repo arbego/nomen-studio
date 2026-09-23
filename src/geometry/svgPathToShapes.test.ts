@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { svgPathDataToShapes, shapesBoundingBox } from './svgPathToShapes';
-import { SHAPE_REGISTRY } from '../shapes/registry';
+
+// A heart-shaped path, standing in for the kind of multi-curve outline this
+// parser needs to handle correctly (used elsewhere for glyph outlines).
+const HEART_PATH =
+  'M 50 92 C 50 92 8 58 8 30 C 8 14 21 3 37 3 C 45 3 50 10 50 19 C 50 10 55 3 63 3 C 79 3 92 14 92 30 C 92 58 50 92 50 92 Z';
 
 describe('svgPathDataToShapes', () => {
-  it('parses the registered heart path into a single closed shape', () => {
-    const heart = SHAPE_REGISTRY.find((s) => s.id === 'heart')!;
-    const shapes = svgPathDataToShapes(heart.svgPath);
+  it('parses a multi-curve path into a single closed shape', () => {
+    const shapes = svgPathDataToShapes(HEART_PATH);
     expect(shapes.length).toBeGreaterThan(0);
 
     const box = shapesBoundingBox(shapes, 12);

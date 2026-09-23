@@ -5,32 +5,24 @@ import type { TopperConfig } from './types';
 const baseConfig: TopperConfig = {
   word: 'Emma',
   wordFontId: 'dancing-script',
-  number: '6',
-  numberFontId: 'quicksand',
-  accentShapeId: 'heart',
   sizeMm: 100,
   extrudeDepthMm: 3,
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
+  stickOffsets: { word: [{ x: 0, y: 0 }] },
   previewColor: '#f0c6d0',
 };
 
 describe('buildTopperPicks', () => {
-  it('builds a word pick, number pick, and accent pick when an accent is set', async () => {
+  it('builds a single word pick', async () => {
     const picks = await buildTopperPicks(baseConfig);
-    expect(picks.map((p) => p.id)).toEqual(['word', 'number', 'accent']);
+    expect(picks.map((p) => p.id)).toEqual(['word']);
     for (const pick of picks) {
       pick.mainGeometry.computeBoundingBox();
       expect(pick.mainGeometry.boundingBox).not.toBeNull();
       expect(pick.mainGeometry.getAttribute('position').count).toBeGreaterThan(0);
     }
-  }, 30000);
-
-  it('omits the accent pick when accentShapeId is null', async () => {
-    const picks = await buildTopperPicks({ ...baseConfig, accentShapeId: null });
-    expect(picks.map((p) => p.id)).toEqual(['word', 'number']);
   }, 30000);
 
   it('never includes a stick — main geometry alone stays bottom-anchored at y=0', async () => {

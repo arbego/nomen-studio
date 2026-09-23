@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { saveAs } from 'file-saver';
 import type { Pick, TopperConfig } from '../../geometry/types';
-import { exportPicksAsZip, exportPicksAsCombinedStl } from '../../export/zipPackage';
+import { pickToStlBinary, slugifyFilename } from '../../export/stlExport';
 
 interface ExportButtonsProps {
   picks: Pick[];
@@ -10,46 +11,29 @@ interface ExportButtonsProps {
 }
 
 export function ExportButtons({ picks, config, designName, disabled }: ExportButtonsProps) {
-  const [busy, setBusy] = useState<'zip' | 'combined' | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function handleZip() {
-    setBusy('zip');
+  function handleExport() {
+    const pick = picks[0];
+    if (!pick) return;
+    setBusy(true);
     try {
-      await exportPicksAsZip(picks, config, designName);
+      const dataView = pickToStlBinary(pick, config);
+      const blob = new Blob([dataView.buffer as ArrayBuffer], { type: 'model/stl' });
+      saveAs(blob, `${slugifyFilename(designName)}-topper.stl`);
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
-
-  function handleCombined() {
-    setBusy('combined');
-    try {
-      exportPicksAsCombinedStl(picks, config, designName);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const isDisabled = disabled || picks.length === 0 || busy !== null;
 
   return (
-    <div className="flex flex-col gap-2 pt-2">
-      <button
-        type="button"
-        onClick={handleZip}
-        disabled={isDisabled}
-        className="rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {busy === 'zip' ? 'Preparing…' : `Export STLs (.zip, ${picks.length} picks)`}
-      </button>
-      <button
-        type="button"
-        onClick={handleCombined}
-        disabled={isDisabled}
-        className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {busy === 'combined' ? 'Preparing…' : 'Export combined .stl'}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={handleExport}
+      disabled={disabled || picks.length === 0 || busy}
+      className="rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {busy ? 'Preparing…' : 'Export .stl'}
+    </button>
   );
 }

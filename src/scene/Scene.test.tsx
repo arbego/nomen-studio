@@ -12,15 +12,12 @@ import type { StickParams } from './PickMesh';
 const config: TopperConfig = {
   word: 'Emma',
   wordFontId: 'dancing-script',
-  number: '6',
-  numberFontId: 'quicksand',
-  accentShapeId: 'heart',
   sizeMm: 100,
   extrudeDepthMm: 3,
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
+  stickOffsets: { word: [{ x: 0, y: 0 }] },
   previewColor: '#f0c6d0',
 };
 
@@ -66,11 +63,11 @@ function findStickMeshes(group: ReturnType<typeof findPickGroups>[number]) {
 }
 
 describe('Scene (React Three Fiber wiring)', () => {
-  it('mounts a group per pick, each containing a main mesh and one stick mesh (the default) in the preview color', async () => {
+  it('mounts a group for the word pick, containing a main mesh and one stick mesh (the default) in the preview color', async () => {
     const { renderer } = await renderScene();
 
     const groups = findPickGroups(renderer);
-    expect(groups).toHaveLength(3);
+    expect(groups).toHaveLength(1);
 
     for (const group of groups) {
       const meshes = group.children.filter((c) => c.type === 'Mesh');
@@ -94,9 +91,8 @@ describe('Scene (React Three Fiber wiring)', () => {
     };
     const { renderer } = await renderScene(undefined, multiStickOffsets);
 
-    const [wordGroup, numberGroup] = findPickGroups(renderer);
+    const [wordGroup] = findPickGroups(renderer);
     expect(findStickMeshes(wordGroup)).toHaveLength(3);
-    expect(findStickMeshes(numberGroup)).toHaveLength(1);
   }, 30000);
 
   it('renders every stick of a pick with its tip at the same height, even at different attach offsets', async () => {
@@ -121,15 +117,17 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(tipYs[2]).toBeCloseTo(tipYs[0], 5);
   }, 30000);
 
-  it('lays picks out left-to-right', async () => {
-    const { renderer } = await renderScene();
+  it('centers the single pick horizontally', async () => {
+    const { renderer, picks } = await renderScene();
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    wordPick.mainGeometry.computeBoundingBox();
+    const bb = wordPick.mainGeometry.boundingBox!;
+    const width = bb.max.x - bb.min.x;
+    const expectedX = -bb.min.x - width / 2;
 
-    const groups = findPickGroups(renderer);
-    const xPositions = groups.map((g) => (g.instance as unknown as { position: { x: number } }).position.x);
-
-    // word, number, accent were built in that order and should stay left-to-right
-    expect(xPositions[0]).toBeLessThan(xPositions[1]);
-    expect(xPositions[1]).toBeLessThan(xPositions[2]);
+    const [group] = findPickGroups(renderer);
+    const positionX = (group.instance as unknown as { position: { x: number } }).position.x;
+    expect(positionX).toBeCloseTo(expectedX, 5);
   }, 30000);
 
   it('commits the dragged (x, y) offset, clamped to the piece, on pointer up', async () => {

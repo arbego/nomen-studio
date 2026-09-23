@@ -1,20 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { buildTopperPicks, mergedPickGeometry } from '../geometry/buildTopper';
 import type { TopperConfig } from '../geometry/types';
-import { pickToStlBinary, picksToCombinedStlBinary, slugifyFilename } from './stlExport';
+import { pickToStlBinary, slugifyFilename } from './stlExport';
 
 const config: TopperConfig = {
   word: 'Emma',
   wordFontId: 'dancing-script',
-  number: '6',
-  numberFontId: 'quicksand',
-  accentShapeId: 'heart',
   sizeMm: 100,
   extrudeDepthMm: 3,
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
+  stickOffsets: { word: [{ x: 0, y: 0 }] },
   previewColor: '#f0c6d0',
 };
 
@@ -48,14 +45,6 @@ describe('STL export', () => {
     expect(dv.byteLength).toBe(84 + triangleCount * 50);
   }, 30000);
 
-  it('combines all picks into one STL with a triangle count equal to the sum of the parts', async () => {
-    const picks = await buildTopperPicks(config);
-    const combined = picksToCombinedStlBinary(picks, config);
-    const triangleCount = combined.getUint32(80, true);
-
-    const expectedTotal = picks.reduce((sum, p) => sum + mergedPickGeometry(p.mainGeometry, config, p.id).getAttribute('position').count / 3, 0);
-    expect(triangleCount).toBe(expectedTotal);
-  }, 30000);
 });
 
 describe('slugifyFilename', () => {

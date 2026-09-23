@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
- * Merges a piece's main solid (letters/word, or an accent shape) with one or
- * more sticks into one printable geometry. This is a plain, non-boolean buffer
+ * Merges a pick's main solid (the letters) with one or more sticks into one
+ * printable geometry. This is a plain, non-boolean buffer
  * merge — not a CSG union. Every input is already an individually watertight
  * manifold solid with real volumetric overlap (see stickGeometry's embedMm), and
  * slicers handle overlapping-but-manifold shells correctly, so true CSG isn't

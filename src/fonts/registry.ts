@@ -41,29 +41,6 @@ export const FONT_REGISTRY: FontDefinition[] = [
     category: 'script',
     url: new URL('../assets/fonts/sacramento/Sacramento-Regular.ttf', import.meta.url).href,
   },
-  {
-    id: 'poppins',
-    label: 'Poppins',
-    family: 'Poppins',
-    category: 'sans',
-    url: new URL('../assets/fonts/poppins/Poppins-SemiBold.ttf', import.meta.url).href,
-  },
-  {
-    id: 'montserrat',
-    label: 'Montserrat',
-    family: 'Montserrat',
-    category: 'sans',
-    url: new URL('../assets/fonts/montserrat/Montserrat-Regular.ttf', import.meta.url).href,
-    variationSettings: { wght: 600 },
-  },
-  {
-    id: 'quicksand',
-    label: 'Quicksand',
-    family: 'Quicksand',
-    category: 'sans',
-    url: new URL('../assets/fonts/quicksand/Quicksand-Regular.ttf', import.meta.url).href,
-    variationSettings: { wght: 600 },
-  },
 ];
 
 const BY_ID = new Map(FONT_REGISTRY.map((f) => [f.id, f]));

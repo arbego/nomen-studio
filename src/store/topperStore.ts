@@ -15,15 +15,12 @@ export const COLOR_PRESETS = [
 const DEFAULT_CONFIG: TopperConfig = {
   word: 'Emma',
   wordFontId: 'dancing-script',
-  number: '6',
-  numberFontId: 'quicksand',
-  accentShapeId: 'heart',
   sizeMm: 100,
   extrudeDepthMm: 3,
   stickLengthMm: 70,
   stickWidthMm: 4,
   stickEmbedMm: 15,
-  stickOffsets: { word: [{ x: 0, y: 0 }], number: [{ x: 0, y: 0 }], accent: [{ x: 0, y: 0 }] },
+  stickOffsets: { word: [{ x: 0, y: 0 }] },
   previewColor: COLOR_PRESETS[2].hex,
 };
 
@@ -69,8 +66,8 @@ export const useTopperStore = create<TopperStore>((set) => ({
 
 /** The subset that drives the expensive async geometry build — excludes stick fields on purpose. */
 export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig {
-  const { word, wordFontId, number, numberFontId, accentShapeId, sizeMm, extrudeDepthMm } = state;
-  return { word, wordFontId, number, numberFontId, accentShapeId, sizeMm, extrudeDepthMm };
+  const { word, wordFontId, sizeMm, extrudeDepthMm } = state;
+  return { word, wordFontId, sizeMm, extrudeDepthMm };
 }
 
 /** The stick-related fields the scene needs to render/reposition sticks — cheap to recompute on every change. */
@@ -83,26 +80,10 @@ export function selectStickConfig(
 
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
 export function selectTopperConfig(state: TopperStore): TopperConfig {
-  const {
-    word,
-    wordFontId,
-    number,
-    numberFontId,
-    accentShapeId,
-    sizeMm,
-    extrudeDepthMm,
-    stickLengthMm,
-    stickWidthMm,
-    stickEmbedMm,
-    stickOffsets,
-    previewColor,
-  } = state;
+  const { word, wordFontId, sizeMm, extrudeDepthMm, stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, previewColor } = state;
   return {
     word,
     wordFontId,
-    number,
-    numberFontId,
-    accentShapeId,
     sizeMm,
     extrudeDepthMm,
     stickLengthMm,

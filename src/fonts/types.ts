@@ -1,4 +1,4 @@
-export type FontCategory = 'script' | 'sans';
+export type FontCategory = 'script';
 
 export interface FontDefinition {
   id: string;
