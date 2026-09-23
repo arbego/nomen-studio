@@ -5,9 +5,9 @@ import { mergedPickGeometry } from '../geometry/buildTopper';
 
 const exporter = new STLExporter();
 
-/** Binary STL bytes for a single pick — main geometry merged with all its sticks, the printable solid. */
+/** Binary STL bytes for a single pick — every letter (at its current gap-adjusted position) merged with all its sticks, the printable solid. */
 export function pickToStlBinary(pick: Pick, config: TopperConfig): DataView {
-  const geometry = mergedPickGeometry(pick.mainGeometry, config, pick.id);
+  const geometry = mergedPickGeometry(pick, config);
   const mesh = new THREE.Mesh(geometry);
   return exporter.parse(mesh, { binary: true }) as unknown as DataView;
 }

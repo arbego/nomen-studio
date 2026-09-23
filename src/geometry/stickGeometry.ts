@@ -102,11 +102,13 @@ export function stickLengthForLevelTip(baseLengthMm: number, embedMm: number, of
  * This lets the attach point go a real distance below the piece's bottom edge
  * too, not just up near its top. Falls back to centering on an axis where the
  * piece is smaller than the stick needs.
+ *
+ * Takes the piece's bounds directly (rather than a geometry to derive them
+ * from) since callers may need to clamp against a combined bounds spanning
+ * several separately-generated solids — e.g. a word's letters, whose combined
+ * extent shifts as letter-gap overrides move individual letters around.
  */
-export function clampStickOffsetToBounds(mainGeometry: THREE.BufferGeometry, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
-  mainGeometry.computeBoundingBox();
-  const bb = mainGeometry.boundingBox!;
-
+export function clampStickOffsetToBounds(bb: THREE.Box3, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
   const xMargin = stickWidthMm / 2;
   const xMin = bb.min.x + xMargin;
   const xMax = bb.max.x - xMargin;

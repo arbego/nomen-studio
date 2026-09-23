@@ -88,26 +88,24 @@ describe('stickLengthForLevelTip', () => {
   });
 });
 
-function boxGeometry(minX: number, maxX: number, minY: number, maxY: number): THREE.BufferGeometry {
-  const geometry = new THREE.BoxGeometry(maxX - minX, maxY - minY, 3);
-  geometry.translate((minX + maxX) / 2, (minY + maxY) / 2, 0);
-  return geometry;
+function box3(minX: number, maxX: number, minY: number, maxY: number): THREE.Box3 {
+  return new THREE.Box3(new THREE.Vector3(minX, minY, -1.5), new THREE.Vector3(maxX, maxY, 1.5));
 }
 
 describe('clampStickOffsetToBounds', () => {
   it('passes an offset through unchanged when it is already within bounds', () => {
-    const main = boxGeometry(-20, 20, -5, 5);
+    const main = box3(-20, 20, -5, 5);
     expect(clampStickOffsetToBounds(main, { x: 5, y: 1 }, 4, 2)).toMatchObject({ x: 5, y: 1 });
   });
 
   it('clamps x that would push the stick past the side of the piece', () => {
-    const main = boxGeometry(-20, 20, -5, 5);
+    const main = box3(-20, 20, -5, 5);
     expect(clampStickOffsetToBounds(main, { x: 1000, y: 0 }, 4, 2).x).toBeCloseTo(18, 5); // 20 - width/2
     expect(clampStickOffsetToBounds(main, { x: -1000, y: 0 }, 4, 2).x).toBeCloseTo(-18, 5);
   });
 
   it('clamps y so the whole embed depth stays within the piece, and allows attaching below the piece', () => {
-    const main = boxGeometry(-20, 20, -5, 5);
+    const main = box3(-20, 20, -5, 5);
     // embed=2: attach point y can range from the piece's bottom (-5) up to (top - embed) = 5-2=3
     expect(clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 2).y).toBeCloseTo(3, 5);
     expect(clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 2).y).toBeCloseTo(-5, 5);
@@ -115,7 +113,7 @@ describe('clampStickOffsetToBounds', () => {
   });
 
   it('only requires a small minimum overlap near the top, not the full embed depth, so a tall embed still leaves real drag room', () => {
-    const main = boxGeometry(-20, 20, 0, 30); // 30mm-tall piece
+    const main = box3(-20, 20, 0, 30); // 30mm-tall piece
     // embedMm=15 would (with the old "full embed must fit" rule) cap yMax at 30-15=15;
     // the actual cap should now use the much smaller MIN_Y_OVERLAP_MM instead.
     const clamped = clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 15);
@@ -124,7 +122,7 @@ describe('clampStickOffsetToBounds', () => {
   });
 
   it('symmetrically allows the attach point well below the bottom edge too, not just near the top', () => {
-    const main = boxGeometry(-20, 20, 0, 30); // 30mm-tall piece, bottom edge at y=0
+    const main = box3(-20, 20, 0, 30); // 30mm-tall piece, bottom edge at y=0
     // With the old "full embed must fit" rule this would be clamped to 0 exactly
     // (no room below the piece at all). The new rule allows going well below,
     // symmetric to the top-side relaxation, while keeping a minimum overlap.
@@ -135,10 +133,10 @@ describe('clampStickOffsetToBounds', () => {
   });
 
   it('falls back to centering on an axis where the piece is smaller than the stick needs', () => {
-    const narrow = boxGeometry(-1, 1, -5, 5); // 2mm wide piece, 4mm wide stick
+    const narrow = box3(-1, 1, -5, 5); // 2mm wide piece, 4mm wide stick
     expect(clampStickOffsetToBounds(narrow, { x: 0.5, y: 0 }, 4, 2).x).toBeCloseTo(0, 5);
 
-    const short = boxGeometry(-20, 20, -1, 1); // 2mm tall piece, 3mm embed doesn't fit at all
+    const short = box3(-20, 20, -1, 1); // 2mm tall piece, 3mm embed doesn't fit at all
     expect(clampStickOffsetToBounds(short, { x: 0, y: 0.5 }, 4, 3).y).toBeCloseTo(0, 5);
   });
 });

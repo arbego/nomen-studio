@@ -12,8 +12,15 @@ export const COLOR_PRESETS = [
   { id: 'black', label: 'Schwarz', hex: '#2b2b2b' },
 ] as const;
 
+/** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
+function defaultLetterGaps(word: string): number[] {
+  return new Array(Math.max(word.length - 1, 0)).fill(0);
+}
+
+const DEFAULT_WORD = 'Emma';
+
 const DEFAULT_CONFIG: TopperConfig = {
-  word: 'Emma',
+  word: DEFAULT_WORD,
   wordFontId: 'dancing-script',
   sizeMm: 100,
   extrudeDepthMm: 3,
@@ -21,6 +28,7 @@ const DEFAULT_CONFIG: TopperConfig = {
   stickWidthMm: 4,
   stickEmbedMm: 15,
   stickOffsets: { word: [{ x: 0, y: 0 }] },
+  letterGapsMm: defaultLetterGaps(DEFAULT_WORD),
   previewColor: COLOR_PRESETS[2].hex,
 };
 
@@ -34,12 +42,24 @@ interface TopperStore extends TopperConfig {
   setStickOffset: (pickId: PickId, index: number, offset: StickOffset) => void;
   addStick: (pickId: PickId) => void;
   removeStick: (pickId: PickId, index: number) => void;
+  setLetterGap: (index: number, gapMm: number) => void;
+  resetLetterGaps: () => void;
   reset: () => void;
 }
 
 export const useTopperStore = create<TopperStore>((set) => ({
   ...DEFAULT_CONFIG,
-  setConfig: (partial) => set(partial),
+  setConfig: (partial) =>
+    set((state) => {
+      // Per-letter gap tweaks are a fine-tuning pass over a specific string of
+      // text — re-mapping them onto an edited word is ambiguous (which old gap
+      // corresponds to which new one?), so any word edit resets them rather
+      // than risk stale/misapplied offsets.
+      if (partial.word !== undefined && partial.word !== state.word) {
+        return { ...partial, letterGapsMm: defaultLetterGaps(partial.word) };
+      }
+      return partial;
+    }),
   setStickOffset: (pickId, index, offset) =>
     set((state) => ({
       stickOffsets: {
@@ -61,26 +81,23 @@ export const useTopperStore = create<TopperStore>((set) => ({
       if (existing.length <= 1) return {}; // always keep at least one stick per pick
       return { stickOffsets: { ...state.stickOffsets, [pickId]: existing.filter((_, i) => i !== index) } };
     }),
+  setLetterGap: (index, gapMm) =>
+    set((state) => ({
+      letterGapsMm: state.letterGapsMm.map((existing, i) => (i === index ? gapMm : existing)),
+    })),
+  resetLetterGaps: () => set((state) => ({ letterGapsMm: defaultLetterGaps(state.word) })),
   reset: () => set(DEFAULT_CONFIG),
 }));
 
-/** The subset that drives the expensive async geometry build — excludes stick fields on purpose. */
+/** The subset that drives the expensive async geometry build — excludes stick and letter-gap fields on purpose. */
 export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig {
   const { word, wordFontId, sizeMm, extrudeDepthMm } = state;
   return { word, wordFontId, sizeMm, extrudeDepthMm };
 }
 
-/** The stick-related fields the scene needs to render/reposition sticks — cheap to recompute on every change. */
-export function selectStickConfig(
-  state: TopperStore,
-): Pick<TopperConfig, 'stickLengthMm' | 'stickWidthMm' | 'stickEmbedMm' | 'stickOffsets' | 'extrudeDepthMm'> {
-  const { stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, extrudeDepthMm } = state;
-  return { stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, extrudeDepthMm };
-}
-
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
 export function selectTopperConfig(state: TopperStore): TopperConfig {
-  const { word, wordFontId, sizeMm, extrudeDepthMm, stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, previewColor } = state;
+  const { word, wordFontId, sizeMm, extrudeDepthMm, stickLengthMm, stickWidthMm, stickEmbedMm, stickOffsets, letterGapsMm, previewColor } = state;
   return {
     word,
     wordFontId,
@@ -90,6 +107,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     stickWidthMm,
     stickEmbedMm,
     stickOffsets,
+    letterGapsMm,
     previewColor,
   };
 }

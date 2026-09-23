@@ -12,6 +12,8 @@ interface TopperCanvasProps {
   stick: StickParams;
   stickOffsets: Record<PickId, StickOffset[]>;
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
+  letterGapsMm: number[];
+  onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
 }
 
 // The straight-on front view — matches the initial camera so "home" returns to
@@ -19,7 +21,7 @@ interface TopperCanvasProps {
 const HOME_CAMERA_POSITION: [number, number, number] = [0, 60, 220];
 const HOME_TARGET: [number, number, number] = [0, 0, 0];
 
-export function TopperCanvas({ picks, color, stick, stickOffsets, onStickOffsetCommit }: TopperCanvasProps) {
+export function TopperCanvas({ picks, color, stick, stickOffsets, onStickOffsetCommit, letterGapsMm, onLetterGapCommit }: TopperCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
   function resetToFrontView() {
@@ -39,7 +41,15 @@ export function TopperCanvas({ picks, color, stick, stickOffsets, onStickOffsetC
         <directionalLight position={[-100, 60, -80]} intensity={0.35} />
 
         <Center bottom>
-          <Scene picks={picks} color={color} stick={stick} stickOffsets={stickOffsets} onStickOffsetCommit={onStickOffsetCommit} />
+          <Scene
+            picks={picks}
+            color={color}
+            stick={stick}
+            stickOffsets={stickOffsets}
+            onStickOffsetCommit={onStickOffsetCommit}
+            letterGapsMm={letterGapsMm}
+            onLetterGapCommit={onLetterGapCommit}
+          />
         </Center>
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
 

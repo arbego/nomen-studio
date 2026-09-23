@@ -12,11 +12,12 @@ const config: TopperConfig = {
   stickWidthMm: 4,
   stickEmbedMm: 15,
   stickOffsets: { word: [{ x: 0, y: 0 }] },
+  letterGapsMm: [0, 0, 0],
   previewColor: '#f0c6d0',
 };
 
 describe('STL export', () => {
-  it('produces a valid binary STL per pick with a triangle count matching the merged (main + stick) geometry', async () => {
+  it('produces a valid binary STL per pick with a triangle count matching the merged (letters + sticks) geometry', async () => {
     const picks = await buildTopperPicks(config);
     for (const pick of picks) {
       const dv = pickToStlBinary(pick, config);
@@ -25,7 +26,7 @@ describe('STL export', () => {
       expect(triangleCount).toBeGreaterThan(0);
       expect(dv.byteLength).toBe(84 + triangleCount * 50);
 
-      const vertexCount = mergedPickGeometry(pick.mainGeometry, config, pick.id).getAttribute('position').count;
+      const vertexCount = mergedPickGeometry(pick, config).getAttribute('position').count;
       expect(triangleCount).toBe(vertexCount / 3);
     }
   }, 30000);
@@ -40,11 +41,23 @@ describe('STL export', () => {
 
     const dv = pickToStlBinary(wordPick, multiStickConfig);
     const triangleCount = dv.getUint32(80, true);
-    const vertexCount = mergedPickGeometry(wordPick.mainGeometry, multiStickConfig, 'word').getAttribute('position').count;
+    const vertexCount = mergedPickGeometry(wordPick, multiStickConfig).getAttribute('position').count;
     expect(triangleCount).toBe(vertexCount / 3);
     expect(dv.byteLength).toBe(84 + triangleCount * 50);
   }, 30000);
 
+  it('exports letter-gap overrides — the STL reflects the tightened layout, not the natural one', async () => {
+    const picks = await buildTopperPicks(config);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const tightened: TopperConfig = { ...config, letterGapsMm: [-5, 0, 0] };
+
+    const naturalDv = pickToStlBinary(wordPick, config);
+    const tightenedDv = pickToStlBinary(wordPick, tightened);
+    // Same letters and stick, just moved — same triangle count, different bytes.
+    expect(tightenedDv.getUint32(80, true)).toBe(naturalDv.getUint32(80, true));
+    expect(tightenedDv.byteLength).toBe(naturalDv.byteLength);
+    expect(new Uint8Array(tightenedDv.buffer)).not.toEqual(new Uint8Array(naturalDv.buffer));
+  }, 30000);
 });
 
 describe('slugifyFilename', () => {

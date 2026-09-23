@@ -21,7 +21,8 @@ function setCursor(cursor: string) {
 }
 
 interface StickMeshProps {
-  mainGeometry: THREE.BufferGeometry;
+  /** The piece it's attaching to's current combined bounds, in the pick group's local space — used to clamp where this stick is allowed to sit. */
+  bounds: THREE.Box3;
   color: string;
   stick: StickParams;
   offset: StickOffset;
@@ -31,7 +32,7 @@ interface StickMeshProps {
 }
 
 /** One draggable stick. A pick with multiple sticks renders one of these per stick, each independently grabbable. */
-export function StickMesh({ mainGeometry, color, stick, offset, referenceObject, onOffsetCommit }: StickMeshProps) {
+export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit }: StickMeshProps) {
   const [hovered, setHovered] = useState(false);
   const [liveOffset, setLiveOffset] = useState<StickOffset | null>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
@@ -39,10 +40,10 @@ export function StickMesh({ mainGeometry, color, stick, offset, referenceObject,
   const currentOffset = liveOffset ?? offset;
 
   const geometry = useMemo(() => {
-    const clamped = clampStickOffsetToBounds(mainGeometry, currentOffset, stick.widthMm, stick.embedMm);
+    const clamped = clampStickOffsetToBounds(bounds, currentOffset, stick.widthMm, stick.embedMm);
     const lengthMm = stickLengthForLevelTip(stick.lengthMm, stick.embedMm, clamped.y);
     return stickToGeometry({ ...stick, lengthMm, offset: clamped });
-  }, [mainGeometry, currentOffset, stick]);
+  }, [bounds, currentOffset, stick]);
 
   function updateLiveOffset(event: ThreeEvent<PointerEvent>) {
     const reference = referenceObject.current;
@@ -76,7 +77,7 @@ export function StickMesh({ mainGeometry, color, stick, offset, referenceObject,
     // eslint-disable-next-line react/immutability -- see handlePointerDown
     if (controls) controls.enabled = true;
     setCursor(hovered ? 'grab' : 'auto');
-    const clamped = clampStickOffsetToBounds(mainGeometry, liveOffset, stick.widthMm, stick.embedMm);
+    const clamped = clampStickOffsetToBounds(bounds, liveOffset, stick.widthMm, stick.embedMm);
     onOffsetCommit(clamped);
     setLiveOffset(null);
   }

@@ -13,6 +13,8 @@ function App() {
   const setStickOffset = useTopperStore((s) => s.setStickOffset);
   const addStick = useTopperStore((s) => s.addStick);
   const removeStick = useTopperStore((s) => s.removeStick);
+  const setLetterGap = useTopperStore((s) => s.setLetterGap);
+  const resetLetterGaps = useTopperStore((s) => s.resetLetterGaps);
   const { picks, loading, error } = useTopperPicks(mainConfig);
 
   const stick = useMemo(
@@ -36,9 +38,20 @@ function App() {
           error={error}
           onAddStick={addStick}
           onRemoveStick={removeStick}
+          onResetLetterGaps={resetLetterGaps}
         />
       }
-      main={<TopperCanvas picks={picks} color={config.previewColor} stick={stick} stickOffsets={config.stickOffsets} onStickOffsetCommit={setStickOffset} />}
+      main={
+        <TopperCanvas
+          picks={picks}
+          color={config.previewColor}
+          stick={stick}
+          stickOffsets={config.stickOffsets}
+          onStickOffsetCommit={setStickOffset}
+          letterGapsMm={config.letterGapsMm}
+          onLetterGapCommit={(_pickId, index, gapMm) => setLetterGap(index, gapMm)}
+        />
+      }
     />
   );
 }
