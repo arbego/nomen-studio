@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { StickOffset } from '../geometry/types';
-import { stickToGeometry, clampStickOffsetToBounds } from '../geometry/stickGeometry';
+import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from '../geometry/stickGeometry';
 import { localDragPoint } from './dragUtils';
 import type { StickParams } from './PickMesh';
 
@@ -40,7 +40,8 @@ export function StickMesh({ mainGeometry, color, stick, offset, referenceObject,
 
   const geometry = useMemo(() => {
     const clamped = clampStickOffsetToBounds(mainGeometry, currentOffset, stick.widthMm, stick.embedMm);
-    return stickToGeometry({ ...stick, offset: clamped });
+    const lengthMm = stickLengthForLevelTip(stick.lengthMm, stick.embedMm, clamped.y);
+    return stickToGeometry({ ...stick, lengthMm, offset: clamped });
   }, [mainGeometry, currentOffset, stick]);
 
   function updateLiveOffset(event: ThreeEvent<PointerEvent>) {

@@ -99,6 +99,28 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(findStickMeshes(numberGroup)).toHaveLength(1);
   }, 30000);
 
+  it('renders every stick of a pick with its tip at the same height, even at different attach offsets', async () => {
+    // Regression test: sticksForPick (the export path) already leveled tips,
+    // but StickMesh (the live preview) built its geometry independently and
+    // skipped that leveling — so what you saw in the 3D scene didn't match
+    // what got exported. This renders the actual scene meshes to catch that.
+    const multiStickOffsets: Record<PickId, StickOffset[]> = {
+      ...config.stickOffsets,
+      word: [{ x: -20, y: -6 }, { x: 0, y: 3 }, { x: 20, y: 9 }],
+    };
+    const { renderer } = await renderScene(undefined, multiStickOffsets);
+
+    const [wordGroup] = findPickGroups(renderer);
+    const tipYs = findStickMeshes(wordGroup).map((mesh) => {
+      const geometry = (mesh.instance as unknown as { geometry: THREE.BufferGeometry }).geometry;
+      geometry.computeBoundingBox();
+      return geometry.boundingBox!.min.y;
+    });
+
+    expect(tipYs[1]).toBeCloseTo(tipYs[0], 5);
+    expect(tipYs[2]).toBeCloseTo(tipYs[0], 5);
+  }, 30000);
+
   it('lays picks out left-to-right', async () => {
     const { renderer } = await renderScene();
 
