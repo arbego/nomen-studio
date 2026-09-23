@@ -16,7 +16,6 @@
     "@react-three/fiber": "^9.7.0",
     "clipper-lib": "^6.4.2",
     "file-saver": "^2.0.5",
-    "jszip": "^3.10.2",
     "opentype.js": "^2.0.0",
     "react": "~19.2.8",
     "react-dom": "~19.2.8",

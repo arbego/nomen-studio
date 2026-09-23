@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTopperPicks, mergedPickGeometry } from '../geometry/buildTopper';
 import type { TopperConfig } from '../geometry/types';
-import { pickToStlBinary, outlineToStlBinary, slugifyFilename } from './stlExport';
+import { pickToStlBinary, outlineToStlBinary, combinedStlBinary, slugifyFilename } from './stlExport';
 
 const config: TopperConfig = {
   word: 'Emma',
@@ -77,6 +77,25 @@ describe('STL export', () => {
     const triangleCount = dv!.getUint32(80, true);
     expect(triangleCount).toBeGreaterThan(0);
     expect(dv!.byteLength).toBe(84 + triangleCount * 50);
+  }, 30000);
+
+  it('combines letters, sticks, and (when enabled) the outline into one STL — a single downloadable file, not a zip', async () => {
+    const picks = await buildTopperPicks(config);
+    const wordPick = picks[0];
+
+    const withoutOutlineDv = combinedStlBinary(wordPick, config);
+    const withoutOutlineTriangles = withoutOutlineDv.getUint32(80, true);
+    const wordTriangles = pickToStlBinary(wordPick, config).getUint32(80, true);
+    expect(withoutOutlineTriangles).toBe(wordTriangles);
+
+    const withOutline: TopperConfig = { ...config, outlineEnabled: true };
+    const combinedDv = combinedStlBinary(wordPick, withOutline);
+    const combinedTriangles = combinedDv.getUint32(80, true);
+    const outlineTriangles = outlineToStlBinary(wordPick, withOutline)!.getUint32(80, true);
+    // Same plain buffer merge already used for letters+sticks — the combined
+    // file's triangle count is just the sum of its parts.
+    expect(combinedTriangles).toBe(wordTriangles + outlineTriangles);
+    expect(combinedDv.byteLength).toBe(84 + combinedTriangles * 50);
   }, 30000);
 });
 
