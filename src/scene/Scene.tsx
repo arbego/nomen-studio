@@ -11,6 +11,7 @@ interface SceneProps {
   picks: Pick[];
   color: string;
   stick: StickParams;
+  stickColor: string;
   stickOffsets: Record<PickId, StickOffset[]>;
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
@@ -26,6 +27,7 @@ export function Scene({
   picks,
   color,
   stick,
+  stickColor,
   stickOffsets,
   onStickOffsetCommit,
   letterGapsMm,
@@ -62,6 +64,7 @@ export function Scene({
           color={color}
           positionX={layout[i] ?? 0}
           stick={stick}
+          stickColor={stickColor}
           stickOffsets={stickOffsets[pick.id]}
           onStickOffsetCommit={(index, offset) => onStickOffsetCommit(pick.id, index, offset)}
           letterGapsMm={letterGapsMm}

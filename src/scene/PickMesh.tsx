@@ -25,6 +25,7 @@ interface PickMeshProps {
   color: string;
   positionX: number;
   stick: StickParams;
+  stickColor: string;
   stickOffsets: StickOffset[];
   onStickOffsetCommit: (index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
@@ -45,7 +46,7 @@ interface DraggingGap {
  * independently of each other — a single letter drag can move several
  * downstream letters at once, so every letter needs to see the same live value.
  */
-export function PickMesh({ pick, color, positionX, stick, stickOffsets, onStickOffsetCommit, letterGapsMm, onLetterGapCommit }: PickMeshProps) {
+export function PickMesh({ pick, color, positionX, stick, stickColor, stickOffsets, onStickOffsetCommit, letterGapsMm, onLetterGapCommit }: PickMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
   const [dragging, setDragging] = useState<DraggingGap | null>(null);
@@ -112,7 +113,7 @@ export function PickMesh({ pick, color, positionX, stick, stickOffsets, onStickO
         <StickMesh
           key={index}
           bounds={bounds}
-          color={color}
+          color={stickColor}
           stick={stick}
           offset={offset}
           referenceObject={groupRef}

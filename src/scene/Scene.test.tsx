@@ -48,6 +48,7 @@ function renderScene(
         picks={picks}
         color={config.previewColor}
         stick={stickParams}
+        stickColor={config.previewColor}
         stickOffsets={stickOffsets}
         onStickOffsetCommit={onStickOffsetCommit}
         letterGapsMm={letterGapsMm}

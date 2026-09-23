@@ -10,6 +10,7 @@ interface TopperCanvasProps {
   picks: Pick[];
   color: string;
   stick: StickParams;
+  stickColor: string;
   stickOffsets: Record<PickId, StickOffset[]>;
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
@@ -30,6 +31,7 @@ export function TopperCanvas({
   picks,
   color,
   stick,
+  stickColor,
   stickOffsets,
   onStickOffsetCommit,
   letterGapsMm,
@@ -63,6 +65,7 @@ export function TopperCanvas({
             picks={picks}
             color={color}
             stick={stick}
+            stickColor={stickColor}
             stickOffsets={stickOffsets}
             onStickOffsetCommit={onStickOffsetCommit}
             letterGapsMm={letterGapsMm}

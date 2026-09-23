@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTopperPicks, sticksForPick, mergedPickGeometry } from './buildTopper';
+import { buildTopperPicks, sticksForPick, mergedPickGeometry, stickThicknessMm } from './buildTopper';
 import type { TopperConfig } from './types';
 
 const baseConfig: TopperConfig = {
@@ -153,5 +153,24 @@ describe('sticksForPick / mergedPickGeometry', () => {
     // Both clamp to the rightmost edge of the word, but that edge moved left
     // once every gap was tightened, so the clamped stick should follow it.
     expect(tightenedStick.boundingBox!.max.x).toBeLessThan(naturalStick.boundingBox!.max.x);
+  }, 30000);
+
+  it("matches the outline card's thickness when one is present, the word's own thickness otherwise", () => {
+    expect(stickThicknessMm(baseConfig)).toBe(baseConfig.extrudeDepthMm);
+
+    const withOutline = { ...baseConfig, outlineEnabled: true };
+    expect(stickThicknessMm(withOutline)).toBe(withOutline.outlineDepthMm);
+    expect(stickThicknessMm(withOutline)).not.toBe(withOutline.extrudeDepthMm);
+  });
+
+  it('builds a stick as thick as the outline card, not the letters, once one is enabled', async () => {
+    const picks = await buildTopperPicks(baseConfig);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const withOutline: TopperConfig = { ...baseConfig, outlineEnabled: true };
+
+    const [stick] = sticksForPick(wordPick, withOutline);
+    stick.computeBoundingBox();
+    const thicknessMm = stick.boundingBox!.max.z - stick.boundingBox!.min.z;
+    expect(thicknessMm).toBeCloseTo(withOutline.outlineDepthMm, 5);
   }, 30000);
 });

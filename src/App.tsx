@@ -18,14 +18,20 @@ function App() {
   const toggleClosedOutlineHole = useTopperStore((s) => s.toggleClosedOutlineHole);
   const { picks, loading, error } = useTopperPicks(mainConfig);
 
+  // A stick is embedded into the outline card when there is one, so it reads
+  // as (and is sized/colored like) part of that piece rather than the
+  // lettering — matches buildTopper.ts's stickThicknessMm, used at export time.
+  const stickThicknessMm = config.outlineEnabled ? config.outlineDepthMm : config.extrudeDepthMm;
+  const stickColor = config.outlineEnabled ? config.outlineColor : config.previewColor;
+
   const stick = useMemo(
     () => ({
       lengthMm: config.stickLengthMm,
       widthMm: config.stickWidthMm,
       embedMm: config.stickEmbedMm,
-      thicknessMm: config.extrudeDepthMm,
+      thicknessMm: stickThicknessMm,
     }),
-    [config.stickLengthMm, config.stickWidthMm, config.stickEmbedMm, config.extrudeDepthMm],
+    [config.stickLengthMm, config.stickWidthMm, config.stickEmbedMm, stickThicknessMm],
   );
 
   return (
@@ -48,6 +54,7 @@ function App() {
           picks={picks}
           color={config.previewColor}
           stick={stick}
+          stickColor={stickColor}
           stickOffsets={config.stickOffsets}
           onStickOffsetCommit={setStickOffset}
           letterGapsMm={config.letterGapsMm}

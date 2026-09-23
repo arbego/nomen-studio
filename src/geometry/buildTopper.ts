@@ -25,6 +25,16 @@ export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick
  * are clamped against the letters' current, gap-adjusted combined bounds, so
  * closing/opening letter gaps also shifts where a stick is allowed to sit.
  */
+/**
+ * A stick's thickness matches whatever it's actually embedded into: the
+ * outline card, when there is one (so the stick sits flush with it instead of
+ * poking out the front or leaving a gap at the back), or the letters
+ * themselves otherwise.
+ */
+export function stickThicknessMm(config: TopperConfig): number {
+  return config.outlineEnabled ? config.outlineDepthMm : config.extrudeDepthMm;
+}
+
 export function sticksForPick(pick: Pick, config: TopperConfig): THREE.BufferGeometry[] {
   const bounds = combinedLetterBounds(pick.letters, config.letterGapsMm);
   return config.stickOffsets[pick.id].map((rawOffset) => {
@@ -32,7 +42,7 @@ export function sticksForPick(pick: Pick, config: TopperConfig): THREE.BufferGeo
     const lengthMm = stickLengthForLevelTip(config.stickLengthMm, config.stickEmbedMm, offset.y);
     return stickToGeometry({
       widthMm: config.stickWidthMm,
-      thicknessMm: config.extrudeDepthMm,
+      thicknessMm: stickThicknessMm(config),
       lengthMm,
       embedMm: config.stickEmbedMm,
       offset,
