@@ -18,7 +18,7 @@ export function outlineToStlBinary(pick: Pick, config: TopperConfig): DataView |
   if (!config.outlineEnabled) {
     return null;
   }
-  const outline = buildOutlineGeometry(pick, config.letterGapsMm, config.outlineGrowMm, config.extrudeDepthMm);
+  const outline = buildOutlineGeometry(pick, config.letterGapsMm, config.outlineGrowMm, config.outlineDepthMm);
   if (!outline) {
     return null;
   }

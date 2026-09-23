@@ -15,10 +15,10 @@ interface SceneProps {
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
   letterGapsMm: number[];
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
-  extrudeDepthMm: number;
   outlineEnabled: boolean;
   outlineGrowMm: number;
   outlineColor: string;
+  outlineDepthMm: number;
 }
 
 export function Scene({
@@ -29,10 +29,10 @@ export function Scene({
   onStickOffsetCommit,
   letterGapsMm,
   onLetterGapCommit,
-  extrudeDepthMm,
   outlineEnabled,
   outlineGrowMm,
   outlineColor,
+  outlineDepthMm,
 }: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
@@ -75,7 +75,7 @@ export function Scene({
           positionX={layout[wordIndex] ?? 0}
           letterGapsMm={letterGapsMm}
           growMm={outlineGrowMm}
-          extrudeDepthMm={extrudeDepthMm}
+          depthMm={outlineDepthMm}
           color={outlineColor}
         />
       )}

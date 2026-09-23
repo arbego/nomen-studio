@@ -33,6 +33,7 @@ const DEFAULT_CONFIG: TopperConfig = {
   outlineEnabled: false,
   outlineGrowMm: 3,
   outlineColor: COLOR_PRESETS[0].hex,
+  outlineDepthMm: 1.5,
 };
 
 /** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
@@ -114,6 +115,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     outlineEnabled,
     outlineGrowMm,
     outlineColor,
+    outlineDepthMm,
   } = state;
   return {
     word,
@@ -129,5 +131,6 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     outlineEnabled,
     outlineGrowMm,
     outlineColor,
+    outlineDepthMm,
   };
 }

@@ -7,11 +7,26 @@ interface OutlineControlsProps {
   onChangeGrow: (growMm: number) => void;
   color: string;
   onChangeColor: (hex: string) => void;
+  depthMm: number;
+  onChangeDepth: (depthMm: number) => void;
+  /** The word's own thickness — the card's height is capped here so it can never grow tall enough to become flush with (and so hide) the letters. */
+  maxDepthMm: number;
 }
 
 const GROW_RANGE = { min: 0.5, max: 20, step: 0.5 };
+const MIN_DEPTH_MM = 0.5;
 
-export function OutlineControls({ enabled, onChangeEnabled, growMm, onChangeGrow, color, onChangeColor }: OutlineControlsProps) {
+export function OutlineControls({
+  enabled,
+  onChangeEnabled,
+  growMm,
+  onChangeGrow,
+  color,
+  onChangeColor,
+  depthMm,
+  onChangeDepth,
+  maxDepthMm,
+}: OutlineControlsProps) {
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
@@ -42,6 +57,21 @@ export function OutlineControls({ enabled, onChangeEnabled, growMm, onChangeGrow
               step={GROW_RANGE.step}
               value={growMm}
               onChange={(e) => onChangeGrow(Number(e.target.value))}
+              className="h-1.5 accent-stone-800"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-sm text-stone-600">
+              <span>Height</span>
+              <span className="tabular-nums text-stone-400">{depthMm} mm</span>
+            </div>
+            <input
+              type="range"
+              min={MIN_DEPTH_MM}
+              max={maxDepthMm}
+              step={0.25}
+              value={depthMm}
+              onChange={(e) => onChangeDepth(Number(e.target.value))}
               className="h-1.5 accent-stone-800"
             />
           </label>

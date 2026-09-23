@@ -58,6 +58,9 @@ export function ControlsPanel({ config, onChange, picks, loading, error, onAddSt
           onChangeGrow={(outlineGrowMm) => onChange({ outlineGrowMm })}
           color={config.outlineColor}
           onChangeColor={(outlineColor) => onChange({ outlineColor })}
+          depthMm={config.outlineDepthMm}
+          onChangeDepth={(outlineDepthMm) => onChange({ outlineDepthMm })}
+          maxDepthMm={config.extrudeDepthMm}
         />
       </div>
 

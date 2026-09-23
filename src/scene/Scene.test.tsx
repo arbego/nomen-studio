@@ -24,6 +24,7 @@ const config: TopperConfig = {
   outlineEnabled: false,
   outlineGrowMm: 3,
   outlineColor: '#f7f5f2',
+  outlineDepthMm: 1.5,
 };
 
 const stickParams: StickParams = {
@@ -38,7 +39,7 @@ function renderScene(
   stickOffsets: Record<PickId, StickOffset[]> = config.stickOffsets,
   letterGapsMm: number[] = config.letterGapsMm,
   onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void = () => {},
-  outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string } = config,
+  outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string; outlineDepthMm: number } = config,
 ) {
   return buildTopperPicks(config).then((picks) =>
     ReactThreeTestRenderer.create(
@@ -50,10 +51,10 @@ function renderScene(
         onStickOffsetCommit={onStickOffsetCommit}
         letterGapsMm={letterGapsMm}
         onLetterGapCommit={onLetterGapCommit}
-        extrudeDepthMm={config.extrudeDepthMm}
         outlineEnabled={outline.outlineEnabled}
         outlineGrowMm={outline.outlineGrowMm}
         outlineColor={outline.outlineColor}
+        outlineDepthMm={outline.outlineDepthMm}
       />,
     ).then((renderer) => ({ renderer, picks })),
   );
@@ -308,6 +309,7 @@ describe('Scene (React Three Fiber wiring)', () => {
       outlineEnabled: true,
       outlineGrowMm: 3,
       outlineColor: '#123456',
+      outlineDepthMm: 1.5,
     });
 
     const topLevelMeshes = renderer.scene.children[0].children.filter((c) => c.type === 'Mesh');

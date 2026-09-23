@@ -7,7 +7,8 @@ interface OutlineMeshProps {
   positionX: number;
   letterGapsMm: number[];
   growMm: number;
-  extrudeDepthMm: number;
+  /** The card's own thickness — deliberately independent of the word's extrudeDepthMm, and normally shallower, so the letters (which start at the same z=0 base) visibly stand proud of it instead of being flush with (and so hidden behind) it. */
+  depthMm: number;
   color: string;
 }
 
@@ -17,8 +18,8 @@ interface OutlineMeshProps {
  * interaction of its own, unlike letters and sticks. Renders nothing when
  * there's nothing to show (not grown at all, or the word has no letters yet).
  */
-export function OutlineMesh({ pick, positionX, letterGapsMm, growMm, extrudeDepthMm, color }: OutlineMeshProps) {
-  const outline = useMemo(() => buildOutlineGeometry(pick, letterGapsMm, growMm, extrudeDepthMm), [pick, letterGapsMm, growMm, extrudeDepthMm]);
+export function OutlineMesh({ pick, positionX, letterGapsMm, growMm, depthMm, color }: OutlineMeshProps) {
+  const outline = useMemo(() => buildOutlineGeometry(pick, letterGapsMm, growMm, depthMm), [pick, letterGapsMm, growMm, depthMm]);
 
   if (!outline) {
     return null;

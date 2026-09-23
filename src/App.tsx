@@ -50,10 +50,10 @@ function App() {
           onStickOffsetCommit={setStickOffset}
           letterGapsMm={config.letterGapsMm}
           onLetterGapCommit={(_pickId, index, gapMm) => setLetterGap(index, gapMm)}
-          extrudeDepthMm={config.extrudeDepthMm}
           outlineEnabled={config.outlineEnabled}
           outlineGrowMm={config.outlineGrowMm}
           outlineColor={config.outlineColor}
+          outlineDepthMm={config.outlineDepthMm}
         />
       }
     />

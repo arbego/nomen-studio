@@ -39,6 +39,8 @@ export interface TopperConfig extends MainGeometryConfig {
   outlineGrowMm: number;
   /** The outline's own color, independent of previewColor (the word's). */
   outlineColor: string;
+  /** The outline card's own thickness (mm), independent of extrudeDepthMm (the word's) — kept shallower by default so the letters visibly stand proud of the card instead of being flush with (and so, from the front, hidden behind) it. */
+  outlineDepthMm: number;
 }
 
 export interface LetterGeometry {
