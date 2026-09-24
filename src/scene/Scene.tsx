@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Pick, PickId, StickOffset } from '../geometry/types';
 import { combinedPickBounds } from '../geometry/letterLayout';
 import type { StickParams } from './PickMesh';
@@ -58,6 +58,10 @@ export function Scene({
 
   const wordIndex = picks.findIndex((p) => p.id === 'word');
   const wordPick = picks[wordIndex];
+  // The outline card can't cheaply track a live letter/line drag (unlike a
+  // letter or stick mesh, it's a re-triangulation, not just a reposition), so
+  // it's hidden for the duration instead of visibly lagging behind.
+  const [wordLetterDragActive, setWordLetterDragActive] = useState(false);
 
   return (
     <group>
@@ -75,9 +79,10 @@ export function Scene({
           onLetterGapCommit={(lineIndex, gapIndex, gapMm) => onLetterGapCommit(pick.id, lineIndex, gapIndex, gapMm)}
           lineOffsets={lineOffsets}
           onLineOffsetCommit={(lineIndex, offset) => onLineOffsetCommit(pick.id, lineIndex, offset)}
+          onLetterDragActiveChange={pick.id === 'word' ? setWordLetterDragActive : undefined}
         />
       ))}
-      {outlineEnabled && wordPick && (
+      {outlineEnabled && wordPick && !wordLetterDragActive && (
         // Shares the word's own positionX (not laid out side-by-side like a
         // separate pick would be) so it visually surrounds every line instead
         // of sitting next to it.

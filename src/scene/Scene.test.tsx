@@ -448,4 +448,43 @@ describe('Scene (React Three Fiber wiring)', () => {
     const material = (outlineMesh.instance as unknown as { material: { color: { getHexString: () => string } } }).material;
     expect(`#${material.color.getHexString()}`).toBe('#123456');
   }, 30000);
+
+  it('hides the outline mesh while dragging a letter (it cannot cheaply track a live drag) and restores it on release', async () => {
+    const { renderer, picks } = await renderScene(undefined, undefined, undefined, undefined, {
+      outlineEnabled: true,
+      outlineGrowMm: 3,
+      outlineColor: '#123456',
+      outlineDepthMm: 1.5,
+    });
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const letterCount = allLetters(wordPick).length;
+    const naturalXsMm = wordPick.lines[0].letters.map((l) => l.naturalXMm);
+    const findTopLevelMeshes = () => renderer.scene.children[0].children.filter((c) => c.type === 'Mesh');
+    const findLetter1 = () => findLetterMeshes(findPickGroups(renderer)[0], letterCount)[1];
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+
+    expect(findTopLevelMeshes()).toHaveLength(1); // outline visible before any drag
+
+    act(() => (findLetter1().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[1], 0)));
+    expect(findTopLevelMeshes()).toHaveLength(0); // hidden mid-drag
+
+    act(() => (findLetter1().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[1], 0)));
+    expect(findTopLevelMeshes()).toHaveLength(1); // back once released
+  }, 30000);
+
+  it('does not hide the outline mesh while dragging a stick (it does not affect the outline shape)', async () => {
+    const { renderer } = await renderScene(undefined, undefined, undefined, undefined, {
+      outlineEnabled: true,
+      outlineGrowMm: 3,
+      outlineColor: '#123456',
+      outlineDepthMm: 1.5,
+    });
+    const findTopLevelMeshes = () => renderer.scene.children[0].children.filter((c) => c.type === 'Mesh');
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+    const letterCount = findMeshes(findPickGroups(renderer)[0]).length - 1; // one stick by default
+    const stick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
+
+    act(() => (stick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
+    expect(findTopLevelMeshes()).toHaveLength(1); // outline still visible — a stick drag doesn't move any letter
+  }, 30000);
 });

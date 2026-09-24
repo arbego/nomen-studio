@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
@@ -39,6 +39,14 @@ interface PickMeshProps {
   onLetterGapCommit: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   lineOffsets: StickOffset[];
   onLineOffsetCommit: (lineIndex: number, offset: StickOffset) => void;
+  /**
+   * Notified whenever a letter-gap or line drag starts/stops (not a stick
+   * drag, which doesn't move any letter). The outline card can't cheaply
+   * track a live drag (it's a synchronous but non-trivial re-triangulation,
+   * not just repositioning a mesh), so the parent hides it for the duration
+   * instead of letting it visibly lag behind the letters being dragged.
+   */
+  onLetterDragActiveChange?: (active: boolean) => void;
 }
 
 interface DraggingGap {
@@ -74,6 +82,7 @@ export function PickMesh({
   onLetterGapCommit,
   lineOffsets,
   onLineOffsetCommit,
+  onLetterDragActiveChange,
 }: PickMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
@@ -88,7 +97,12 @@ export function PickMesh({
   // onPointerOver/onPointerOut on anything else the cursor passes over
   // mid-drag. Threaded down to every letter and stick so hovering during
   // someone else's drag doesn't light them up as if they were also grabbable.
-  const anyDragActive = draggingGap !== null || draggingLine !== null || draggingStickIndex !== null;
+  const letterDragActive = draggingGap !== null || draggingLine !== null;
+  const anyDragActive = letterDragActive || draggingStickIndex !== null;
+
+  useEffect(() => {
+    onLetterDragActiveChange?.(letterDragActive);
+  }, [letterDragActive, onLetterDragActiveChange]);
   // The delta between where the pointer first landed and the thing being
   // dragged's position at that moment (a gap-drag's letter, or a line-drag's
   // offset) — captured once on pointer down and held constant for the rest of
