@@ -51,7 +51,12 @@ export function ControlsPanel({
 
       <div className="flex flex-col gap-4">
         <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} />
-        <FontPicker label="Name font" category="script" value={config.wordFontId} onChange={(wordFontId) => onChange({ wordFontId })} />
+        <FontPicker
+          label="Name font"
+          value={config.wordFontId}
+          onChange={(wordFontId) => onChange({ wordFontId })}
+          previewText={config.lines[0] || 'Emma'}
+        />
         <p className="-mt-2 flex items-center justify-between text-xs text-stone-400">
           <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
           {hasCustomLetterGaps && (

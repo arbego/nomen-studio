@@ -6,10 +6,6 @@ import { DEFAULT_CURVE_SEGMENTS } from './units';
 import type { LineGeometry } from './types';
 
 const FONT_UNITS_PER_EM_CALL = 1000;
-// features:{} disables GSUB substitution (ligatures/contextual alternates) —
-// opentype.js's shaping support is incomplete and can throw on some fonts'
-// tables; plain per-glyph outlines with kerning are what we need for extrusion.
-const GLYPH_OPTIONS = { features: {} };
 
 /**
  * Renders one or more stacked lines of text in the given font into one
@@ -41,11 +37,20 @@ export async function linesToLineGeometries(lines: string[], fontId: string, tar
   const lineHeightFontUnits = (font.ascender - font.descender) * fontScale;
 
   const anchoredGlyphs: AnchoredGlyphShapes[] = [];
-  const letterCounts: number[] = [];
+  const charactersByLine: string[][] = [];
 
   lines.forEach((line, lineIndex) => {
-    const glyphs = font.stringToGlyphs(line, GLYPH_OPTIONS);
-    letterCounts.push(glyphs.length);
+    // A plain per-character cmap lookup, not font.stringToGlyphs()'s full
+    // Unicode-shaping pipeline: ligatures/contextual alternates aren't wanted
+    // anyway (each letter needs its own independent, individually-adjustable
+    // position — see letterLayout.ts), and some real-world fonts' `ccmp`
+    // (glyph composition) GSUB tables use a lookup format opentype.js's own
+    // shaping engine doesn't support and throws on — unconditionally, not
+    // gated by any option — even for plain ASCII text (confirmed with
+    // Roboto). charToGlyph() bypasses that shaping pipeline entirely.
+    const characters = Array.from(line);
+    charactersByLine.push(characters);
+    const glyphs = characters.map((char) => font.charToGlyph(char));
 
     // Natural x (in the same font-render-unit space getPath itself works in) for
     // every glyph, via the exact advance-width + kerning loop opentype.js's own
@@ -80,15 +85,14 @@ export async function linesToLineGeometries(lines: string[], fontId: string, tar
   });
 
   let cursor = 0;
-  return lines.map((line, lineIndex) => {
-    const count = letterCounts[lineIndex];
-    const letters = extruded.slice(cursor, cursor + count).map(({ geometry, anchorMm, outlineContours }, i) => ({
-      char: line[i] ?? '',
+  return charactersByLine.map((characters) => {
+    const letters = extruded.slice(cursor, cursor + characters.length).map(({ geometry, anchorMm, outlineContours }, i) => ({
+      char: characters[i],
       geometry,
       naturalXMm: anchorMm,
       outlineContours,
     }));
-    cursor += count;
+    cursor += characters.length;
     return { letters };
   });
 }

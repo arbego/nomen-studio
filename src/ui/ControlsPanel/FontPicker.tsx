@@ -1,21 +1,101 @@
+import { useEffect, useState } from 'react';
+import { FONT_REGISTRY, getFontDefinition } from '../../fonts/registry';
+import { searchCatalog, type CatalogFontEntry } from '../../fonts/catalog';
 import type { FontCategory } from '../../fonts/types';
-import { fontsByCategory } from '../../fonts/registry';
 
 interface FontPickerProps {
   label: string;
-  category: FontCategory;
   value: string;
   onChange: (fontId: string) => void;
+  /** Rendered inside each search result, in that font — the name currently being designed, so "preview" shows the user's own text, not just the family name. */
+  previewText: string;
 }
 
-export function FontPicker({ label, category, value, onChange }: FontPickerProps) {
-  const fonts = fontsByCategory(category);
+const CATEGORY_OPTIONS: { value: FontCategory | ''; label: string }[] = [
+  { value: '', label: 'All categories' },
+  { value: 'sans-serif', label: 'Sans Serif' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'display', label: 'Display' },
+  { value: 'handwriting', label: 'Handwriting' },
+  { value: 'monospace', label: 'Monospace' },
+];
+
+// Browser Font Loading API cache for search-result *previews* only — kept
+// entirely separate from loadFont.ts's cache of parsed opentype.js Font
+// objects (used for the actually-selected font's 3D geometry). A preview only
+// ever needs the browser's own native 2D text rendering, so there's no reason
+// to run the heavier fetch+opentype.js-parse pipeline for every row a person
+// merely scrolls past while searching.
+const previewFaceCache = new Map<string, Promise<void>>();
+
+function previewFontFamily(id: string): string {
+  return `gf-preview-${id}`;
+}
+
+function loadPreviewFace(id: string, url: string): Promise<void> {
+  let pending = previewFaceCache.get(id);
+  if (!pending) {
+    if (typeof FontFace === 'undefined' || typeof document === 'undefined') {
+      return Promise.reject(new Error('FontFace API unavailable'));
+    }
+    const face = new FontFace(previewFontFamily(id), `url("${url}")`);
+    pending = face.load().then((loaded) => {
+      document.fonts.add(loaded);
+    });
+    previewFaceCache.set(id, pending);
+    pending.catch(() => previewFaceCache.delete(id));
+  }
+  return pending;
+}
+
+function FontResultRow({ entry, previewText, selected, onSelect }: { entry: CatalogFontEntry; previewText: string; selected: boolean; onSelect: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+
+  // Keyed by entry.id in the parent list, so a different font here always
+  // means a freshly-mounted instance (fresh `loaded = false`) rather than
+  // this effect re-running with new deps on the same instance.
+  useEffect(() => {
+    let cancelled = false;
+    loadPreviewFace(entry.id, entry.url)
+      .then(() => {
+        if (!cancelled) setLoaded(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [entry.id, entry.url]);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors ${
+        selected ? 'bg-stone-800 text-white' : 'hover:bg-stone-100'
+      }`}
+    >
+      <span className="w-full truncate text-lg leading-tight" style={loaded ? { fontFamily: previewFontFamily(entry.id) } : undefined}>
+        {previewText}
+      </span>
+      <span className={`text-xs ${selected ? 'text-stone-300' : 'text-stone-400'}`}>{entry.family}</span>
+    </button>
+  );
+}
+
+export function FontPicker({ label, value, onChange, previewText }: FontPickerProps) {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<FontCategory | ''>('');
+
+  const results = searchCatalog(query, category || undefined);
+  const selectedDefinition = getFontDefinition(value);
+  const selectedIsCurated = FONT_REGISTRY.some((f) => f.id === value);
 
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {fonts.map((font) => (
+        {FONT_REGISTRY.map((font) => (
           <button
             key={font.id}
             type="button"
@@ -29,6 +109,36 @@ export function FontPicker({ label, category, value, onChange }: FontPickerProps
           >
             {font.label}
           </button>
+        ))}
+      </div>
+
+      {!selectedIsCurated && <p className="text-xs text-stone-500">Selected: {selectedDefinition.family}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search Google Fonts…"
+          className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 outline-none transition-colors focus:border-stone-500"
+        />
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as FontCategory | '')}
+          className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm text-stone-700 outline-none transition-colors focus:border-stone-500"
+        >
+          {CATEGORY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 p-1">
+        {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-400">No fonts match your search.</p>}
+        {results.map((entry) => (
+          <FontResultRow key={entry.id} entry={entry} previewText={previewText} selected={value === entry.id} onSelect={() => onChange(entry.id)} />
         ))}
       </div>
     </div>

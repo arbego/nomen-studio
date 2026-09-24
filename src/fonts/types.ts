@@ -1,4 +1,5 @@
-export type FontCategory = 'script';
+/** Google Fonts' own family categories. */
+export type FontCategory = 'sans-serif' | 'serif' | 'display' | 'handwriting' | 'monospace';
 
 export interface FontDefinition {
   id: string;
