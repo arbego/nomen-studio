@@ -79,6 +79,16 @@ export function PickMesh({
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
   const [draggingGap, setDraggingGap] = useState<DraggingGap | null>(null);
   const [draggingLine, setDraggingLine] = useState<DraggingLine | null>(null);
+  // Which stick (if any) is currently dragging — a stick otherwise owns its
+  // drag state entirely on its own, but its siblings need to know *something*
+  // is being dragged too (see anyDragActive below).
+  const [draggingStickIndex, setDraggingStickIndex] = useState<number | null>(null);
+  // React Three Fiber's pointer capture only guarantees drag events keep
+  // reaching whatever grabbed the pointer — it still raycasts and fires
+  // onPointerOver/onPointerOut on anything else the cursor passes over
+  // mid-drag. Threaded down to every letter and stick so hovering during
+  // someone else's drag doesn't light them up as if they were also grabbable.
+  const anyDragActive = draggingGap !== null || draggingLine !== null || draggingStickIndex !== null;
   // The delta between where the pointer first landed and the thing being
   // dragged's position at that moment (a gap-drag's letter, or a line-drag's
   // offset) — captured once on pointer down and held constant for the rest of
@@ -198,6 +208,7 @@ export function PickMesh({
               yMm={offset.y}
               draggable
               dragging={i === 0 ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
+              anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}
               onPointerMove={(e) => handlePointerMove(lineIndex, i, e)}
               onPointerUp={handlePointerUp}
@@ -214,6 +225,8 @@ export function PickMesh({
           offset={offset}
           referenceObject={groupRef}
           onOffsetCommit={(newOffset) => onStickOffsetCommit(index, newOffset)}
+          anyDragActive={anyDragActive}
+          onDraggingChange={(dragging) => setDraggingStickIndex(dragging ? index : null)}
         />
       ))}
     </group>

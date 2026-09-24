@@ -29,10 +29,22 @@ interface StickMeshProps {
   /** The pick's own group — a stick's (x, y) is in that group's local space, not its own. */
   referenceObject: React.RefObject<THREE.Group | null>;
   onOffsetCommit: (offset: StickOffset) => void;
+  /**
+   * Whether *something* in this pick (any letter, line, or stick — not
+   * necessarily this one) is currently being dragged. React Three Fiber's
+   * pointer capture only guarantees drag *events* keep reaching the captured
+   * object — it still raycasts and fires onPointerOver/onPointerOut on
+   * whatever else the cursor happens to pass over mid-drag. Without this,
+   * dragging one object across another would light up the one merely being
+   * passed over, as if it were also about to be picked up.
+   */
+  anyDragActive: boolean;
+  /** Reports this stick's own drag start/end, so a sibling can tell "something is being dragged" even though each stick otherwise owns its drag state independently. */
+  onDraggingChange: (dragging: boolean) => void;
 }
 
 /** One draggable stick. A pick with multiple sticks renders one of these per stick, each independently grabbable. */
-export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit }: StickMeshProps) {
+export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit, anyDragActive, onDraggingChange }: StickMeshProps) {
   const [hovered, setHovered] = useState(false);
   const [liveOffset, setLiveOffset] = useState<StickOffset | null>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
@@ -67,6 +79,7 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
     // eslint-disable-next-line react/immutability -- see above
     if (controls) controls.enabled = false;
     setCursor('grabbing');
+    onDraggingChange(true);
     const reference = referenceObject.current;
     const point = reference ? localDragPoint(event, reference) : null;
     grabDeltaRef.current = point ? { x: point.x - offset.x, y: point.y - offset.y } : { x: 0, y: 0 };
@@ -86,10 +99,17 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
     // eslint-disable-next-line react/immutability -- see handlePointerDown
     if (controls) controls.enabled = true;
     setCursor(hovered ? 'grab' : 'auto');
+    onDraggingChange(false);
     const clamped = clampStickOffsetToBounds(bounds, liveOffset, stick.widthMm, stick.embedMm);
     onOffsetCommit(clamped);
     setLiveOffset(null);
   }
+
+  const isDraggingSelf = liveOffset !== null;
+  // Hovering lights this stick up, unless it's just being passed over while
+  // something *else* is being dragged (see anyDragActive above) — but being
+  // dragged itself always highlights it, regardless of anyDragActive.
+  const highlighted = isDraggingSelf || (hovered && !anyDragActive);
 
   return (
     <mesh
@@ -102,15 +122,21 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
       onPointerOver={(e) => {
         e.stopPropagation();
         setHovered(true);
-        if (liveOffset === null) setCursor('grab');
+        if (liveOffset === null && !anyDragActive) setCursor('grab');
       }}
       onPointerOut={(e) => {
         e.stopPropagation();
         setHovered(false);
-        if (liveOffset === null) setCursor('auto');
+        if (liveOffset === null && !anyDragActive) setCursor('auto');
       }}
     >
-      <meshStandardMaterial color={color} roughness={0.55} metalness={0.05} emissive={hovered ? color : '#000000'} emissiveIntensity={hovered ? 0.15 : 0} />
+      <meshStandardMaterial
+        color={color}
+        roughness={0.55}
+        metalness={0.05}
+        emissive={highlighted ? color : '#000000'}
+        emissiveIntensity={highlighted ? 0.15 : 0}
+      />
     </mesh>
   );
 }

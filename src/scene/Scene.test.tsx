@@ -299,6 +299,37 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(index).toBe(1);
   }, 30000);
 
+  it("does not light up a sibling stick the cursor passes over while a different stick is being dragged", async () => {
+    // Regression test: React Three Fiber's pointer capture only guarantees
+    // drag *events* keep reaching the captured object — it still raycasts and
+    // fires onPointerOver on whatever else the cursor happens to pass over
+    // mid-drag, which used to light that sibling up too.
+    const multiStickOffsets: Record<PickId, StickOffset[]> = {
+      ...config.stickOffsets,
+      word: [{ x: -20, y: 0 }, { x: 20, y: 0 }],
+    };
+    const { renderer, picks } = await renderScene(undefined, multiStickOffsets);
+    const letterCount = allLetters(picks[0]).length;
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+    const findFirstStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
+    const findSecondStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[1];
+    const emissiveIntensity = (mesh: ReturnType<typeof findFirstStick>) =>
+      (mesh.instance as unknown as { material: { emissiveIntensity: number } }).material.emissiveIntensity;
+
+    // Sanity check: hovering with nothing else being dragged does highlight normally.
+    act(() => (findSecondStick().props.onPointerOver as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 0)));
+    expect(emissiveIntensity(findSecondStick())).toBeGreaterThan(0);
+    act(() => (findSecondStick().props.onPointerOut as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 0)));
+    expect(emissiveIntensity(findSecondStick())).toBe(0);
+
+    // Now start dragging the first stick, and pass the cursor over the second.
+    act(() => (findFirstStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, -20, 0)));
+    act(() => (findSecondStick().props.onPointerOver as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 0)));
+
+    expect(emissiveIntensity(findSecondStick())).toBe(0); // not lit up
+    expect(emissiveIntensity(findFirstStick())).toBeGreaterThan(0); // the one actually being dragged still is
+  }, 30000);
+
   it("the first letter of a line has drag handlers too, but they move the whole line instead of a gap", async () => {
     const onLineOffsetCommit = vi.fn();
     const { renderer, picks } = await renderScene(undefined, config.stickOffsets, config.letterGapsMm, undefined, config, config.lineOffsets, onLineOffsetCommit);
@@ -370,6 +401,25 @@ describe('Scene (React Three Fiber wiring)', () => {
     // delta as letter 1 — not stayed at their natural position.
     expect(meshPositionX(findLetter(2))).toBeCloseTo(draggedDelta, 3);
     expect(meshPositionX(findLetter(3))).toBeCloseTo(draggedDelta, 3);
+  }, 30000);
+
+  it('does not light up a sibling letter the cursor passes over mid-drag', async () => {
+    const { renderer, picks } = await renderScene();
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const letterCount = allLetters(wordPick).length;
+    const naturalXsMm = wordPick.lines[0].letters.map((l) => l.naturalXMm);
+
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+    const findLetter = (i: number) => findLetterMeshes(findPickGroups(renderer)[0], letterCount)[i];
+    const emissiveIntensity = (mesh: ReturnType<typeof findLetter>) =>
+      (mesh.instance as unknown as { material: { emissiveIntensity: number } }).material.emissiveIntensity;
+
+    // Start dragging letter 1, then pass the cursor over letter 2.
+    act(() => (findLetter(1).props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[1], 0)));
+    act(() => (findLetter(2).props.onPointerOver as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[2], 0)));
+
+    expect(emissiveIntensity(findLetter(2))).toBe(0); // not lit up
+    expect(emissiveIntensity(findLetter(1))).toBeGreaterThan(0); // the one actually being dragged still is
   }, 30000);
 
   it('renders no outline mesh when outlineEnabled is false', async () => {
