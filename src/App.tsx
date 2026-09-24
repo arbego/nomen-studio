@@ -13,6 +13,10 @@ function App() {
   const setStickOffset = useTopperStore((s) => s.setStickOffset);
   const addStick = useTopperStore((s) => s.addStick);
   const removeStick = useTopperStore((s) => s.removeStick);
+  const setLineText = useTopperStore((s) => s.setLineText);
+  const addLine = useTopperStore((s) => s.addLine);
+  const removeLine = useTopperStore((s) => s.removeLine);
+  const setLineOffset = useTopperStore((s) => s.setLineOffset);
   const setLetterGap = useTopperStore((s) => s.setLetterGap);
   const resetLetterGaps = useTopperStore((s) => s.resetLetterGaps);
   const toggleClosedOutlineHole = useTopperStore((s) => s.toggleClosedOutlineHole);
@@ -45,6 +49,9 @@ function App() {
           error={error}
           onAddStick={addStick}
           onRemoveStick={removeStick}
+          onChangeLine={setLineText}
+          onAddLine={addLine}
+          onRemoveLine={removeLine}
           onResetLetterGaps={resetLetterGaps}
           onToggleClosedOutlineHole={toggleClosedOutlineHole}
         />
@@ -58,7 +65,9 @@ function App() {
           stickOffsets={config.stickOffsets}
           onStickOffsetCommit={setStickOffset}
           letterGapsMm={config.letterGapsMm}
-          onLetterGapCommit={(_pickId, index, gapMm) => setLetterGap(index, gapMm)}
+          onLetterGapCommit={(_pickId, lineIndex, gapIndex, gapMm) => setLetterGap(lineIndex, gapIndex, gapMm)}
+          lineOffsets={config.lineOffsets}
+          onLineOffsetCommit={(_pickId, lineIndex, offset) => setLineOffset(lineIndex, offset)}
           outlineEnabled={config.outlineEnabled}
           outlineGrowMm={config.outlineGrowMm}
           outlineColor={config.outlineColor}

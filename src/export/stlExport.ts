@@ -19,7 +19,7 @@ function outlineGeometryFor(pick: Pick, config: TopperConfig): THREE.BufferGeome
   if (!config.outlineEnabled) {
     return null;
   }
-  const outline = buildOutlineGeometry(pick, config.letterGapsMm, config.outlineGrowMm, config.outlineDepthMm, config.closedOutlineHoles);
+  const outline = buildOutlineGeometry(pick, config.letterGapsMm, config.lineOffsets, config.outlineGrowMm, config.outlineDepthMm, config.closedOutlineHoles);
   return outline?.mainGeometry ?? null;
 }
 

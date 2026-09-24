@@ -11,9 +11,11 @@ function setCursor(cursor: string) {
 interface LetterMeshProps {
   letter: LetterGeometry;
   color: string;
-  /** x offset (mm) from this letter's own natural, baked-in position — the cumulative effect of every gap override before it. 0 for the natural case. */
-  cascadeXMm: number;
-  /** The first letter has no gap before it to adjust, so it isn't draggable. */
+  /** x offset (mm) from this letter's own natural, baked-in position — the cumulative effect of every gap override before it (0 for the first letter of a line, which has no gap before it). */
+  xMm: number;
+  /** y offset (mm) — this letter's line's own draggable position offset, shared by every letter in that line. */
+  yMm: number;
+  /** Every letter is draggable: the first letter of a line drags the whole line's position, every other letter closes/opens the gap before it. */
   draggable: boolean;
   dragging: boolean;
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
@@ -21,15 +23,15 @@ interface LetterMeshProps {
   onPointerUp?: (event: ThreeEvent<PointerEvent>) => void;
 }
 
-/** One letter of the word — a static, pre-extruded solid positioned via a cheap x translation, draggable (except the first letter) to close/open the gap before it. */
-export function LetterMesh({ letter, color, cascadeXMm, draggable, dragging, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
+/** One letter of a line — a static, pre-extruded solid positioned via a cheap (x, y) translation, draggable to either close/open the gap before it or (for a line's first letter) reposition the whole line. */
+export function LetterMesh({ letter, color, xMm, yMm, draggable, dragging, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
   const [hovered, setHovered] = useState(false);
   const highlighted = draggable && (hovered || dragging);
 
   return (
     <mesh
       geometry={letter.geometry}
-      position={[cascadeXMm, 0, 0]}
+      position={[xMm, yMm, 0]}
       castShadow
       receiveShadow
       onPointerDown={draggable ? onPointerDown : undefined}

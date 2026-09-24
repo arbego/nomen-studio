@@ -13,8 +13,10 @@ interface TopperCanvasProps {
   stickColor: string;
   stickOffsets: Record<PickId, StickOffset[]>;
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
-  letterGapsMm: number[];
-  onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
+  letterGapsMm: number[][];
+  onLetterGapCommit: (pickId: PickId, lineIndex: number, gapIndex: number, gapMm: number) => void;
+  lineOffsets: StickOffset[];
+  onLineOffsetCommit: (pickId: PickId, lineIndex: number, offset: StickOffset) => void;
   outlineEnabled: boolean;
   outlineGrowMm: number;
   outlineColor: string;
@@ -36,6 +38,8 @@ export function TopperCanvas({
   onStickOffsetCommit,
   letterGapsMm,
   onLetterGapCommit,
+  lineOffsets,
+  onLineOffsetCommit,
   outlineEnabled,
   outlineGrowMm,
   outlineColor,
@@ -70,6 +74,8 @@ export function TopperCanvas({
             onStickOffsetCommit={onStickOffsetCommit}
             letterGapsMm={letterGapsMm}
             onLetterGapCommit={onLetterGapCommit}
+            lineOffsets={lineOffsets}
+            onLineOffsetCommit={onLineOffsetCommit}
             outlineEnabled={outlineEnabled}
             outlineGrowMm={outlineGrowMm}
             outlineColor={outlineColor}

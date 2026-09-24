@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { LetterGeometry } from './types';
+import type { LetterGeometry, Pick, StickOffset } from './types';
 
 /** A letter can't be dragged closer than this to its (fixed) left neighbor — keeps a drag from crossing/inverting letters or collapsing them to nothing. */
 const MIN_LETTER_GAP_MM = 1;
@@ -56,7 +56,7 @@ export function clampDesiredLetterPosition(index: number, desiredXMm: number, na
   return Math.max(desiredXMm, leftNeighborX + MIN_LETTER_GAP_MM);
 }
 
-/** The combined bounding box of every letter at its current (gap-adjusted) position — the word-wide bounds sticks are clamped against. */
+/** The combined bounding box of every letter at its current (gap-adjusted) position — the line-wide bounds sticks are clamped against. */
 export function combinedLetterBounds(letters: LetterGeometry[], letterGapsMm: number[]): THREE.Box3 {
   const cumulative = cumulativeGaps(normalizedLetterGaps(letters.length, letterGapsMm));
   const box = new THREE.Box3();
@@ -65,6 +65,19 @@ export function combinedLetterBounds(letters: LetterGeometry[], letterGapsMm: nu
     const lb = letter.geometry.boundingBox!;
     const dx = cumulative[i];
     box.union(new THREE.Box3(new THREE.Vector3(lb.min.x + dx, lb.min.y, lb.min.z), new THREE.Vector3(lb.max.x + dx, lb.max.y, lb.max.z)));
+  });
+  return box;
+}
+
+/** The combined bounding box of every line of a pick, each at its own current
+ * (gap-adjusted, then line-offset-shifted) position — the whole-piece bounds
+ * sticks are clamped against, since a pick can now have more than one line. */
+export function combinedPickBounds(pick: Pick, letterGapsMm: number[][], lineOffsets: StickOffset[]): THREE.Box3 {
+  const box = new THREE.Box3();
+  pick.lines.forEach((line, i) => {
+    const lineBox = combinedLetterBounds(line.letters, letterGapsMm[i] ?? []);
+    const offset = lineOffsets[i] ?? { x: 0, y: 0 };
+    box.union(new THREE.Box3(new THREE.Vector3(lineBox.min.x + offset.x, lineBox.min.y + offset.y, lineBox.min.z), new THREE.Vector3(lineBox.max.x + offset.x, lineBox.max.y + offset.y, lineBox.max.z)));
   });
   return box;
 }

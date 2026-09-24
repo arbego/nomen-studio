@@ -4,7 +4,7 @@ import type { TopperConfig } from '../geometry/types';
 import { pickToStlBinary, outlineToStlBinary, combinedStlBinary, slugifyFilename } from './stlExport';
 
 const config: TopperConfig = {
-  word: 'Emma',
+  lines: ['Emma'],
   wordFontId: 'dancing-script',
   sizeMm: 100,
   extrudeDepthMm: 3,
@@ -12,7 +12,8 @@ const config: TopperConfig = {
   stickWidthMm: 4,
   stickEmbedMm: 15,
   stickOffsets: { word: [{ x: 0, y: 0 }] },
-  letterGapsMm: [0, 0, 0],
+  letterGapsMm: [[0, 0, 0]],
+  lineOffsets: [{ x: 0, y: 0 }],
   previewColor: '#f0c6d0',
   outlineEnabled: false,
   outlineGrowMm: 3,
@@ -54,7 +55,7 @@ describe('STL export', () => {
   it('exports letter-gap overrides — the STL reflects the tightened layout, not the natural one', async () => {
     const picks = await buildTopperPicks(config);
     const wordPick = picks.find((p) => p.id === 'word')!;
-    const tightened: TopperConfig = { ...config, letterGapsMm: [-5, 0, 0] };
+    const tightened: TopperConfig = { ...config, letterGapsMm: [[-5, 0, 0]] };
 
     const naturalDv = pickToStlBinary(wordPick, config);
     const tightenedDv = pickToStlBinary(wordPick, tightened);

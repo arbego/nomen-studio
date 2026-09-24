@@ -7,8 +7,9 @@ import {
   clampDesiredLetterPosition,
   normalizedLetterGaps,
   combinedLetterBounds,
+  combinedPickBounds,
 } from './letterLayout';
-import type { LetterGeometry } from './types';
+import type { LetterGeometry, Pick } from './types';
 
 describe('cumulativeGaps', () => {
   it('starts at 0 and accumulates each gap in order', () => {
@@ -106,5 +107,21 @@ describe('combinedLetterBounds', () => {
     const letters = [fakeLetter(0, 10, 0, 20), fakeLetter(15, 25, 0, 20)];
     const bounds = combinedLetterBounds(letters, [-5]);
     expect(bounds.max.x).toBeCloseTo(20, 5); // second letter pulled in by 5mm
+  });
+});
+
+describe('combinedPickBounds', () => {
+  it('unions every line\'s own combined bounds, each shifted by that line\'s offset', () => {
+    const pick: Pick = {
+      id: 'word',
+      label: 'test',
+      lines: [{ letters: [fakeLetter(0, 10, 0, 20)] }, { letters: [fakeLetter(0, 10, 0, 20)] }],
+    };
+    // Line 0 stays put; line 1 is shifted 30mm right and 40mm down.
+    const bounds = combinedPickBounds(pick, [[], []], [{ x: 0, y: 0 }, { x: 30, y: -40 }]);
+    expect(bounds.min.x).toBeCloseTo(0, 5);
+    expect(bounds.max.x).toBeCloseTo(40, 5); // line 1's right edge (10) + 30
+    expect(bounds.min.y).toBeCloseTo(-40, 5); // line 1's bottom (0) - 40
+    expect(bounds.max.y).toBeCloseTo(20, 5); // line 0's top, untouched
   });
 });

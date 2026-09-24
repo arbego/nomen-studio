@@ -1,6 +1,6 @@
 import type { Pick, PickId, TopperConfig } from '../../geometry/types';
 import { detectOutlineHoleCandidates } from '../../geometry/outline';
-import { TextField } from './TextField';
+import { LinesControls } from './LinesControls';
 import { FontPicker } from './FontPicker';
 import { SizePicker } from './SizePicker';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
@@ -16,6 +16,9 @@ interface ControlsPanelProps {
   error: string | null;
   onAddStick: (pickId: PickId) => void;
   onRemoveStick: (pickId: PickId, index: number) => void;
+  onChangeLine: (index: number, text: string) => void;
+  onAddLine: () => void;
+  onRemoveLine: (index: number) => void;
   onResetLetterGaps: () => void;
   onToggleClosedOutlineHole: (key: string) => void;
 }
@@ -28,12 +31,16 @@ export function ControlsPanel({
   error,
   onAddStick,
   onRemoveStick,
+  onChangeLine,
+  onAddLine,
+  onRemoveLine,
   onResetLetterGaps,
   onToggleClosedOutlineHole,
 }: ControlsPanelProps) {
-  const hasCustomLetterGaps = config.letterGapsMm.some((gap) => gap !== 0);
+  const hasCustomLetterGaps = config.letterGapsMm.some((gaps) => gaps.some((gap) => gap !== 0));
   const wordPick = picks.find((p) => p.id === 'word');
-  const outlineHoleCandidates = config.outlineEnabled && wordPick ? detectOutlineHoleCandidates(wordPick, config.letterGapsMm, config.outlineGrowMm) : [];
+  const outlineHoleCandidates =
+    config.outlineEnabled && wordPick ? detectOutlineHoleCandidates(wordPick, config.letterGapsMm, config.lineOffsets, config.outlineGrowMm) : [];
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -43,10 +50,10 @@ export function ControlsPanel({
       </div>
 
       <div className="flex flex-col gap-4">
-        <TextField label="Name" value={config.word} onChange={(word) => onChange({ word })} maxLength={16} placeholder="Emma" />
+        <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} />
         <FontPicker label="Name font" category="script" value={config.wordFontId} onChange={(wordFontId) => onChange({ wordFontId })} />
         <p className="-mt-2 flex items-center justify-between text-xs text-stone-400">
-          <span>Drag a letter in the preview to close its gap.</span>
+          <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
           {hasCustomLetterGaps && (
             <button type="button" onClick={onResetLetterGaps} className="text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
               Reset spacing
@@ -89,7 +96,7 @@ export function ControlsPanel({
       <div className="mt-auto border-t border-stone-200 pt-4">
         {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
         {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
-        <ExportButtons picks={picks} config={config} designName={config.word} disabled={loading || !!error} />
+        <ExportButtons picks={picks} config={config} designName={config.lines.join(' ')} disabled={loading || !!error} />
       </div>
     </div>
   );

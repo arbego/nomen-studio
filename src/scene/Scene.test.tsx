@@ -6,12 +6,12 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { buildTopperPicks } from '../geometry/buildTopper';
 import { clampStickOffsetToBounds } from '../geometry/stickGeometry';
 import { gapForDesiredPosition } from '../geometry/letterLayout';
-import type { PickId, StickOffset, TopperConfig } from '../geometry/types';
+import type { Pick, PickId, StickOffset, TopperConfig } from '../geometry/types';
 import { Scene } from './Scene';
 import type { StickParams } from './PickMesh';
 
 const config: TopperConfig = {
-  word: 'Emma',
+  lines: ['Emma'],
   wordFontId: 'dancing-script',
   sizeMm: 100,
   extrudeDepthMm: 3,
@@ -19,7 +19,8 @@ const config: TopperConfig = {
   stickWidthMm: 4,
   stickEmbedMm: 15,
   stickOffsets: { word: [{ x: 0, y: 0 }] },
-  letterGapsMm: [0, 0, 0],
+  letterGapsMm: [[0, 0, 0]],
+  lineOffsets: [{ x: 0, y: 0 }],
   previewColor: '#f0c6d0',
   outlineEnabled: false,
   outlineGrowMm: 3,
@@ -35,12 +36,18 @@ const stickParams: StickParams = {
   thicknessMm: config.extrudeDepthMm,
 };
 
+function allLetters(pick: Pick) {
+  return pick.lines.flatMap((line) => line.letters);
+}
+
 function renderScene(
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void = () => {},
   stickOffsets: Record<PickId, StickOffset[]> = config.stickOffsets,
-  letterGapsMm: number[] = config.letterGapsMm,
-  onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void = () => {},
+  letterGapsMm: number[][] = config.letterGapsMm,
+  onLetterGapCommit: (pickId: PickId, lineIndex: number, gapIndex: number, gapMm: number) => void = () => {},
   outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string; outlineDepthMm: number; closedOutlineHoles?: string[] } = config,
+  lineOffsets: StickOffset[] = config.lineOffsets,
+  onLineOffsetCommit: (pickId: PickId, lineIndex: number, offset: StickOffset) => void = () => {},
 ) {
   return buildTopperPicks(config).then((picks) =>
     ReactThreeTestRenderer.create(
@@ -53,6 +60,8 @@ function renderScene(
         onStickOffsetCommit={onStickOffsetCommit}
         letterGapsMm={letterGapsMm}
         onLetterGapCommit={onLetterGapCommit}
+        lineOffsets={lineOffsets}
+        onLineOffsetCommit={onLineOffsetCommit}
         outlineEnabled={outline.outlineEnabled}
         outlineGrowMm={outline.outlineGrowMm}
         outlineColor={outline.outlineColor}
@@ -85,7 +94,7 @@ function findMeshes(group: ReturnType<typeof findPickGroups>[number]) {
   return group.children.filter((c) => c.type === 'Mesh');
 }
 
-/** The first `letterCount` meshes in a pick group are its letters (see PickMesh's render order). */
+/** The first `letterCount` meshes in a pick group are its letters, across every line in order (see PickMesh's render order). */
 function findLetterMeshes(group: ReturnType<typeof findPickGroups>[number], letterCount: number) {
   return findMeshes(group).slice(0, letterCount);
 }
@@ -98,7 +107,7 @@ function findStickMeshes(group: ReturnType<typeof findPickGroups>[number], lette
 describe('Scene (React Three Fiber wiring)', () => {
   it('mounts a group for the word pick, with one mesh per letter plus one stick mesh (the default), in the preview color', async () => {
     const { renderer, picks } = await renderScene();
-    const letterCount = picks[0].letters.length;
+    const letterCount = allLetters(picks[0]).length;
 
     const groups = findPickGroups(renderer);
     expect(groups).toHaveLength(1);
@@ -122,7 +131,7 @@ describe('Scene (React Three Fiber wiring)', () => {
       word: [{ x: -20, y: 0 }, { x: 0, y: 0 }, { x: 20, y: 0 }],
     };
     const { renderer, picks } = await renderScene(undefined, multiStickOffsets);
-    const letterCount = picks[0].letters.length;
+    const letterCount = allLetters(picks[0]).length;
 
     const [wordGroup] = findPickGroups(renderer);
     expect(findStickMeshes(wordGroup, letterCount)).toHaveLength(3);
@@ -138,7 +147,7 @@ describe('Scene (React Three Fiber wiring)', () => {
       word: [{ x: -20, y: -6 }, { x: 0, y: 3 }, { x: 20, y: 9 }],
     };
     const { renderer, picks } = await renderScene(undefined, multiStickOffsets);
-    const letterCount = picks[0].letters.length;
+    const letterCount = allLetters(picks[0]).length;
 
     const [wordGroup] = findPickGroups(renderer);
     const tipYs = findStickMeshes(wordGroup, letterCount).map((mesh) => {
@@ -156,7 +165,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     const wordPick = picks.find((p) => p.id === 'word')!;
     let minX = Infinity;
     let maxX = -Infinity;
-    for (const letter of wordPick.letters) {
+    for (const letter of allLetters(wordPick)) {
       letter.geometry.computeBoundingBox();
       minX = Math.min(minX, letter.geometry.boundingBox!.min.x);
       maxX = Math.max(maxX, letter.geometry.boundingBox!.max.x);
@@ -172,7 +181,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     const onStickOffsetCommit = vi.fn();
     const { renderer, picks } = await renderScene(onStickOffsetCommit);
     const wordPick = picks.find((p) => p.id === 'word')!;
-    const letterCount = wordPick.letters.length;
+    const letterCount = allLetters(wordPick).length;
 
     const findStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
@@ -190,7 +199,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(onStickOffsetCommit).toHaveBeenCalledTimes(1);
     const [pickId, index, offset] = onStickOffsetCommit.mock.calls[0];
     const bounds = new THREE.Box3();
-    wordPick.letters.forEach((letter) => {
+    allLetters(wordPick).forEach((letter) => {
       letter.geometry.computeBoundingBox();
       bounds.union(letter.geometry.boundingBox!);
     });
@@ -205,7 +214,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     const onStickOffsetCommit = vi.fn();
     const { renderer, picks } = await renderScene(onStickOffsetCommit);
     const wordPick = picks.find((p) => p.id === 'word')!;
-    const letterCount = wordPick.letters.length;
+    const letterCount = allLetters(wordPick).length;
 
     const findStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
@@ -217,7 +226,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     act(() => (findStick().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 18, 3)));
     const [, , offset] = onStickOffsetCommit.mock.calls[0];
     const bounds = new THREE.Box3();
-    wordPick.letters.forEach((letter) => {
+    allLetters(wordPick).forEach((letter) => {
       letter.geometry.computeBoundingBox();
       bounds.union(letter.geometry.boundingBox!);
     });
@@ -232,7 +241,7 @@ describe('Scene (React Three Fiber wiring)', () => {
       word: [{ x: -20, y: 0 }, { x: 20, y: 0 }],
     };
     const { renderer, picks } = await renderScene(onStickOffsetCommit, multiStickOffsets);
-    const letterCount = picks[0].letters.length;
+    const letterCount = allLetters(picks[0]).length;
 
     const wordGroup = findPickGroups(renderer)[0];
     const groupObject = wordGroup.instance as unknown as THREE.Object3D;
@@ -247,19 +256,31 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(index).toBe(1);
   }, 30000);
 
-  it('the first letter has no drag handlers — there is no gap before it to adjust', async () => {
-    const { renderer, picks } = await renderScene();
-    const letterCount = picks[0].letters.length;
+  it("the first letter of a line has drag handlers too, but they move the whole line instead of a gap", async () => {
+    const onLineOffsetCommit = vi.fn();
+    const { renderer, picks } = await renderScene(undefined, config.stickOffsets, config.letterGapsMm, undefined, config, config.lineOffsets, onLineOffsetCommit);
+    const letterCount = allLetters(picks[0]).length;
     const firstLetter = findLetterMeshes(findPickGroups(renderer)[0], letterCount)[0];
-    expect(firstLetter.props.onPointerDown).toBeUndefined();
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+    expect(firstLetter.props.onPointerDown).toBeDefined();
+
+    act(() => (firstLetter.props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 5, -12)));
+    act(() => (firstLetter.props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 5, -12)));
+
+    expect(onLineOffsetCommit).toHaveBeenCalledTimes(1);
+    const [pickId, lineIndex, offset] = onLineOffsetCommit.mock.calls[0];
+    expect(pickId).toBe('word');
+    expect(lineIndex).toBe(0);
+    expect(offset.x).toBeCloseTo(5, 5);
+    expect(offset.y).toBeCloseTo(-12, 5);
   }, 30000);
 
   it('commits a letter-gap override, closing the gap immediately before the dragged letter, on pointer up', async () => {
     const onLetterGapCommit = vi.fn();
     const { renderer, picks } = await renderScene(undefined, config.stickOffsets, config.letterGapsMm, onLetterGapCommit);
     const wordPick = picks.find((p) => p.id === 'word')!;
-    const letterCount = wordPick.letters.length;
-    const naturalXsMm = wordPick.letters.map((l) => l.naturalXMm);
+    const letterCount = allLetters(wordPick).length;
+    const naturalXsMm = wordPick.lines[0].letters.map((l) => l.naturalXMm);
 
     const findLetter1 = () => findLetterMeshes(findPickGroups(renderer)[0], letterCount)[1];
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
@@ -271,18 +292,19 @@ describe('Scene (React Three Fiber wiring)', () => {
     act(() => (findLetter1().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
 
     expect(onLetterGapCommit).toHaveBeenCalledTimes(1);
-    const [pickId, gapIndex, gapMm] = onLetterGapCommit.mock.calls[0];
+    const [pickId, lineIndex, gapIndex, gapMm] = onLetterGapCommit.mock.calls[0];
     expect(pickId).toBe('word');
+    expect(lineIndex).toBe(0);
     expect(gapIndex).toBe(0); // the gap before letter 1
-    const expectedGap = gapForDesiredPosition(1, desiredX, naturalXsMm, config.letterGapsMm);
+    const expectedGap = gapForDesiredPosition(1, desiredX, naturalXsMm, config.letterGapsMm[0]);
     expect(gapMm).toBeCloseTo(expectedGap, 5);
   }, 30000);
 
   it('cascades a letter drag live to every letter after it, before the drag is even released', async () => {
     const { renderer, picks } = await renderScene();
     const wordPick = picks.find((p) => p.id === 'word')!;
-    const letterCount = wordPick.letters.length;
-    const naturalXsMm = wordPick.letters.map((l) => l.naturalXMm);
+    const letterCount = allLetters(wordPick).length;
+    const naturalXsMm = wordPick.lines[0].letters.map((l) => l.naturalXMm);
 
     const group = findPickGroups(renderer)[0];
     const groupObject = group.instance as unknown as THREE.Object3D;

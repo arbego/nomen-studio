@@ -13,14 +13,16 @@ export const COLOR_PRESETS = [
 ] as const;
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
-function defaultLetterGaps(word: string): number[] {
-  return new Array(Math.max(word.length - 1, 0)).fill(0);
+function defaultLetterGaps(line: string): number[] {
+  return new Array(Math.max(line.length - 1, 0)).fill(0);
 }
 
-const DEFAULT_WORD = 'Emma';
+const DEFAULT_LINE = 'Emma';
+/** One base line plus up to 2 more — matches the "+" button's disabled state in LinesControls. */
+const MAX_LINES = 3;
 
 const DEFAULT_CONFIG: TopperConfig = {
-  word: DEFAULT_WORD,
+  lines: [DEFAULT_LINE],
   wordFontId: 'dancing-script',
   sizeMm: 100,
   extrudeDepthMm: 3,
@@ -28,7 +30,8 @@ const DEFAULT_CONFIG: TopperConfig = {
   stickWidthMm: 4,
   stickEmbedMm: 15,
   stickOffsets: { word: [{ x: 0, y: 0 }] },
-  letterGapsMm: defaultLetterGaps(DEFAULT_WORD),
+  letterGapsMm: [defaultLetterGaps(DEFAULT_LINE)],
+  lineOffsets: [{ x: 0, y: 0 }],
   previewColor: COLOR_PRESETS[2].hex,
   outlineEnabled: false,
   outlineGrowMm: 3,
@@ -47,7 +50,11 @@ interface TopperStore extends TopperConfig {
   setStickOffset: (pickId: PickId, index: number, offset: StickOffset) => void;
   addStick: (pickId: PickId) => void;
   removeStick: (pickId: PickId, index: number) => void;
-  setLetterGap: (index: number, gapMm: number) => void;
+  setLineText: (index: number, text: string) => void;
+  addLine: () => void;
+  removeLine: (index: number) => void;
+  setLineOffset: (index: number, offset: StickOffset) => void;
+  setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
   reset: () => void;
@@ -58,16 +65,15 @@ export const useTopperStore = create<TopperStore>((set) => ({
   setConfig: (partial) =>
     set((state) => {
       // Per-letter gap tweaks and manually-closed outline holes are both a
-      // fine-tuning pass keyed by letter index over a specific string of text
-      // (and, for holes, a specific font's glyph shapes) — re-mapping either
-      // onto an edited word or font is ambiguous, so both reset rather than
-      // risk stale/misapplied overrides.
-      const wordChanged = partial.word !== undefined && partial.word !== state.word;
+      // fine-tuning pass keyed by letter position over specific glyph shapes —
+      // re-mapping either onto a new font is ambiguous, so both reset rather
+      // than risk stale/misapplied overrides. (Editing a line's own text is
+      // handled by setLineText below, which resets just that line.)
       const fontChanged = partial.wordFontId !== undefined && partial.wordFontId !== state.wordFontId;
-      if (wordChanged || fontChanged) {
+      if (fontChanged) {
         return {
           ...partial,
-          letterGapsMm: wordChanged ? defaultLetterGaps(partial.word!) : state.letterGapsMm,
+          letterGapsMm: state.lines.map((line) => defaultLetterGaps(line)),
           closedOutlineHoles: [],
         };
       }
@@ -101,11 +107,46 @@ export const useTopperStore = create<TopperStore>((set) => ({
       if (existing.length <= 1) return {}; // always keep at least one stick per pick
       return { stickOffsets: { ...state.stickOffsets, [pickId]: existing.filter((_, i) => i !== index) } };
     }),
-  setLetterGap: (index, gapMm) =>
+  setLineText: (index, text) =>
     set((state) => ({
-      letterGapsMm: state.letterGapsMm.map((existing, i) => (i === index ? gapMm : existing)),
+      lines: state.lines.map((line, i) => (i === index ? text : line)),
+      // A different string at this line invalidates its own gap overrides
+      // (and any hole the checklist attributed to one of its letters), but
+      // every other line is unaffected.
+      letterGapsMm: state.letterGapsMm.map((gaps, i) => (i === index ? defaultLetterGaps(text) : gaps)),
+      closedOutlineHoles: state.closedOutlineHoles.filter((key) => !key.startsWith(`line-${index}-`)),
     })),
-  resetLetterGaps: () => set((state) => ({ letterGapsMm: defaultLetterGaps(state.word) })),
+  addLine: () =>
+    set((state) => {
+      if (state.lines.length >= MAX_LINES) return {};
+      return {
+        lines: [...state.lines, ''],
+        letterGapsMm: [...state.letterGapsMm, []],
+        lineOffsets: [...state.lineOffsets, { x: 0, y: 0 }],
+      };
+    }),
+  removeLine: (index) =>
+    set((state) => {
+      if (state.lines.length <= 1) return {}; // always keep at least one line
+      return {
+        lines: state.lines.filter((_, i) => i !== index),
+        letterGapsMm: state.letterGapsMm.filter((_, i) => i !== index),
+        lineOffsets: state.lineOffsets.filter((_, i) => i !== index),
+        // Every closed-hole key at or after the removed line either no longer
+        // applies or now refers to the wrong (shifted) line index — simplest
+        // and safest is to drop them all rather than risk a mismatched one.
+        closedOutlineHoles: [],
+      };
+    }),
+  setLineOffset: (index, offset) =>
+    set((state) => ({
+      lineOffsets: state.lineOffsets.map((existing, i) => (i === index ? offset : existing)),
+    })),
+  setLetterGap: (lineIndex, gapIndex, gapMm) =>
+    set((state) => ({
+      letterGapsMm: state.letterGapsMm.map((gaps, i) => (i === lineIndex ? gaps.map((existing, gi) => (gi === gapIndex ? gapMm : existing)) : gaps)),
+    })),
+  resetLetterGaps: () => set((state) => ({ letterGapsMm: state.lines.map((line) => defaultLetterGaps(line)) })),
   toggleClosedOutlineHole: (key) =>
     set((state) => ({
       closedOutlineHoles: state.closedOutlineHoles.includes(key)
@@ -115,16 +156,16 @@ export const useTopperStore = create<TopperStore>((set) => ({
   reset: () => set(DEFAULT_CONFIG),
 }));
 
-/** The subset that drives the expensive async geometry build — excludes stick and letter-gap fields on purpose. */
+/** The subset that drives the expensive async geometry build — excludes stick and letter-gap/line-offset fields on purpose. */
 export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig {
-  const { word, wordFontId, sizeMm, extrudeDepthMm } = state;
-  return { word, wordFontId, sizeMm, extrudeDepthMm };
+  const { lines, wordFontId, sizeMm, extrudeDepthMm } = state;
+  return { lines, wordFontId, sizeMm, extrudeDepthMm };
 }
 
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
 export function selectTopperConfig(state: TopperStore): TopperConfig {
   const {
-    word,
+    lines,
     wordFontId,
     sizeMm,
     extrudeDepthMm,
@@ -133,6 +174,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     stickEmbedMm,
     stickOffsets,
     letterGapsMm,
+    lineOffsets,
     previewColor,
     outlineEnabled,
     outlineGrowMm,
@@ -141,7 +183,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     closedOutlineHoles,
   } = state;
   return {
-    word,
+    lines,
     wordFontId,
     sizeMm,
     extrudeDepthMm,
@@ -150,6 +192,7 @@ export function selectTopperConfig(state: TopperStore): TopperConfig {
     stickEmbedMm,
     stickOffsets,
     letterGapsMm,
+    lineOffsets,
     previewColor,
     outlineEnabled,
     outlineGrowMm,

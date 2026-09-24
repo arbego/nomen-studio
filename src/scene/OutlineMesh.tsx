@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import type { Pick } from '../geometry/types';
+import type { Pick, StickOffset } from '../geometry/types';
 import { buildOutlineGeometry } from '../geometry/outline';
 
 interface OutlineMeshProps {
   pick: Pick;
   positionX: number;
-  letterGapsMm: number[];
+  letterGapsMm: number[][];
+  lineOffsets: StickOffset[];
   growMm: number;
   /** The card's own thickness — deliberately independent of the word's extrudeDepthMm, and normally shallower, so the letters (which start at the same z=0 base) visibly stand proud of it instead of being flush with (and so hidden behind) it. */
   depthMm: number;
@@ -15,15 +16,16 @@ interface OutlineMeshProps {
 }
 
 /**
- * A growable solid backing card under the word's current letter silhouettes —
- * purely derived/reactive (see geometry/outline.ts), with no drag
- * interaction of its own, unlike letters and sticks. Renders nothing when
- * there's nothing to show (not grown at all, or the word has no letters yet).
+ * A growable solid backing card wrapping every line's current letter
+ * silhouettes together — purely derived/reactive (see geometry/outline.ts),
+ * with no drag interaction of its own, unlike letters and sticks. Renders
+ * nothing when there's nothing to show (not grown at all, or the pick has no
+ * letters yet).
  */
-export function OutlineMesh({ pick, positionX, letterGapsMm, growMm, depthMm, color, closedOutlineHoles }: OutlineMeshProps) {
+export function OutlineMesh({ pick, positionX, letterGapsMm, lineOffsets, growMm, depthMm, color, closedOutlineHoles }: OutlineMeshProps) {
   const outline = useMemo(
-    () => buildOutlineGeometry(pick, letterGapsMm, growMm, depthMm, closedOutlineHoles),
-    [pick, letterGapsMm, growMm, depthMm, closedOutlineHoles],
+    () => buildOutlineGeometry(pick, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles),
+    [pick, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles],
   );
 
   if (!outline) {

@@ -12,7 +12,7 @@ interface OutlineControlsProps {
   onChangeDepth: (depthMm: number) => void;
   /** The word's own thickness — the card's height is capped here so it can never grow tall enough to become flush with (and so hide) the letters. */
   maxDepthMm: number;
-  /** Every counter hole (e.g. the "a" in a script font — see keyholeSplit.ts) currently detected at this growMm. */
+  /** Every counter hole (e.g. the "a" in a script font) currently detected at this growMm. */
   holeCandidates: OutlineHoleCandidate[];
   closedOutlineHoles: string[];
   onToggleHole: (key: string) => void;
@@ -94,14 +94,14 @@ export function OutlineControls({
                   return (
                     <label key={candidate.key} className="flex items-center justify-between text-sm text-stone-600">
                       <span>
-                        “{candidate.char}” (letter {candidate.letterIndex + 1})
+                        “{candidate.char}” (line {candidate.lineIndex + 1}, letter {candidate.letterIndex + 1})
                       </span>
                       <input
                         type="checkbox"
                         checked={closed}
                         onChange={() => onToggleHole(candidate.key)}
                         className="h-4 w-4 accent-stone-800"
-                        aria-label={`Fill the "${candidate.char}" hole (letter ${candidate.letterIndex + 1}) solid`}
+                        aria-label={`Fill the "${candidate.char}" hole (line ${candidate.lineIndex + 1}, letter ${candidate.letterIndex + 1}) solid`}
                       />
                     </label>
                   );

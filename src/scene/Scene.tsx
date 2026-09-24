@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Pick, PickId, StickOffset } from '../geometry/types';
-import { combinedLetterBounds } from '../geometry/letterLayout';
+import { combinedPickBounds } from '../geometry/letterLayout';
 import type { StickParams } from './PickMesh';
 import { PickMesh } from './PickMesh';
 import { OutlineMesh } from './OutlineMesh';
@@ -14,8 +14,10 @@ interface SceneProps {
   stickColor: string;
   stickOffsets: Record<PickId, StickOffset[]>;
   onStickOffsetCommit: (pickId: PickId, index: number, offset: StickOffset) => void;
-  letterGapsMm: number[];
-  onLetterGapCommit: (pickId: PickId, index: number, gapMm: number) => void;
+  letterGapsMm: number[][];
+  onLetterGapCommit: (pickId: PickId, lineIndex: number, gapIndex: number, gapMm: number) => void;
+  lineOffsets: StickOffset[];
+  onLineOffsetCommit: (pickId: PickId, lineIndex: number, offset: StickOffset) => void;
   outlineEnabled: boolean;
   outlineGrowMm: number;
   outlineColor: string;
@@ -32,6 +34,8 @@ export function Scene({
   onStickOffsetCommit,
   letterGapsMm,
   onLetterGapCommit,
+  lineOffsets,
+  onLineOffsetCommit,
   outlineEnabled,
   outlineGrowMm,
   outlineColor,
@@ -42,7 +46,7 @@ export function Scene({
     let cursor = 0;
     const positions: number[] = [];
     for (const pick of picks) {
-      const bb = combinedLetterBounds(pick.letters, letterGapsMm);
+      const bb = combinedPickBounds(pick, letterGapsMm, lineOffsets);
       const width = bb.max.x - bb.min.x;
       positions.push(cursor - bb.min.x);
       cursor += width + PICK_GAP_MM;
@@ -50,7 +54,7 @@ export function Scene({
     const totalWidth = cursor - PICK_GAP_MM;
     const centerOffset = totalWidth / 2;
     return positions.map((p) => p - centerOffset);
-  }, [picks, letterGapsMm]);
+  }, [picks, letterGapsMm, lineOffsets]);
 
   const wordIndex = picks.findIndex((p) => p.id === 'word');
   const wordPick = picks[wordIndex];
@@ -68,17 +72,20 @@ export function Scene({
           stickOffsets={stickOffsets[pick.id]}
           onStickOffsetCommit={(index, offset) => onStickOffsetCommit(pick.id, index, offset)}
           letterGapsMm={letterGapsMm}
-          onLetterGapCommit={(index, gapMm) => onLetterGapCommit(pick.id, index, gapMm)}
+          onLetterGapCommit={(lineIndex, gapIndex, gapMm) => onLetterGapCommit(pick.id, lineIndex, gapIndex, gapMm)}
+          lineOffsets={lineOffsets}
+          onLineOffsetCommit={(lineIndex, offset) => onLineOffsetCommit(pick.id, lineIndex, offset)}
         />
       ))}
       {outlineEnabled && wordPick && (
         // Shares the word's own positionX (not laid out side-by-side like a
-        // separate pick would be) so it visually surrounds the word instead
+        // separate pick would be) so it visually surrounds every line instead
         // of sitting next to it.
         <OutlineMesh
           pick={wordPick}
           positionX={layout[wordIndex] ?? 0}
           letterGapsMm={letterGapsMm}
+          lineOffsets={lineOffsets}
           growMm={outlineGrowMm}
           depthMm={outlineDepthMm}
           color={outlineColor}
