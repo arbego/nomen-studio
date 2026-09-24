@@ -3,12 +3,18 @@ import { SIZE_PRESETS_MM } from '../../store/topperStore';
 interface SizePickerProps {
   value: number;
   onChange: (sizeMm: number) => void;
+  depthMm: number;
+  onChangeDepth: (depthMm: number) => void;
 }
 
 const MIN_MM = 60;
 const MAX_MM = 250;
 
-export function SizePicker({ value, onChange }: SizePickerProps) {
+const MIN_DEPTH_MM = 0.5;
+const MAX_DEPTH_MM = 10;
+const DEPTH_STEP_MM = 0.25;
+
+export function SizePicker({ value, onChange, depthMm, onChangeDepth }: SizePickerProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Size (word width)</span>
@@ -40,6 +46,22 @@ export function SizePicker({ value, onChange }: SizePickerProps) {
         />
         <span className="w-16 shrink-0 text-right text-sm tabular-nums text-stone-600">{value} mm</span>
       </div>
+
+      <label className="flex flex-col gap-1.5 pt-2">
+        <div className="flex items-center justify-between text-sm text-stone-600">
+          <span>Height</span>
+          <span className="tabular-nums text-stone-400">{depthMm} mm</span>
+        </div>
+        <input
+          type="range"
+          min={MIN_DEPTH_MM}
+          max={MAX_DEPTH_MM}
+          step={DEPTH_STEP_MM}
+          value={depthMm}
+          onChange={(e) => onChangeDepth(Number(e.target.value))}
+          className="h-1.5 accent-stone-800"
+        />
+      </label>
     </div>
   );
 }

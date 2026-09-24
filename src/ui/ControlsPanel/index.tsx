@@ -54,7 +54,12 @@ export function ControlsPanel({
           )}
         </p>
 
-        <SizePicker value={config.sizeMm} onChange={(sizeMm) => onChange({ sizeMm })} />
+        <SizePicker
+          value={config.sizeMm}
+          onChange={(sizeMm) => onChange({ sizeMm })}
+          depthMm={config.extrudeDepthMm}
+          onChangeDepth={(extrudeDepthMm) => onChange({ extrudeDepthMm })}
+        />
         <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
         <StickControls
           widthMm={config.stickWidthMm}

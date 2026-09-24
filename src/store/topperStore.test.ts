@@ -35,4 +35,16 @@ describe('topperStore', () => {
     useTopperStore.getState().setConfig({ sizeMm: 120 });
     expect(useTopperStore.getState().letterGapsMm[0]).toBe(-2);
   });
+
+  it('shrinking the word thinner than the outline card shrinks the card down to match', () => {
+    useTopperStore.getState().setConfig({ outlineDepthMm: 2 });
+    useTopperStore.getState().setConfig({ extrudeDepthMm: 1 });
+    expect(useTopperStore.getState().outlineDepthMm).toBe(1);
+  });
+
+  it('shrinking the word while still thicker than the outline card leaves the card alone', () => {
+    useTopperStore.getState().setConfig({ outlineDepthMm: 1 });
+    useTopperStore.getState().setConfig({ extrudeDepthMm: 2.5 });
+    expect(useTopperStore.getState().outlineDepthMm).toBe(1);
+  });
 });

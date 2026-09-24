@@ -71,6 +71,13 @@ export const useTopperStore = create<TopperStore>((set) => ({
           closedOutlineHoles: [],
         };
       }
+      // The outline card's own thickness is capped at the word's (see
+      // OutlineControls' maxDepthMm) so it can never grow flush with (and hide)
+      // the letters — shrinking the word below the card's current thickness
+      // would silently break that invariant unless the card shrinks with it.
+      if (partial.extrudeDepthMm !== undefined && partial.extrudeDepthMm < state.outlineDepthMm) {
+        return { ...partial, outlineDepthMm: partial.extrudeDepthMm };
+      }
       return partial;
     }),
   setStickOffset: (pickId, index, offset) =>
