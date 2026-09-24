@@ -106,10 +106,11 @@ describe('clampStickOffsetToBounds', () => {
 
   it('clamps y so the whole embed depth stays within the piece, and allows attaching below the piece', () => {
     const main = box3(-20, 20, -5, 5);
-    // embed=2: attach point y can range from the piece's bottom (-5) up to (top - embed) = 5-2=3
-    expect(clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 2).y).toBeCloseTo(3, 5);
-    expect(clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 2).y).toBeCloseTo(-5, 5);
-    expect(clampStickOffsetToBounds(main, { x: 0, y: 1 }, 4, 2).y).toBeCloseTo(1, 5);
+    // embed=1 (at MIN_Y_OVERLAP_MM, so the full embed must fit): attach point y
+    // can range from the piece's bottom (-5) up to (top - embed) = 5-1=4
+    expect(clampStickOffsetToBounds(main, { x: 0, y: 1000 }, 4, 1).y).toBeCloseTo(4, 5);
+    expect(clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 1).y).toBeCloseTo(-5, 5);
+    expect(clampStickOffsetToBounds(main, { x: 0, y: 1 }, 4, 1).y).toBeCloseTo(1, 5);
   });
 
   it('only requires a small minimum overlap near the top, not the full embed depth, so a tall embed still leaves real drag room', () => {
@@ -129,7 +130,7 @@ describe('clampStickOffsetToBounds', () => {
     const clamped = clampStickOffsetToBounds(main, { x: 0, y: -1000 }, 4, 15);
     expect(clamped.y).toBeLessThan(-5); // real room below the piece's bottom edge
     // the embedded interval [y, y+15] must still overlap the piece by >= MIN_Y_OVERLAP_MM
-    expect(clamped.y + 15).toBeGreaterThanOrEqual(5 - 1e-6);
+    expect(clamped.y + 15).toBeGreaterThanOrEqual(1 - 1e-6);
   });
 
   it('falls back to centering on an axis where the piece is smaller than the stick needs', () => {

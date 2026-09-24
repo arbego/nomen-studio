@@ -21,8 +21,18 @@ const DEFAULT_OFFSET: StickOffset = { x: 0, y: 0 };
 // vertical dragging feel broken even though it worked. A smaller minimum overlap
 // is enough for a solid bond and gives the drag much more usable range — the
 // generated stick still always uses the full embedMm, only the allowed *range of
-// attach points* is more permissive near the top edge.
-const MIN_Y_OVERLAP_MM = 5;
+// attach points* is more permissive near the top and bottom edges.
+//
+// This is the single knob that bounds how far below (or above) the piece the
+// attach point can go: max travel = embedMm - MIN_Y_OVERLAP_MM, since the
+// embedded interval can never be longer than embedMm itself. A larger overlap
+// requirement here directly eats into that travel — e.g. the old 5mm value
+// capped downward drag to just 10mm below the piece on a 15mm embed, which
+// still read as "stuck" almost immediately. 1mm is enough to keep the stick
+// genuinely bonded (this is a coarse bounding-box heuristic, not a precise
+// solid-overlap check, so demanding more precision here buys little) while
+// leaving nearly the full embedMm as real, usable drag range.
+const MIN_Y_OVERLAP_MM = 1;
 // However short a stick's computed length ends up after leveling (see
 // stickLengthForLevelTip below), it must still stick out past its embed
 // portion by a real, printable amount.
