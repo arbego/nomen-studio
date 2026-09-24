@@ -50,6 +50,7 @@ interface TopperStore extends TopperConfig {
   setStickOffset: (pickId: PickId, index: number, offset: StickOffset) => void;
   addStick: (pickId: PickId) => void;
   removeStick: (pickId: PickId, index: number) => void;
+  setSticksEnabled: (pickId: PickId, enabled: boolean) => void;
   setLineText: (index: number, text: string) => void;
   addLine: () => void;
   removeLine: (index: number) => void;
@@ -104,8 +105,18 @@ export const useTopperStore = create<TopperStore>((set) => ({
   removeStick: (pickId, index) =>
     set((state) => {
       const existing = state.stickOffsets[pickId];
-      if (existing.length <= 1) return {}; // always keep at least one stick per pick
+      if (existing.length <= 0) return {};
       return { stickOffsets: { ...state.stickOffsets, [pickId]: existing.filter((_, i) => i !== index) } };
+    }),
+  setSticksEnabled: (pickId, enabled) =>
+    set((state) => {
+      const existing = state.stickOffsets[pickId];
+      if (enabled) {
+        if (existing.length > 0) return {};
+        return { stickOffsets: { ...state.stickOffsets, [pickId]: [{ x: 0, y: 0 }] } };
+      }
+      if (existing.length === 0) return {};
+      return { stickOffsets: { ...state.stickOffsets, [pickId]: [] } };
     }),
   setLineText: (index, text) =>
     set((state) => ({

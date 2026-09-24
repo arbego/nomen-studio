@@ -16,6 +16,7 @@ interface ControlsPanelProps {
   error: string | null;
   onAddStick: (pickId: PickId) => void;
   onRemoveStick: (pickId: PickId, index: number) => void;
+  onSetSticksEnabled: (pickId: PickId, enabled: boolean) => void;
   onChangeLine: (index: number, text: string) => void;
   onAddLine: () => void;
   onRemoveLine: (index: number) => void;
@@ -31,6 +32,7 @@ export function ControlsPanel({
   error,
   onAddStick,
   onRemoveStick,
+  onSetSticksEnabled,
   onChangeLine,
   onAddLine,
   onRemoveLine,
@@ -45,35 +47,40 @@ export function ControlsPanel({
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div>
-        <h1 className="text-lg font-semibold text-stone-900">Cake Topper Studio</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900">Cake Topper Studio</h1>
         <p className="text-sm text-stone-500">Design a personalized topper and export it print-ready.</p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} />
-        <FontPicker
-          label="Name font"
-          value={config.wordFontId}
-          onChange={(wordFontId) => onChange({ wordFontId })}
-          previewText={config.lines[0] || 'Emma'}
-        />
-        <p className="-mt-2 flex items-center justify-between text-xs text-stone-400">
-          <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
-          {hasCustomLetterGaps && (
-            <button type="button" onClick={onResetLetterGaps} className="text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
-              Reset spacing
-            </button>
-          )}
-        </p>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} />
+          <FontPicker
+            label="Font"
+            value={config.wordFontId}
+            onChange={(wordFontId) => onChange({ wordFontId })}
+            previewText={config.lines[0] || 'Emma'}
+          />
+          <p className="-mt-2 flex items-center justify-between text-xs text-stone-400">
+            <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
+            {hasCustomLetterGaps && (
+              <button type="button" onClick={onResetLetterGaps} className="text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+                Reset spacing
+              </button>
+            )}
+          </p>
+        </div>
 
         <SizePicker
           value={config.sizeMm}
           onChange={(sizeMm) => onChange({ sizeMm })}
           depthMm={config.extrudeDepthMm}
           onChangeDepth={(extrudeDepthMm) => onChange({ extrudeDepthMm })}
+          className="border-t border-stone-100 pt-5"
         />
-        <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
+        <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} className="border-t border-stone-100 pt-5" />
         <StickControls
+          enabled={config.stickOffsets.word.length > 0}
+          onChangeEnabled={(enabled) => onSetSticksEnabled('word', enabled)}
           widthMm={config.stickWidthMm}
           lengthMm={config.stickLengthMm}
           onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
@@ -81,6 +88,7 @@ export function ControlsPanel({
           stickCounts={{ word: config.stickOffsets.word.length }}
           onAddStick={onAddStick}
           onRemoveStick={(pickId) => onRemoveStick(pickId, config.stickOffsets[pickId].length - 1)}
+          className="border-t border-stone-100 pt-5"
         />
         <OutlineControls
           enabled={config.outlineEnabled}
@@ -95,6 +103,7 @@ export function ControlsPanel({
           holeCandidates={outlineHoleCandidates}
           closedOutlineHoles={config.closedOutlineHoles}
           onToggleHole={onToggleClosedOutlineHole}
+          className="border-t border-stone-100 pt-5"
         />
       </div>
 

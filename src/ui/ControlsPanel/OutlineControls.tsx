@@ -16,6 +16,7 @@ interface OutlineControlsProps {
   holeCandidates: OutlineHoleCandidate[];
   closedOutlineHoles: string[];
   onToggleHole: (key: string) => void;
+  className?: string;
 }
 
 const GROW_RANGE = { min: 0.5, max: 20, step: 0.5 };
@@ -34,11 +35,12 @@ export function OutlineControls({
   holeCandidates,
   closedOutlineHoles,
   onToggleHole,
+  className = '',
 }: OutlineControlsProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Outline card</span>
+        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Outline card</span>
         <input
           type="checkbox"
           checked={enabled}
@@ -83,7 +85,7 @@ export function OutlineControls({
               className="h-1.5 accent-stone-800"
             />
           </label>
-          <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} />
+          <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} variant="field" />
           {holeCandidates.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <span className="text-sm text-stone-600">Counter holes</span>

@@ -13,7 +13,7 @@ const MAX_LINES = 3;
 export function LinesControls({ lines, onChangeLine, onAddLine, onRemoveLine }: LinesControlsProps) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Name</span>
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Text</span>
       <div className="flex flex-col gap-2">
         {lines.map((line, index) => (
           <div key={index} className="flex items-end gap-2">

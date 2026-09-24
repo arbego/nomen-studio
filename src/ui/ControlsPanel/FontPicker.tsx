@@ -93,7 +93,7 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</span>
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">{label}</span>
       <div className="flex flex-wrap gap-2">
         {FONT_REGISTRY.map((font) => (
           <button

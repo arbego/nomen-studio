@@ -13,6 +13,7 @@ function App() {
   const setStickOffset = useTopperStore((s) => s.setStickOffset);
   const addStick = useTopperStore((s) => s.addStick);
   const removeStick = useTopperStore((s) => s.removeStick);
+  const setSticksEnabled = useTopperStore((s) => s.setSticksEnabled);
   const setLineText = useTopperStore((s) => s.setLineText);
   const addLine = useTopperStore((s) => s.addLine);
   const removeLine = useTopperStore((s) => s.removeLine);
@@ -49,6 +50,7 @@ function App() {
           error={error}
           onAddStick={addStick}
           onRemoveStick={removeStick}
+          onSetSticksEnabled={setSticksEnabled}
           onChangeLine={setLineText}
           onAddLine={addLine}
           onRemoveLine={removeLine}

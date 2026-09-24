@@ -5,6 +5,7 @@ interface SizePickerProps {
   onChange: (sizeMm: number) => void;
   depthMm: number;
   onChangeDepth: (depthMm: number) => void;
+  className?: string;
 }
 
 const MIN_MM = 60;
@@ -14,10 +15,10 @@ const MIN_DEPTH_MM = 0.5;
 const MAX_DEPTH_MM = 10;
 const DEPTH_STEP_MM = 0.25;
 
-export function SizePicker({ value, onChange, depthMm, onChangeDepth }: SizePickerProps) {
+export function SizePicker({ value, onChange, depthMm, onChangeDepth, className = '' }: SizePickerProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Size (word width)</span>
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Size (word width)</span>
       <div className="flex flex-wrap gap-2">
         {SIZE_PRESETS_MM.map((preset) => (
           <button
