@@ -21,13 +21,13 @@ export function StickControls({ widthMm, lengthMm, onChangeWidth, onChangeLength
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Stick</span>
+      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">Sticks</span>
       <p className="text-xs text-stone-400">Drag a stick in the preview to reposition it.</p>
 
       <div className="flex flex-col gap-2">
         {pickIds.map((pickId) => (
           <div key={pickId} className="flex items-center justify-between text-sm text-stone-600">
-            <span>{PICK_LABELS[pickId]} sticks</span>
+            <span>Sticks amount</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
