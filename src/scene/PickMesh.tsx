@@ -3,7 +3,14 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { Pick, StickOffset } from '../geometry/types';
-import { combinedPickBounds, cumulativeGaps, normalizedLetterGaps, clampDesiredLetterPosition, gapForDesiredPosition } from '../geometry/letterLayout';
+import {
+  combinedPickBounds,
+  cumulativeGaps,
+  normalizedLetterGaps,
+  clampDesiredLetterPosition,
+  gapForDesiredPosition,
+  letterPositionsMm,
+} from '../geometry/letterLayout';
 import { localDragPoint } from './dragUtils';
 import { StickMesh } from './StickMesh';
 import { LetterMesh } from './LetterMesh';
@@ -72,6 +79,13 @@ export function PickMesh({
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
   const [draggingGap, setDraggingGap] = useState<DraggingGap | null>(null);
   const [draggingLine, setDraggingLine] = useState<DraggingLine | null>(null);
+  // The delta between where the pointer first landed and the thing being
+  // dragged's position at that moment (a gap-drag's letter, or a line-drag's
+  // offset) — captured once on pointer down and held constant for the rest of
+  // the drag. Without it, the dragged thing would snap to align exactly with
+  // wherever on it you happened to click, instead of keeping the relationship
+  // it had to the cursor at grab time.
+  const grabDeltaRef = useRef<StickOffset>({ x: 0, y: 0 });
 
   const naturalXsMmByLine = useMemo(() => pick.lines.map((line) => line.letters.map((letter) => letter.naturalXMm)), [pick.lines]);
   const gapsByLine = useMemo(
@@ -90,7 +104,7 @@ export function PickMesh({
     [pick, effectiveGapsByLine, effectiveLineOffsets],
   );
 
-  function updateGapDrag(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
+  function updateGapDrag(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>, isInitial: boolean) {
     const reference = groupRef.current;
     if (!reference) return;
     const point = localDragPoint(event, reference);
@@ -98,22 +112,36 @@ export function PickMesh({
     const offset = lineOffsets[lineIndex] ?? { x: 0, y: 0 };
     const naturalXsMm = naturalXsMmByLine[lineIndex];
     const gaps = gapsByLine[lineIndex];
+    // point.x is in the pick group's space, which already includes this
+    // line's own (committed) offset, so it's subtracted back out before
+    // solving in the line's own natural-position frame.
+    const pointInLineFrame = point.x - offset.x;
+    if (isInitial) {
+      // Grab delta = where the cursor landed minus the letter's own current
+      // (committed) position, so the very first drag frame reproduces that
+      // same current position exactly instead of snapping the letter to
+      // wherever on it was clicked.
+      const currentX = letterPositionsMm(naturalXsMm, gaps)[letterIndex];
+      grabDeltaRef.current = { x: pointInLineFrame - currentX, y: 0 };
+    }
     // Solved fresh from the last *committed* gaps every frame (not from the
     // previous drag frame's live value) — avoids compounding rounding error
-    // over a long drag. point.x is in the pick group's space, which already
-    // includes this line's own (committed) offset, so it's subtracted back
-    // out before solving in the line's own natural-position frame.
-    const desired = clampDesiredLetterPosition(letterIndex, point.x - offset.x, naturalXsMm, gaps);
+    // over a long drag.
+    const desired = clampDesiredLetterPosition(letterIndex, pointInLineFrame - grabDeltaRef.current.x, naturalXsMm, gaps);
     const gapMm = gapForDesiredPosition(letterIndex, desired, naturalXsMm, gaps);
     setDraggingGap({ lineIndex, gapIndex: letterIndex - 1, gapMm });
   }
 
-  function updateLineDrag(lineIndex: number, event: ThreeEvent<PointerEvent>) {
+  function updateLineDrag(lineIndex: number, event: ThreeEvent<PointerEvent>, isInitial: boolean) {
     const reference = groupRef.current;
     if (!reference) return;
     const point = localDragPoint(event, reference);
     if (!point) return;
-    setDraggingLine({ lineIndex, offset: { x: point.x, y: point.y } });
+    if (isInitial) {
+      const current = lineOffsets[lineIndex] ?? { x: 0, y: 0 };
+      grabDeltaRef.current = { x: point.x - current.x, y: point.y - current.y };
+    }
+    setDraggingLine({ lineIndex, offset: { x: point.x - grabDeltaRef.current.x, y: point.y - grabDeltaRef.current.y } });
   }
 
   function handlePointerDown(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
@@ -122,9 +150,9 @@ export function PickMesh({
     // eslint-disable-next-line react/immutability -- controls is a live Three.js object from useThree, not React state
     if (controls) controls.enabled = false;
     if (letterIndex === 0) {
-      updateLineDrag(lineIndex, event);
+      updateLineDrag(lineIndex, event, true);
     } else {
-      updateGapDrag(lineIndex, letterIndex, event);
+      updateGapDrag(lineIndex, letterIndex, event, true);
     }
   }
 
@@ -132,11 +160,11 @@ export function PickMesh({
     if (letterIndex === 0) {
       if (!draggingLine || draggingLine.lineIndex !== lineIndex) return;
       event.stopPropagation();
-      updateLineDrag(lineIndex, event);
+      updateLineDrag(lineIndex, event, false);
     } else {
       if (!draggingGap || draggingGap.lineIndex !== lineIndex) return;
       event.stopPropagation();
-      updateGapDrag(lineIndex, letterIndex, event);
+      updateGapDrag(lineIndex, letterIndex, event, false);
     }
   }
 

@@ -191,9 +191,11 @@ describe('Scene (React Three Fiber wiring)', () => {
     // liveOffset set on pointer down) produces fresh handler closures on
     // re-render — reusing a handler captured before that update would still
     // see the old (stale) liveOffset.
-    act(() => (findStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 10, 5)));
+    // Grabbed at its current (default) offset — no jump — then dragged to (10, 5).
+    act(() => (findStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
     expect(onStickOffsetCommit).not.toHaveBeenCalled(); // only commits on release
 
+    act(() => (findStick().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 10, 5)));
     act(() => (findStick().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 10, 5)));
 
     expect(onStickOffsetCommit).toHaveBeenCalledTimes(1);
@@ -210,6 +212,45 @@ describe('Scene (React Three Fiber wiring)', () => {
     expect(offset.y).toBeCloseTo(expected.y, 5);
   }, 30000);
 
+  it('does not jump a stick to the clicked point on grab — clicking anywhere on it and releasing without moving commits its unchanged offset', async () => {
+    // Regression test: grabbing an object used to snap its offset to exactly
+    // the clicked point, which is essentially never (0, 0) on the object's
+    // own body — producing a visible jump on every grab, even with no drag
+    // motion at all. Clicking far from the stick's own offset origin and
+    // releasing immediately, with no move in between, must not move it.
+    const onStickOffsetCommit = vi.fn();
+    const { renderer, picks } = await renderScene(onStickOffsetCommit);
+    const wordPick = picks.find((p) => p.id === 'word')!;
+    const letterCount = allLetters(wordPick).length;
+
+    const findStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+
+    act(() => (findStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 30, 40)));
+    act(() => (findStick().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 30, 40)));
+
+    expect(onStickOffsetCommit).toHaveBeenCalledTimes(1);
+    const [, , offset] = onStickOffsetCommit.mock.calls[0];
+    expect(offset).toEqual(config.stickOffsets.word[0]); // unchanged
+  }, 30000);
+
+  it('does not jump a letter-gap drag on grab — clicking anywhere on the letter and releasing without moving leaves its gap unchanged', async () => {
+    const onLetterGapCommit = vi.fn();
+    const { renderer, picks } = await renderScene(undefined, config.stickOffsets, config.letterGapsMm, onLetterGapCommit);
+    const letterCount = allLetters(picks[0]).length;
+    const findLetter1 = () => findLetterMeshes(findPickGroups(renderer)[0], letterCount)[1];
+    const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
+
+    // Click somewhere clearly off the letter's own natural anchor point, and
+    // release without moving — the resulting gap must be exactly 0 (unchanged).
+    act(() => (findLetter1().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 999, 0)));
+    act(() => (findLetter1().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 999, 0)));
+
+    expect(onLetterGapCommit).toHaveBeenCalledTimes(1);
+    const [, , , gapMm] = onLetterGapCommit.mock.calls[0];
+    expect(gapMm).toBeCloseTo(0, 5);
+  }, 30000);
+
   it('tracks pointer movement live between down and up, without committing until release', async () => {
     const onStickOffsetCommit = vi.fn();
     const { renderer, picks } = await renderScene(onStickOffsetCommit);
@@ -219,7 +260,7 @@ describe('Scene (React Three Fiber wiring)', () => {
     const findStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[0];
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
 
-    act(() => (findStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 2, 2)));
+    act(() => (findStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
     act(() => (findStick().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 18, 3)));
     expect(onStickOffsetCommit).not.toHaveBeenCalled();
 
@@ -247,7 +288,9 @@ describe('Scene (React Three Fiber wiring)', () => {
     const groupObject = wordGroup.instance as unknown as THREE.Object3D;
     const findSecondStick = () => findStickMeshes(findPickGroups(renderer)[0], letterCount)[1];
 
-    act(() => (findSecondStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 25, 0)));
+    // Grabbed at its current offset (20, 0) — no jump — then dragged to (25, 0).
+    act(() => (findSecondStick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 0)));
+    act(() => (findSecondStick().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 25, 0)));
     act(() => (findSecondStick().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 25, 0)));
 
     expect(onStickOffsetCommit).toHaveBeenCalledTimes(1);
@@ -264,7 +307,9 @@ describe('Scene (React Three Fiber wiring)', () => {
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
     expect(firstLetter.props.onPointerDown).toBeDefined();
 
-    act(() => (firstLetter.props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 5, -12)));
+    // Grabbed at the line's current (default) offset (0, 0) — no jump — then dragged to (5, -12).
+    act(() => (firstLetter.props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
+    act(() => (firstLetter.props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 5, -12)));
     act(() => (firstLetter.props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 5, -12)));
 
     expect(onLineOffsetCommit).toHaveBeenCalledTimes(1);
@@ -286,9 +331,11 @@ describe('Scene (React Three Fiber wiring)', () => {
     const groupObject = findPickGroups(renderer)[0].instance as unknown as THREE.Object3D;
     const desiredX = naturalXsMm[1] - 3; // pull letter 1 three mm closer to letter 0
 
-    act(() => (findLetter1().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
+    // Grabbed at the letter's current (natural) position — no jump — then dragged to desiredX.
+    act(() => (findLetter1().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[1], 0)));
     expect(onLetterGapCommit).not.toHaveBeenCalled(); // only commits on release
 
+    act(() => (findLetter1().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
     act(() => (findLetter1().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
 
     expect(onLetterGapCommit).toHaveBeenCalledTimes(1);
@@ -312,7 +359,9 @@ describe('Scene (React Three Fiber wiring)', () => {
     const meshPositionX = (mesh: ReturnType<typeof findLetter>) => (mesh.instance as unknown as { position: { x: number } }).position.x;
 
     const desiredX = naturalXsMm[1] + 6; // push letter 1 to the right, opening its gap
-    act(() => (findLetter(1).props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
+    // Grabbed at the letter's current (natural) position — no jump — then dragged to desiredX.
+    act(() => (findLetter(1).props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, naturalXsMm[1], 0)));
+    act(() => (findLetter(1).props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, desiredX, 0)));
 
     const draggedDelta = meshPositionX(findLetter(1));
     expect(draggedDelta).toBeCloseTo(desiredX - naturalXsMm[1], 3);

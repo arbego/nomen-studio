@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
@@ -36,6 +36,12 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
   const [hovered, setHovered] = useState(false);
   const [liveOffset, setLiveOffset] = useState<StickOffset | null>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
+  // The (x, y) delta between where the pointer first landed and the stick's
+  // offset at that moment — captured once on pointer down and held constant
+  // for the rest of the drag, so the stick keeps whatever relationship it had
+  // to the cursor at grab time instead of snapping its offset to exactly the
+  // clicked point (which is almost never (0, 0) on the stick's own body).
+  const grabDeltaRef = useRef<StickOffset>({ x: 0, y: 0 });
 
   const currentOffset = liveOffset ?? offset;
 
@@ -49,7 +55,7 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
     const reference = referenceObject.current;
     if (!reference) return;
     const point = localDragPoint(event, reference);
-    if (point) setLiveOffset({ x: point.x, y: point.y });
+    if (point) setLiveOffset({ x: point.x - grabDeltaRef.current.x, y: point.y - grabDeltaRef.current.y });
   }
 
   function handlePointerDown(event: ThreeEvent<PointerEvent>) {
@@ -61,7 +67,10 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
     // eslint-disable-next-line react/immutability -- see above
     if (controls) controls.enabled = false;
     setCursor('grabbing');
-    updateLiveOffset(event);
+    const reference = referenceObject.current;
+    const point = reference ? localDragPoint(event, reference) : null;
+    grabDeltaRef.current = point ? { x: point.x - offset.x, y: point.y - offset.y } : { x: 0, y: 0 };
+    setLiveOffset(offset);
   }
 
   function handlePointerMove(event: ThreeEvent<PointerEvent>) {
