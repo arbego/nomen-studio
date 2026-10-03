@@ -109,11 +109,16 @@ export async function buildTextBlock(options: TextBlockOptions): Promise<TextBlo
     return { letters };
   });
 
-  // The *last* line's baseline, i.e. the lowest one — that's the one a
+  // The lowest baseline that actually carries glyphs — that's the one a
   // flat-bottom trim cuts at, since only the bottom line's descenders can dip
-  // below the piece's standing edge. With a single line this is just its own
-  // baseline (raw y = 0).
-  const lastLineRawY = (lines.length - 1) * lineHeightFontUnits;
+  // below the piece's standing edge. Trailing empty lines are skipped (the cake
+  // topper's "add line" starts one as ''), or the baseline would be reported a
+  // whole line height below anything that exists. With a single line this is
+  // just its own baseline (raw y = 0).
+  let lastGlyphLine = 0;
+  lines.forEach((line, i) => {
+    if (line.length > 0) lastGlyphLine = i;
+  });
 
-  return { id, label, lines: lineGeometries, baselineYMm: rawYToMm(lastLineRawY) };
+  return { id, label, lines: lineGeometries, baselineYMm: rawYToMm(lastGlyphLine * lineHeightFontUnits) };
 }

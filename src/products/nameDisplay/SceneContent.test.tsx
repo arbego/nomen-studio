@@ -4,7 +4,7 @@ import ReactThreeTestRenderer from '@react-three/test-renderer';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { NameDisplayScene } from './SceneContent';
-import { buildNameDisplay } from './geometry';
+import { assembleNameDisplay, buildNameDisplayBlocks } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -35,11 +35,12 @@ async function renderScene(
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
 ) {
   const merged = { ...config, ...overrides };
-  const built = await buildNameDisplay(merged);
+  const blocks = await buildNameDisplayBlocks(merged);
+  const assembly = assembleNameDisplay(blocks, merged);
   const renderer = await ReactThreeTestRenderer.create(
-    <NameDisplayScene built={built} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} />,
+    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} />,
   );
-  return { renderer, built, config: merged };
+  return { renderer, blocks, assembly, config: merged };
 }
 
 type TestInstance = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>['scene']['children'][number];
@@ -73,13 +74,13 @@ function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY:
 
 describe('NameDisplayScene (React Three Fiber wiring)', () => {
   it('renders the initial as one pocketed solid, in the initial color', async () => {
-    const { renderer, built } = await renderScene();
+    const { renderer, assembly } = await renderScene();
     const meshes = directMeshes(root(renderer));
     expect(meshes).toHaveLength(1); // no rail in 'none' mode
 
     const instance = meshes[0].instance as unknown as { material: { color: THREE.Color }; geometry: THREE.BufferGeometry };
     expect(instance.material.color.getHexString()).toBe('d9a9ab');
-    expect(instance.geometry).toBe(built.initialGeometry);
+    expect(instance.geometry).toBe(assembly.initialGeometry);
   }, 30000);
 
   it('renders one mesh per letter of the name, in the name color', async () => {
@@ -91,18 +92,33 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
   }, 30000);
 
   it('seats the name group at the pocket floor, so it sits in the recess', async () => {
-    const { renderer, built } = await renderScene();
+    const { renderer, assembly } = await renderScene();
     const group = nameGroup(root(renderer)).instance as unknown as THREE.Group;
     expect(group.position.x).toBeCloseTo(config.nameOffset.x, 5);
     expect(group.position.y).toBeCloseTo(config.nameOffset.y, 5);
-    expect(group.position.z).toBeCloseTo(built.nameZMm, 5);
-    expect(built.nameZMm).toBeCloseTo(12 - 2.5, 5);
+    expect(group.position.z).toBeCloseTo(assembly.nameZMm, 5);
+    expect(assembly.nameZMm).toBeCloseTo(12 - 2.5, 5);
   }, 30000);
 
   it('adds a base rail under each piece in rail mode', async () => {
     const { renderer } = await renderScene({ standMode: 'rail' });
-    // The initial's own mesh plus its rail, and the name's rail, are all direct children.
-    expect(directMeshes(root(renderer))).toHaveLength(3);
+    // The initial's own mesh plus the rail under it.
+    expect(directMeshes(root(renderer))).toHaveLength(2);
+    // The name's rail is the second group, placed like the name itself.
+    expect(root(renderer).children.filter((c) => c.type === 'Group')).toHaveLength(2);
+  }, 30000);
+
+  it("puts the name's rail at the name's own depth, not behind it", async () => {
+    const { renderer, assembly } = await renderScene({ standMode: 'rail' });
+    const groups = root(renderer).children.filter((c) => c.type === 'Group');
+    const railGroup = groups[1].instance as unknown as THREE.Object3D;
+
+    // Built in the name's local frame, so it has to be placed by the same
+    // transform as the name — including sitting forward at the pocket floor.
+    // Left at the origin it would float behind the initial entirely.
+    expect(railGroup.position.z).toBeCloseTo(assembly.nameZMm, 5);
+    expect(railGroup.position.x).toBeCloseTo(config.nameOffset.x, 5);
+    expect(railGroup.position.y).toBeCloseTo(config.nameOffset.y, 5);
   }, 30000);
 
   it('commits a drag of the name as an absolute offset, not a relative one', async () => {

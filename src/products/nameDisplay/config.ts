@@ -4,8 +4,13 @@ import type { StandMode } from '../../geometry/baseGeometry';
 /** The two pieces: a large background initial, and the script name inlaid into its face. */
 export type NameDisplayBlockId = 'initial' | 'name';
 
-/** The fields that drive the expensive, async, font-dependent build. */
-export interface NameDisplayGeometryConfig {
+/**
+ * The fields that drive the expensive, async, font-dependent build — the ones
+ * that change the glyphs themselves. Where the name sits, its letter gaps, the
+ * pocket and the base rail are all deliberately excluded, so dragging the name
+ * never re-runs font extrusion; see NameDisplayAssemblyConfig.
+ */
+export interface NameDisplayBlocksConfig {
   /** The big background letter. A single character — a monogram, not a word. */
   initial: string;
   initialFontId: string;
@@ -19,6 +24,15 @@ export interface NameDisplayGeometryConfig {
   nameFontId: string;
   nameWidthMm: number;
   nameDepthMm: number;
+
+  /** A flat-bottom trim is here, not in the assembly config, because unlike the other standing modes it re-cuts the glyph silhouettes themselves. */
+  standMode: StandMode;
+  /** Shifts a flat-bottom trim off the typographic baseline — positive cuts higher. */
+  trimOffsetMm: number;
+}
+
+/** The fields applied synchronously on top of the built blocks — all cheap enough to re-run on every drag commit. */
+export interface NameDisplayAssemblyConfig {
   /** Where the name sits on the initial, in the initial's own local mm space — draggable in the preview. */
   nameOffset: Offset2D;
   /** Extra per-letter-gap shift within the name, exactly as the cake topper's letterGapsMm works (one array, since the name is a single line). */
@@ -33,15 +47,12 @@ export interface NameDisplayGeometryConfig {
   /** Fit tolerance: the pocket is cut this much larger than the name all round, so the printed pieces actually go together. */
   pocketClearanceMm: number;
 
-  standMode: StandMode;
   railHeightMm: number;
   railDepthMm: number;
   railMarginMm: number;
-  /** Shifts a flat-bottom trim off the typographic baseline — positive cuts higher. */
-  trimOffsetMm: number;
 }
 
-export interface NameDisplayConfig extends NameDisplayGeometryConfig {
+export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayAssemblyConfig {
   /** Cosmetic only — the physical colors come from the two filaments. */
   initialColor: string;
   nameColor: string;

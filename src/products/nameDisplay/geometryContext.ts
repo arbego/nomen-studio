@@ -1,11 +1,19 @@
 import { createContext, useContext } from 'react';
-import type { AsyncGeometryState } from '../../hooks/useAsyncGeometry';
-import type { NameDisplayGeometry } from './geometry';
+import type { NameDisplayAssembly, NameDisplayBlocks } from './geometry';
 
-const EMPTY: AsyncGeometryState<NameDisplayGeometry> = { result: null, loading: true, error: null };
+export interface NameDisplayState {
+  /** The font-built pieces, or null while the first build is in flight. */
+  blocks: NameDisplayBlocks | null;
+  /** The pocket and seating, recomputed synchronously whenever the cheap config changes. */
+  assembly: NameDisplayAssembly | null;
+  loading: boolean;
+  error: string | null;
+}
 
-export const NameDisplayGeometryContext = createContext<AsyncGeometryState<NameDisplayGeometry>>(EMPTY);
+const EMPTY: NameDisplayState = { blocks: null, assembly: null, loading: true, error: null };
 
-export function useNameDisplayGeometry(): AsyncGeometryState<NameDisplayGeometry> {
+export const NameDisplayGeometryContext = createContext<NameDisplayState>(EMPTY);
+
+export function useNameDisplayGeometry(): NameDisplayState {
   return useContext(NameDisplayGeometryContext);
 }

@@ -10,35 +10,44 @@ function bounds(geometry: THREE.BufferGeometry): THREE.Box3 {
   return geometry.boundingBox!;
 }
 
+// A block whose descenders reach 6mm below its baseline.
+const BASELINE_Y = 6;
 const BLOCK_BOUNDS = new THREE.Box3(new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 80, 5));
 
 describe('baseRailGeometry', () => {
   it('spans the block plus the margin on each side', () => {
-    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })!;
+    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, baselineYMm: BASELINE_Y, heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })!;
     const bb = bounds(rail);
     expect(bb.min.x).toBeCloseTo(-56, 3);
     expect(bb.max.x).toBeCloseTo(56, 3);
   });
 
-  it('sits under the block and overlaps it, so the merge is a real bond', () => {
-    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })!;
+  it('tops out above the baseline, so every letter resting on it is bonded', () => {
+    // Anchoring to the block's lowest ink instead would put the rail under the
+    // descenders only, leaving letters like "P" and "e" floating above it.
+    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, baselineYMm: BASELINE_Y, heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })!;
     const bb = bounds(rail);
-    // Top is just inside the block's bottom; the full height hangs below it.
-    expect(bb.max.y).toBeGreaterThan(BLOCK_BOUNDS.min.y);
-    expect(bb.max.y - bb.min.y).toBeCloseTo(8, 3);
+    expect(bb.max.y).toBeGreaterThan(BASELINE_Y);
     expect(bb.min.y).toBeLessThan(BLOCK_BOUNDS.min.y);
   });
 
+  it('grows past its nominal height when descenders reach below it', () => {
+    // 2mm below a baseline at y=6 would stop at y=4, but the block's ink goes
+    // down to y=0 — the rail has to swallow it rather than let it poke out.
+    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, baselineYMm: BASELINE_Y, heightMm: 2, depthMm: 20, marginMm: 6, blockDepthMm: 5 })!;
+    expect(bounds(rail).min.y).toBeLessThan(BLOCK_BOUNDS.min.y);
+  });
+
   it('is centered on the block depth, so it overhangs equally front and back', () => {
-    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, heightMm: 8, depthMm: 20, marginMm: 0, blockDepthMm: 5 })!;
+    const rail = baseRailGeometry({ bounds: BLOCK_BOUNDS, baselineYMm: BASELINE_Y, heightMm: 8, depthMm: 20, marginMm: 0, blockDepthMm: 5 })!;
     const bb = bounds(rail);
     expect((bb.min.z + bb.max.z) / 2).toBeCloseTo(2.5, 3);
     expect(bb.max.z - bb.min.z).toBeCloseTo(20, 3);
   });
 
   it('returns null rather than a degenerate solid when there is nothing to stand on', () => {
-    expect(baseRailGeometry({ bounds: new THREE.Box3(), heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })).toBeNull();
-    expect(baseRailGeometry({ bounds: BLOCK_BOUNDS, heightMm: 0, depthMm: 20, marginMm: 6, blockDepthMm: 5 })).toBeNull();
+    expect(baseRailGeometry({ bounds: new THREE.Box3(), baselineYMm: BASELINE_Y, heightMm: 8, depthMm: 20, marginMm: 6, blockDepthMm: 5 })).toBeNull();
+    expect(baseRailGeometry({ bounds: BLOCK_BOUNDS, baselineYMm: BASELINE_Y, heightMm: 0, depthMm: 20, marginMm: 6, blockDepthMm: 5 })).toBeNull();
   });
 });
 

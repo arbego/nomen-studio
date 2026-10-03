@@ -48,24 +48,34 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
   // bounding box entirely on screen, recomputed from the live geometry rather
   // than a fixed position, so it still frames correctly after the design's
   // size, line count, or part count changes.
-  /** Returns whether it had real geometry to fit to (false means "nothing on screen yet"). */
-  function resetToFrontView(): boolean {
+  /**
+   * Frames whatever is currently on screen. Returns false, having touched
+   * nothing, when there is nothing to frame — so the per-frame probe below can
+   * keep waiting for async geometry without fighting the user for control of
+   * the camera while it waits.
+   */
+  function fitToContent(): boolean {
     const controls = controlsRef.current;
     const group = sceneGroupRef.current;
-    if (!controls) return false;
+    if (!controls || !group) return false;
+    const box = new THREE.Box3().setFromObject(group);
+    if (box.isEmpty()) return false;
     const camera = controls.object as THREE.PerspectiveCamera;
-    const box = group ? new THREE.Box3().setFromObject(group) : null;
-    if (!box || box.isEmpty()) {
-      camera.position.set(...HOME_CAMERA_POSITION);
-      controls.target.set(...HOME_TARGET);
-      controls.update();
-      return false;
-    }
     const { position, target } = fitCameraToBoxFrontal(box, camera.fov, camera.aspect);
     camera.position.copy(position);
     controls.target.copy(target);
     controls.update();
     return true;
+  }
+
+  /** The reset button: frame the design, or fall back to the home pose when there's nothing to frame. */
+  function resetToFrontView(): void {
+    if (fitToContent()) return;
+    const controls = controlsRef.current;
+    if (!controls) return;
+    (controls.object as THREE.PerspectiveCamera).position.set(...HOME_CAMERA_POSITION);
+    controls.target.set(...HOME_TARGET);
+    controls.update();
   }
 
   return (
@@ -79,7 +89,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
         <group ref={sceneGroupRef}>
           <Center bottom>{children}</Center>
         </group>
-        <FitOnFirstContent onFit={resetToFrontView} />
+        <FitOnFirstContent onFit={fitToContent} />
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
 
         {/* maxDistance generous enough that fitting the largest possible design (multiple lines, max size, longest sticks) to the frontal view is never clamped closer than it needs to be. */}

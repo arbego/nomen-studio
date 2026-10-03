@@ -33,13 +33,6 @@ interface TextBlockMeshProps {
   /** Where this block sits in its parent's space (mm). Z matters for products that stack blocks front-to-back, like the name display's inlay. */
   position: [number, number, number];
   /**
-   * Whether the letters respond to pointer drags at all. A product that
-   * positions a block by other means — the name display's background initial,
-   * which the name is placed *onto* — turns this off so the block reads as
-   * fixed scenery rather than something that looks grabbable but isn't.
-   */
-  draggable?: boolean;
-  /**
    * Sticks attached to this block, if the product has any. The cake topper
    * does; the name display stands on a base rail instead and omits all four
    * stick props.
@@ -87,7 +80,6 @@ export function TextBlockMesh({
   block,
   color,
   position,
-  draggable = true,
   stick,
   stickColor,
   stickOffsets,
@@ -234,7 +226,7 @@ export function TextBlockMesh({
               color={color}
               xMm={cascadesByLine[lineIndex][i] + offset.x}
               yMm={offset.y}
-              draggable={draggable}
+              draggable
               dragging={i === 0 ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
               anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}

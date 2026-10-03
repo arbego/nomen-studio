@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { saveAs } from 'file-saver';
 import type { TextBlock } from '../../geometry/types';
 import type { CakeTopperConfig } from './config';
-import { slugifyFilename } from '../../export/stlExport';
+import { slugifyFilename, stlBlob } from '../../export/stlExport';
 import { combinedStlBinary } from './export';
 
 interface ExportButtonsProps {
@@ -22,7 +22,7 @@ export function ExportButtons({ blocks, config, designName, disabled }: ExportBu
     try {
       const name = slugifyFilename(designName, 'topper');
       const dv = combinedStlBinary(block, config);
-      saveAs(new Blob([dv.buffer as ArrayBuffer], { type: 'model/stl' }), `${name}-topper.stl`);
+      saveAs(stlBlob(dv), `${name}-topper.stl`);
     } finally {
       setBusy(false);
     }

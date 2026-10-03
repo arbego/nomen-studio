@@ -7,7 +7,7 @@ import { StandControls } from '../../ui/controls/StandControls';
 import { ExportButtons } from './ExportButtons';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
-import { effectivePocketDepthMm, nameOverlapsInitial } from './geometry';
+import { effectivePocketDepthMm } from './geometry';
 
 const SECTION = 'border-t border-stone-100 pt-5';
 
@@ -16,12 +16,14 @@ export function NameDisplayControls() {
   const onChange = useNameDisplayStore((s) => s.setConfig);
   const setStandMode = useNameDisplayStore((s) => s.setStandMode);
   const resetNameLetterGaps = useNameDisplayStore((s) => s.resetNameLetterGaps);
-  const { result: built, loading, error } = useNameDisplayGeometry();
+  const { blocks, assembly, loading, error } = useNameDisplayGeometry();
 
   const hasCustomGaps = config.nameLetterGapsMm.some((gap) => gap !== 0);
   const pocketDepth = effectivePocketDepthMm(config);
   const pocketCapped = pocketDepth < config.pocketDepthMm;
-  const detached = built ? !nameOverlapsInitial(built, config) : false;
+  // Computed once in the provider's assembly rather than re-running the
+  // Clipper intersection on every render of this panel.
+  const detached = assembly ? !assembly.overlapsInitial : false;
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -102,7 +104,7 @@ export function NameDisplayControls() {
       <div className="mt-auto border-t border-stone-200 pt-4">
         {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
         {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
-        <ExportButtons built={built} config={config} disabled={loading || !!error} />
+        <ExportButtons blocks={blocks} assembly={assembly} config={config} disabled={loading || !!error} />
       </div>
     </div>
   );

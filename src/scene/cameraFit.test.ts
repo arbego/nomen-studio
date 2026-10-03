@@ -19,7 +19,7 @@ describe('fitCameraToBoxFrontal', () => {
     expect(position.z).toBeGreaterThan(target.z);
   });
 
-  it('blocks the height-limited distance for a tall, narrow box', () => {
+  it('picks the height-limited distance for a tall, narrow box', () => {
     const box = new THREE.Box3(new THREE.Vector3(-5, -50, 0), new THREE.Vector3(5, 50, 0));
     const fovDeg = 35;
     const aspect = 1.5;
@@ -29,7 +29,7 @@ describe('fitCameraToBoxFrontal', () => {
     expect(position.z - target.z).toBeCloseTo(expectedDistance, 5);
   });
 
-  it('blocks the width-limited distance for a wide, short box, accounting for aspect ratio', () => {
+  it('picks the width-limited distance for a wide, short box, accounting for aspect ratio', () => {
     const box = new THREE.Box3(new THREE.Vector3(-100, -5, 0), new THREE.Vector3(100, 5, 0));
     const fovDeg = 35;
     const aspect = 1.5;

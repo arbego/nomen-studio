@@ -1,5 +1,5 @@
 import { geometryToStlBinary } from '../../export/stlExport';
-import { initialPrintGeometry, namePrintGeometry, type NameDisplayGeometry } from './geometry';
+import { initialPrintGeometry, namePrintGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 /**
@@ -8,10 +8,10 @@ import type { NameDisplayConfig } from './config';
  * genuinely separate solids rather than one model that happens to be two
  * colors.
  */
-export function initialStlBinary(built: NameDisplayGeometry, config: NameDisplayConfig): DataView {
-  return geometryToStlBinary(initialPrintGeometry(built, config));
+export function initialStlBinary(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): DataView {
+  return geometryToStlBinary(initialPrintGeometry(blocks, assembly, config));
 }
 
-export function nameStlBinary(built: NameDisplayGeometry, config: NameDisplayConfig): DataView {
-  return geometryToStlBinary(namePrintGeometry(built, config));
+export function nameStlBinary(blocks: NameDisplayBlocks, config: NameDisplayConfig): DataView {
+  return geometryToStlBinary(namePrintGeometry(blocks, config));
 }

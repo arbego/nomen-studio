@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { COLOR_PRESETS } from '../../ui/presets';
-import type { NameDisplayConfig, NameDisplayGeometryConfig } from './config';
+import type { NameDisplayBlocksConfig, NameDisplayConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(name: string): number[] {
@@ -51,6 +51,10 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   ...DEFAULT_CONFIG,
   setConfig: (partial) =>
     set((state) => {
+      // Both corrections below have to compose, not pick one: a single call can
+      // change the name *and* its thickness.
+      const next: Partial<NameDisplayConfig> = { ...partial };
+
       // Per-letter gap tweaks are a fine-tuning pass over specific glyph shapes
       // at specific positions, so a different string or a different face makes
       // them meaningless rather than merely stale — same reasoning as the cake
@@ -58,15 +62,20 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
       const nameChanged = partial.name !== undefined && partial.name !== state.name;
       const fontChanged = partial.nameFontId !== undefined && partial.nameFontId !== state.nameFontId;
       if (nameChanged || fontChanged) {
-        return { ...partial, nameLetterGapsMm: defaultLetterGaps(partial.name ?? state.name) };
+        next.nameLetterGapsMm = defaultLetterGaps(partial.name ?? state.name);
       }
+
       // The name has to stay thicker than the recess it sits in, or it would
-      // vanish into the initial — keep the pocket from overtaking it. (The
-      // build caps this again, since config can reach it from elsewhere too.)
-      if (partial.nameDepthMm !== undefined && partial.nameDepthMm < state.pocketDepthMm) {
-        return { ...partial, pocketDepthMm: partial.nameDepthMm };
+      // vanish into the initial. (The build caps this again, since config can
+      // reach it from elsewhere too — but leaving it uncorrected here would
+      // show a permanently "capped" slider the user never asked for.)
+      const nameDepth = partial.nameDepthMm ?? state.nameDepthMm;
+      const pocketDepth = partial.pocketDepthMm ?? state.pocketDepthMm;
+      if (pocketDepth > nameDepth) {
+        next.pocketDepthMm = nameDepth;
       }
-      return partial;
+
+      return next;
     }),
   setNameOffset: (nameOffset) => set({ nameOffset }),
   setNameLetterGap: (gapIndex, gapMm) =>
@@ -78,49 +87,35 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   reset: () => set(DEFAULT_CONFIG),
 }));
 
-/** The subset that drives the expensive async build — everything but the two preview colors. */
-export function selectNameDisplayGeometryConfig(state: NameDisplayStore): NameDisplayGeometryConfig {
-  const {
-    initial,
-    initialFontId,
-    initialHeightMm,
-    initialDepthMm,
-    name,
-    nameFontId,
-    nameWidthMm,
-    nameDepthMm,
-    nameOffset,
-    nameLetterGapsMm,
-    pocketDepthMm,
-    pocketClearanceMm,
-    standMode,
-    railHeightMm,
-    railDepthMm,
-    railMarginMm,
-    trimOffsetMm,
-  } = state;
-  return {
-    initial,
-    initialFontId,
-    initialHeightMm,
-    initialDepthMm,
-    name,
-    nameFontId,
-    nameWidthMm,
-    nameDepthMm,
-    nameOffset,
-    nameLetterGapsMm,
-    pocketDepthMm,
-    pocketClearanceMm,
-    standMode,
-    railHeightMm,
-    railDepthMm,
-    railMarginMm,
-    trimOffsetMm,
-  };
+/** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */
+export function selectNameDisplayBlocksConfig(state: NameDisplayStore): NameDisplayBlocksConfig {
+  const { initial, initialFontId, initialHeightMm, initialDepthMm, name, nameFontId, nameWidthMm, nameDepthMm, standMode, trimOffsetMm } = state;
+  return { initial, initialFontId, initialHeightMm, initialDepthMm, name, nameFontId, nameWidthMm, nameDepthMm, standMode, trimOffsetMm };
 }
 
-/** The full config — the controls panel and export need the colors too. */
+/** The full config — the controls panel, the synchronous assembly and export all need everything. */
 export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayConfig {
-  return { ...selectNameDisplayGeometryConfig(state), initialColor: state.initialColor, nameColor: state.nameColor };
+  const {
+    nameOffset,
+    nameLetterGapsMm,
+    pocketDepthMm,
+    pocketClearanceMm,
+    railHeightMm,
+    railDepthMm,
+    railMarginMm,
+    initialColor,
+    nameColor,
+  } = state;
+  return {
+    ...selectNameDisplayBlocksConfig(state),
+    nameOffset,
+    nameLetterGapsMm,
+    pocketDepthMm,
+    pocketClearanceMm,
+    railHeightMm,
+    railDepthMm,
+    railMarginMm,
+    initialColor,
+    nameColor,
+  };
 }

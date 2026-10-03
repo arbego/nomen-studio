@@ -22,6 +22,9 @@ const RAIL_EMBED_MM = 1;
 export interface BaseRailOptions {
   /** The block's current bounds, in its own local mm space. */
   bounds: THREE.Box3;
+  /** The block's baseline — where the rail's top sits, so every letter resting on it is bonded. */
+  baselineYMm: number;
+  /** How far the rail drops below the baseline. Extended automatically if descenders reach lower. */
   heightMm: number;
   /** Front-to-back extent (z). Usually deeper than the lettering itself — that overhang is what stops the piece tipping forward. */
   depthMm: number;
@@ -35,11 +38,17 @@ export interface BaseRailOptions {
  * A plain slab under a block, centered on the block's own depth so the piece
  * is supported equally front and back.
  *
- * Its top is set `RAIL_EMBED_MM` above the block's lowest point rather than
- * exactly at it, so the two solids genuinely interpenetrate.
+ * Anchored to the *baseline*, not to the block's lowest point. Anchoring it to
+ * the lowest point would put the rail under the descenders only, leaving every
+ * letter without one (in "Peggy", the P and the e) floating 15mm above it —
+ * and since parts are merged, not unioned, the export would be three disjoint
+ * shells that fall apart off the print bed. The top is pushed
+ * `RAIL_EMBED_MM` above the baseline so the solids genuinely interpenetrate,
+ * and the bottom always clears the lowest ink, so descenders end up swallowed
+ * by the rail rather than poking out of it.
  */
 export function baseRailGeometry(options: BaseRailOptions): THREE.BufferGeometry | null {
-  const { bounds, heightMm, depthMm, marginMm, blockDepthMm } = options;
+  const { bounds, baselineYMm, heightMm, depthMm, marginMm, blockDepthMm } = options;
   if (!(heightMm > 0) || !(depthMm > 0) || bounds.isEmpty()) {
     return null;
   }
@@ -48,9 +57,15 @@ export function baseRailGeometry(options: BaseRailOptions): THREE.BufferGeometry
     return null;
   }
 
-  const geometry = new THREE.BoxGeometry(width, heightMm, depthMm).toNonIndexed();
-  const top = bounds.min.y + RAIL_EMBED_MM;
-  geometry.translate((bounds.min.x + bounds.max.x) / 2, top - heightMm / 2, blockDepthMm / 2);
+  const top = baselineYMm + RAIL_EMBED_MM;
+  const bottom = Math.min(baselineYMm - heightMm, bounds.min.y - RAIL_EMBED_MM);
+  const height = top - bottom;
+  if (!(height > 0)) {
+    return null;
+  }
+
+  const geometry = new THREE.BoxGeometry(width, height, depthMm).toNonIndexed();
+  geometry.translate((bounds.min.x + bounds.max.x) / 2, (top + bottom) / 2, blockDepthMm / 2);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   return geometry;
@@ -81,9 +96,11 @@ export function trimCutY(block: TextBlock, offsetMm: number): number {
  * depth do.
  */
 export function trimBlockBelow(block: TextBlock, cutYMm: number, extrudeDepthMm: number): TextBlock {
-  // Generously larger than any plausible design, so the rectangle acts as a
-  // half-plane: only its bottom edge ever cuts anything.
-  const FAR_MM = 1e5;
+  // Generously larger than any plausible design (10 metres), so the rectangle
+  // acts as a half-plane: only its bottom edge ever cuts anything. Kept below
+  // clipper-lib's loRange once scaled, so the clip stays on its plain-number
+  // arithmetic path instead of switching to emulated 128-bit multiplies.
+  const FAR_MM = 1e4;
   const keep = rectRegion(-FAR_MM, cutYMm, FAR_MM, FAR_MM);
 
   const lines: LineGeometry[] = block.lines.map((line) => ({

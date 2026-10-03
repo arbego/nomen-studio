@@ -61,6 +61,7 @@ export function StandControls({
               <span className="tabular-nums text-stone-400">{railHeightMm} mm</span>
             </div>
             <input type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800" />
+            <span className="text-xs text-stone-400">Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it.</span>
           </label>
           <label className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-sm text-stone-600">

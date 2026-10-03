@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildNameDisplay, effectivePocketDepthMm, initialPrintGeometry, namePrintGeometry, nameOverlapsInitial } from './geometry';
+import { assembleNameDisplay, buildNameDisplayBlocks, effectivePocketDepthMm, initialPrintGeometry, namePrintGeometry } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -25,6 +25,12 @@ const config: NameDisplayConfig = {
   trimOffsetMm: 0,
 };
 
+/** The old one-shot entry point, as the async build followed by the synchronous assembly. */
+async function buildNameDisplay(cfg: NameDisplayConfig) {
+  const blocks = await buildNameDisplayBlocks(cfg);
+  return { blocks, ...assembleNameDisplay(blocks, cfg) };
+}
+
 function bounds(geometry: THREE.BufferGeometry): THREE.Box3 {
   geometry.computeBoundingBox();
   return geometry.boundingBox!;
@@ -41,7 +47,7 @@ describe('buildNameDisplay', () => {
     expect(initialBb.max.y - initialBb.min.y).toBeCloseTo(120, 0);
 
     const nameBb = new THREE.Box3();
-    for (const letter of built.name.lines[0].letters) {
+    for (const letter of built.blocks.name.lines[0].letters) {
       nameBb.union(bounds(letter.geometry));
     }
     expect(nameBb.max.x - nameBb.min.x).toBeCloseTo(150, 0);
@@ -73,7 +79,7 @@ describe('buildNameDisplay', () => {
   it('cuts nothing when the name is dragged clear of the initial', async () => {
     const clear = { ...config, nameOffset: { x: 5000, y: 0 } };
     const built = await buildNameDisplay(clear);
-    expect(nameOverlapsInitial(built, clear)).toBe(false);
+    expect(built.overlapsInitial).toBe(false);
 
     // Same silhouette as a pocket-less build: the overhang had nothing to cut.
     const withoutPocket = await buildNameDisplay({ ...clear, pocketDepthMm: 0 });
@@ -83,7 +89,7 @@ describe('buildNameDisplay', () => {
 
   it('reports that a centered name does overlap the initial', async () => {
     const built = await buildNameDisplay(config);
-    expect(nameOverlapsInitial(built, config)).toBe(true);
+    expect(built.overlapsInitial).toBe(true);
   }, 30000);
 
   it('keeps the counter of an initial that has one', async () => {
@@ -118,26 +124,26 @@ describe('effectivePocketDepthMm', () => {
 describe('print geometry', () => {
   it('exports the initial with its pocket', async () => {
     const built = await buildNameDisplay(config);
-    expect(vertexCount(initialPrintGeometry(built, config))).toBe(vertexCount(built.initialGeometry));
+    expect(vertexCount(initialPrintGeometry(built.blocks, built, config))).toBe(vertexCount(built.initialGeometry));
   }, 30000);
 
   it('adds a base rail under both pieces in rail mode', async () => {
     const railed = { ...config, standMode: 'rail' as const };
     const built = await buildNameDisplay(railed);
 
-    const initialBb = bounds(initialPrintGeometry(built, railed));
+    const initialBb = bounds(initialPrintGeometry(built.blocks, built, railed));
     expect(initialBb.min.y).toBeLessThan(0); // rail hangs below the letter's own baseline-anchored bottom
     expect(initialBb.max.z - initialBb.min.z).toBeCloseTo(25, 1); // the deeper rail sets the footprint
 
-    const nameBb = bounds(namePrintGeometry(built, railed));
+    const nameBb = bounds(namePrintGeometry(built.blocks, railed));
     expect(nameBb.min.y).toBeLessThan(0);
   }, 30000);
 
   it('exports the name in its own frame, not shifted by where the pocket went', async () => {
     const built = await buildNameDisplay(config);
     const shifted = await buildNameDisplay({ ...config, nameOffset: { x: 40, y: 10 } });
-    const a = bounds(namePrintGeometry(built, config));
-    const b = bounds(namePrintGeometry(shifted, { ...config, nameOffset: { x: 40, y: 10 } }));
+    const a = bounds(namePrintGeometry(built.blocks, config));
+    const b = bounds(namePrintGeometry(shifted.blocks, { ...config, nameOffset: { x: 40, y: 10 } }));
     expect(b.min.x).toBeCloseTo(a.min.x, 3);
     expect(b.min.y).toBeCloseTo(a.min.y, 3);
   }, 30000);
@@ -155,6 +161,6 @@ describe('print geometry', () => {
     const plain = await buildNameDisplay(config);
     // "Matilde" has no descenders, so the trim should barely move the bottom —
     // but it must not sit below the untrimmed one either.
-    expect(bounds(namePrintGeometry(built, trimmed)).min.y).toBeGreaterThanOrEqual(bounds(namePrintGeometry(plain, config)).min.y - 0.01);
+    expect(bounds(namePrintGeometry(built.blocks, trimmed)).min.y).toBeGreaterThanOrEqual(bounds(namePrintGeometry(plain.blocks, config)).min.y - 0.01);
   }, 30000);
 });

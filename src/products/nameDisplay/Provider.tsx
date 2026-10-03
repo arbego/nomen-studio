@@ -1,16 +1,25 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAsyncGeometry } from '../../hooks/useAsyncGeometry';
-import { useNameDisplayStore, selectNameDisplayGeometryConfig } from './store';
-import { buildNameDisplay } from './geometry';
+import { useNameDisplayStore, selectNameDisplayBlocksConfig, selectNameDisplayConfig } from './store';
+import { assembleNameDisplay, buildNameDisplayBlocks } from './geometry';
 import { NameDisplayGeometryContext } from './geometryContext';
 
 /**
  * Runs the build once for the whole product and shares it with both the
  * controls panel and the scene, which are mounted in separate subtrees.
+ *
+ * Split in two on purpose: the async half re-runs only when the glyphs
+ * themselves change, while the pocket — which does depend on where the name was
+ * dragged — is recomputed synchronously here, so a drag never re-extrudes a font.
  */
 export function NameDisplayProvider({ children }: { children: ReactNode }) {
-  const config = useNameDisplayStore(useShallow(selectNameDisplayGeometryConfig));
-  const state = useAsyncGeometry(config, buildNameDisplay);
-  return <NameDisplayGeometryContext.Provider value={state}>{children}</NameDisplayGeometryContext.Provider>;
+  const blocksConfig = useNameDisplayStore(useShallow(selectNameDisplayBlocksConfig));
+  const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
+  const { result: blocks, loading, error } = useAsyncGeometry(blocksConfig, buildNameDisplayBlocks);
+
+  const assembly = useMemo(() => (blocks ? assembleNameDisplay(blocks, config) : null), [blocks, config]);
+  const value = useMemo(() => ({ blocks, assembly, loading, error }), [blocks, assembly, loading, error]);
+
+  return <NameDisplayGeometryContext.Provider value={value}>{children}</NameDisplayGeometryContext.Provider>;
 }
