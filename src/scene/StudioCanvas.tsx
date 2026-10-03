@@ -1,31 +1,14 @@
 import { useRef, type ReactNode } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, Center } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { fitCameraToBoxFrontal } from './cameraFit';
+import { GroundCenter } from './GroundCenter';
 
 interface StudioCanvasProps {
   /** The current product's scene content — see products/<id>/SceneContent.tsx. */
   children: ReactNode;
-}
-
-/**
- * Fits the view once, as soon as there is actually something to fit, so the
- * initial load frames the design exactly as pressing the reset button would.
- *
- * Watching the scene's own bounding box rather than taking a "geometry is
- * ready" flag keeps the canvas independent of how (or how asynchronously) each
- * product builds its geometry. The check stops after the first successful fit,
- * so it costs a handful of frames at startup and nothing afterwards.
- */
-function FitOnFirstContent({ onFit }: { onFit: () => boolean }) {
-  const doneRef = useRef(false);
-  useFrame(() => {
-    if (doneRef.current) return;
-    doneRef.current = onFit();
-  });
-  return null;
 }
 
 // Fallback camera pose, only ever used before any geometry has loaded (so
@@ -50,15 +33,14 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
   // size, line count, or part count changes.
   /**
    * Frames whatever is currently on screen. Returns false, having touched
-   * nothing, when there is nothing to frame — so the per-frame probe below can
-   * keep waiting for async geometry without fighting the user for control of
-   * the camera while it waits.
+   * nothing, when there is nothing to frame — so waiting on async geometry
+   * never costs the user control of the camera.
    */
   function fitToContent(): boolean {
     const controls = controlsRef.current;
     const group = sceneGroupRef.current;
     if (!controls || !group) return false;
-    const box = new THREE.Box3().setFromObject(group);
+    const box = new THREE.Box3().setFromObject(group, true);
     if (box.isEmpty()) return false;
     const camera = controls.object as THREE.PerspectiveCamera;
     const { position, target } = fitCameraToBoxFrontal(box, camera.fov, camera.aspect);
@@ -86,10 +68,11 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
         <directionalLight position={[80, 140, 120]} intensity={1.1} castShadow />
         <directionalLight position={[-100, 60, -80]} intensity={0.35} />
 
+        {/* The camera is framed the moment the design is first centered, so the
+            initial load looks exactly like pressing the reset button. */}
         <group ref={sceneGroupRef}>
-          <Center bottom>{children}</Center>
+          <GroundCenter onFirstCenter={fitToContent}>{children}</GroundCenter>
         </group>
-        <FitOnFirstContent onFit={fitToContent} />
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
 
         {/* maxDistance generous enough that fitting the largest possible design (multiple lines, max size, longest sticks) to the frontal view is never clamped closer than it needs to be. */}
