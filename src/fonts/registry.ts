@@ -4,10 +4,20 @@ import { getCatalogEntry } from './catalog';
 // Each entry is one downloaded, self-hosted Google Font (OFL-licensed) plus the
 // metadata needed to parse it correctly with opentype.js. To add a font: drop its
 // .ttf (+ OFL.txt) under src/assets/fonts/<id>/ and add one entry below — nothing
-// else in the app needs to change. These 5 stay pinned as instant, fully-offline
+// else in the app needs to change. These stay pinned as instant, fully-offline
 // defaults in the UI; every other Google Fonts family is available too, via the
 // generated catalogue (see catalog.ts) — getFontDefinition below falls back to it.
 export const FONT_REGISTRY: FontDefinition[] = [
+  {
+    // The one display face among the curated set: a heavy slab serif whose flat
+    // feet stand on their own, which is what the name display's background
+    // initial wants and no script face can give.
+    id: 'alfa-slab-one',
+    label: 'Alfa Slab One',
+    family: 'Alfa Slab One',
+    category: 'display',
+    url: new URL('../assets/fonts/alfa-slab-one/AlfaSlabOne-Regular.ttf', import.meta.url).href,
+  },
   {
     id: 'dancing-script',
     label: 'Dancing Script',

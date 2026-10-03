@@ -23,9 +23,16 @@ describe('getFontDefinition', () => {
     expect(() => getFontDefinition('not-a-real-font')).toThrow();
   });
 
-  it('every curated font is categorized as handwriting (their real Google Fonts category)', () => {
+  it('is entirely self-hosted, so the curated fonts work with no network', () => {
     for (const font of FONT_REGISTRY) {
-      expect(font.category).toBe('handwriting');
+      expect(font.url, font.id).toContain('assets/fonts');
     }
+  });
+
+  it('offers a display face for a big standalone letter, not only scripts', () => {
+    // The name display's background initial needs a face with flat feet that
+    // stands on its own; every script face in the set is wrong for that job.
+    expect(FONT_REGISTRY.some((font) => font.category === 'display')).toBe(true);
+    expect(FONT_REGISTRY.some((font) => font.category === 'handwriting')).toBe(true);
   });
 });

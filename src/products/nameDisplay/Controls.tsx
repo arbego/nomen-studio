@@ -1,0 +1,109 @@
+import { useShallow } from 'zustand/react/shallow';
+import { TextField } from '../../ui/controls/TextField';
+import { FontPicker } from '../../ui/controls/FontPicker';
+import { SliderField } from '../../ui/controls/SliderField';
+import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
+import { StandControls } from '../../ui/controls/StandControls';
+import { ExportButtons } from './ExportButtons';
+import { useNameDisplayStore, selectNameDisplayConfig } from './store';
+import { useNameDisplayGeometry } from './geometryContext';
+import { effectivePocketDepthMm, nameOverlapsInitial } from './geometry';
+
+const SECTION = 'border-t border-stone-100 pt-5';
+
+export function NameDisplayControls() {
+  const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
+  const onChange = useNameDisplayStore((s) => s.setConfig);
+  const setStandMode = useNameDisplayStore((s) => s.setStandMode);
+  const resetNameLetterGaps = useNameDisplayStore((s) => s.resetNameLetterGaps);
+  const { result: built, loading, error } = useNameDisplayGeometry();
+
+  const hasCustomGaps = config.nameLetterGapsMm.some((gap) => gap !== 0);
+  const pocketDepth = effectivePocketDepthMm(config);
+  const pocketCapped = pocketDepth < config.pocketDepthMm;
+  const detached = built ? !nameOverlapsInitial(built, config) : false;
+
+  return (
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="M" />
+          <FontPicker label="Initial font" value={config.initialFontId} onChange={(initialFontId) => onChange({ initialFontId })} previewText={config.initial || 'M'} />
+          <SliderField label="Height" value={config.initialHeightMm} onChange={(initialHeightMm) => onChange({ initialHeightMm })} min={60} max={250} />
+          <SliderField
+            label="Thickness"
+            value={config.initialDepthMm}
+            onChange={(initialDepthMm) => onChange({ initialDepthMm })}
+            min={5}
+            max={30}
+            step={0.5}
+            hint="The initial is the structural piece — it holds the name and keeps the display upright."
+          />
+          <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />
+        </div>
+
+        <div className={`flex flex-col gap-4 ${SECTION}`}>
+          <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Matilde" />
+          <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Matilde'} />
+          <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
+          <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
+          <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
+          <p className="flex items-center justify-between text-xs text-stone-400">
+            <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
+            {hasCustomGaps && (
+              <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+                Reset spacing
+              </button>
+            )}
+          </p>
+          {detached && <p className="text-xs text-amber-700">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
+        </div>
+
+        <div className={`flex flex-col gap-3 ${SECTION}`}>
+          <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Inlay</span>
+          <p className="text-xs text-stone-400">The name is recessed into the initial's face, so the two pieces lock together. Print them in different filaments.</p>
+          <SliderField
+            label="Pocket depth"
+            value={config.pocketDepthMm}
+            onChange={(pocketDepthMm) => onChange({ pocketDepthMm })}
+            min={0}
+            max={10}
+            step={0.25}
+            hint={
+              pocketCapped
+                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the name's thickness or cut through the initial.`
+                : `The name stands ${(config.nameDepthMm - pocketDepth).toFixed(2)} mm proud of the initial.`
+            }
+          />
+          <SliderField
+            label="Fit clearance"
+            value={config.pocketClearanceMm}
+            onChange={(pocketClearanceMm) => onChange({ pocketClearanceMm })}
+            min={0}
+            max={1}
+            step={0.05}
+            hint="How much larger the pocket is cut than the name, so the printed pieces actually go together."
+          />
+        </div>
+
+        <StandControls
+          className={SECTION}
+          mode={config.standMode}
+          onChangeMode={setStandMode}
+          railHeightMm={config.railHeightMm}
+          onChangeRailHeight={(railHeightMm) => onChange({ railHeightMm })}
+          railDepthMm={config.railDepthMm}
+          onChangeRailDepth={(railDepthMm) => onChange({ railDepthMm })}
+          trimOffsetMm={config.trimOffsetMm}
+          onChangeTrimOffset={(trimOffsetMm) => onChange({ trimOffsetMm })}
+        />
+      </div>
+
+      <div className="mt-auto border-t border-stone-200 pt-4">
+        {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
+        {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
+        <ExportButtons built={built} config={config} disabled={loading || !!error} />
+      </div>
+    </div>
+  );
+}

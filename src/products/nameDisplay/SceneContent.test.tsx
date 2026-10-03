@@ -1,0 +1,145 @@
+import { describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
+import ReactThreeTestRenderer from '@react-three/test-renderer';
+import * as THREE from 'three';
+import type { ThreeEvent } from '@react-three/fiber';
+import { NameDisplayScene } from './SceneContent';
+import { buildNameDisplay } from './geometry';
+import type { NameDisplayConfig } from './config';
+
+const config: NameDisplayConfig = {
+  initial: 'M',
+  initialFontId: 'alfa-slab-one',
+  initialHeightMm: 120,
+  initialDepthMm: 12,
+  initialColor: '#d9a9ab',
+  name: 'Mia',
+  nameFontId: 'dancing-script',
+  nameWidthMm: 150,
+  nameDepthMm: 5,
+  nameColor: '#f7f5f2',
+  nameOffset: { x: 0, y: 35 },
+  nameLetterGapsMm: [0, 0],
+  pocketDepthMm: 2.5,
+  pocketClearanceMm: 0.25,
+  standMode: 'none',
+  railHeightMm: 8,
+  railDepthMm: 25,
+  railMarginMm: 4,
+  trimOffsetMm: 0,
+};
+
+async function renderScene(
+  overrides: Partial<NameDisplayConfig> = {},
+  onNameOffsetCommit: (offset: { x: number; y: number }) => void = () => {},
+  onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
+) {
+  const merged = { ...config, ...overrides };
+  const built = await buildNameDisplay(merged);
+  const renderer = await ReactThreeTestRenderer.create(
+    <NameDisplayScene built={built} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} />,
+  );
+  return { renderer, built, config: merged };
+}
+
+type TestInstance = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>['scene']['children'][number];
+
+function root(renderer: Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>) {
+  return renderer.scene.children[0];
+}
+
+/** Meshes that are direct children of the scene group — the initial and any base rails (the name's letters live in their own group). */
+function directMeshes(node: TestInstance) {
+  return node.children.filter((c) => c.type === 'Mesh');
+}
+
+function nameGroup(node: TestInstance) {
+  return node.children.filter((c) => c.type === 'Group')[0];
+}
+
+// Fake a pointer event whose picking ray, in the given group's local space,
+// passes through (localX, localY, 0) — mirrors what dragUtils.localDragPoint expects.
+function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY: number): ThreeEvent<PointerEvent> {
+  referenceObject.updateMatrixWorld(true);
+  const worldPoint = referenceObject.localToWorld(new THREE.Vector3(localX, localY, 0));
+  const ray = new THREE.Ray(worldPoint.clone().add(new THREE.Vector3(0, 0, 50)), new THREE.Vector3(0, 0, -1));
+  return {
+    ray,
+    pointerId: 1,
+    stopPropagation: () => {},
+    target: { setPointerCapture: () => {}, releasePointerCapture: () => {} },
+  } as unknown as ThreeEvent<PointerEvent>;
+}
+
+describe('NameDisplayScene (React Three Fiber wiring)', () => {
+  it('renders the initial as one pocketed solid, in the initial color', async () => {
+    const { renderer, built } = await renderScene();
+    const meshes = directMeshes(root(renderer));
+    expect(meshes).toHaveLength(1); // no rail in 'none' mode
+
+    const instance = meshes[0].instance as unknown as { material: { color: THREE.Color }; geometry: THREE.BufferGeometry };
+    expect(instance.material.color.getHexString()).toBe('d9a9ab');
+    expect(instance.geometry).toBe(built.initialGeometry);
+  }, 30000);
+
+  it('renders one mesh per letter of the name, in the name color', async () => {
+    const { renderer } = await renderScene();
+    const letters = nameGroup(root(renderer)).children.filter((c) => c.type === 'Mesh');
+    expect(letters).toHaveLength(3); // M, i, a
+    const instance = letters[0].instance as unknown as { material: { color: THREE.Color } };
+    expect(instance.material.color.getHexString()).toBe('f7f5f2');
+  }, 30000);
+
+  it('seats the name group at the pocket floor, so it sits in the recess', async () => {
+    const { renderer, built } = await renderScene();
+    const group = nameGroup(root(renderer)).instance as unknown as THREE.Group;
+    expect(group.position.x).toBeCloseTo(config.nameOffset.x, 5);
+    expect(group.position.y).toBeCloseTo(config.nameOffset.y, 5);
+    expect(group.position.z).toBeCloseTo(built.nameZMm, 5);
+    expect(built.nameZMm).toBeCloseTo(12 - 2.5, 5);
+  }, 30000);
+
+  it('adds a base rail under each piece in rail mode', async () => {
+    const { renderer } = await renderScene({ standMode: 'rail' });
+    // The initial's own mesh plus its rail, and the name's rail, are all direct children.
+    expect(directMeshes(root(renderer))).toHaveLength(3);
+  }, 30000);
+
+  it('commits a drag of the name as an absolute offset, not a relative one', async () => {
+    const onNameOffsetCommit = vi.fn();
+    const { renderer } = await renderScene({}, onNameOffsetCommit);
+    const group = nameGroup(root(renderer));
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    const firstLetter = () => group.children.filter((c) => c.type === 'Mesh')[0];
+
+    // Grab the first letter (which moves the whole name) and drag it 20mm right, 10mm up.
+    await act(async () => (firstLetter().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
+    await act(async () => (firstLetter().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 10)));
+    await act(async () => (firstLetter().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 20, 10)));
+
+    expect(onNameOffsetCommit).toHaveBeenCalledTimes(1);
+    // TextBlockMesh reports a line offset relative to the group it already sits
+    // in, so the committed value must add to the name's existing offset —
+    // otherwise every drag would teleport the name back toward the origin.
+    const committed = onNameOffsetCommit.mock.calls[0][0];
+    expect(committed.x).toBeCloseTo(config.nameOffset.x + 20, 1);
+    expect(committed.y).toBeCloseTo(config.nameOffset.y + 10, 1);
+  }, 30000);
+
+  it('commits a letter drag as a gap on the name', async () => {
+    const onNameLetterGapCommit = vi.fn();
+    const { renderer } = await renderScene({}, () => {}, onNameLetterGapCommit);
+    const group = nameGroup(root(renderer));
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    const secondLetter = () => group.children.filter((c) => c.type === 'Mesh')[1];
+
+    await act(async () => (secondLetter().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 30, 0)));
+    await act(async () => (secondLetter().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 25, 0)));
+    await act(async () => (secondLetter().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 25, 0)));
+
+    expect(onNameLetterGapCommit).toHaveBeenCalledTimes(1);
+    const [gapIndex, gapMm] = onNameLetterGapCommit.mock.calls[0];
+    expect(gapIndex).toBe(0); // the gap before the second letter
+    expect(gapMm).toBeCloseTo(-5, 1);
+  }, 30000);
+});
