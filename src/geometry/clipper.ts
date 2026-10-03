@@ -1,14 +1,13 @@
 import * as ClipperLib from 'clipper-lib';
 import * as THREE from 'three';
-import type { GlyphContour, Offset2D } from './types';
+import type { GlyphContour } from './types';
+import { placePoint, type Placement2D } from './placement';
 
 // Clipper works in integers for numerical robustness; this scales millimeters
 // up before handing coordinates to it (and back down when reading results),
 // giving roughly micron precision — far finer than anything that matters at
 // print scale.
 export const CLIPPER_SCALE = 1000;
-
-const ZERO_OFFSET: Offset2D = { x: 0, y: 0 };
 
 /**
  * A filled 2D region in mm-space, as Clipper paths.
@@ -50,10 +49,13 @@ function orient(path: ClipperLib.Path, solid: boolean): ClipperLib.Path {
  * a separate subpath. Here the holes are taken at face value, which is right
  * for booleans against a glyph's filled area.
  */
-export function regionFromContours(contours: readonly GlyphContour[], shift: Offset2D = ZERO_OFFSET): Region {
+export function regionFromContours(contours: readonly GlyphContour[], placement: Placement2D = {}): Region {
   const paths: ClipperLib.Path[] = [];
   for (const contour of contours) {
-    const move = (p: THREE.Vector2) => new THREE.Vector2(p.x + shift.x, p.y + shift.y);
+    const move = (p: THREE.Vector2) => {
+      const placed = placePoint(p.x, p.y, placement);
+      return new THREE.Vector2(placed.x, placed.y);
+    };
     paths.push(orient(toClipperPath(contour.outer.map(move)), true));
     for (const hole of contour.holes) {
       paths.push(orient(toClipperPath(hole.map(move)), false));

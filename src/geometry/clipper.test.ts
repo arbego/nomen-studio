@@ -52,11 +52,22 @@ describe('regionFromContours / regionToShapes', () => {
   });
 
   it('shifts every contour, holes included', () => {
-    const region = regionFromContours([contour(square(0, 0, 10, 10), [square(3, 3, 7, 7)])], { x: 100, y: -50 });
+    const region = regionFromContours([contour(square(0, 0, 10, 10), [square(3, 3, 7, 7)])], { translate: { x: 100, y: -50 } });
     const bounds = shapesBounds(regionToShapes(region));
     expect(bounds.min.x).toBeCloseTo(100, 3);
     expect(bounds.max.x).toBeCloseTo(110, 3);
     expect(bounds.min.y).toBeCloseTo(-50, 3);
+  });
+
+  it('rotates every contour about the placement pivot', () => {
+    // A 10x10 square turned 45° about its own center keeps that center and
+    // grows to the diagonal — the transform the tilted name's pocket relies on.
+    const region = regionFromContours([contour(square(0, 0, 10, 10))], { rotationRad: Math.PI / 4, pivot: { x: 5, y: 5 } });
+    const bounds = shapesBounds(regionToShapes(region));
+    const diagonal = Math.SQRT2 * 10;
+    expect(bounds.max.x - bounds.min.x).toBeCloseTo(diagonal, 2);
+    expect((bounds.min.x + bounds.max.x) / 2).toBeCloseTo(5, 3);
+    expect((bounds.min.y + bounds.max.y) / 2).toBeCloseTo(5, 3);
   });
 });
 

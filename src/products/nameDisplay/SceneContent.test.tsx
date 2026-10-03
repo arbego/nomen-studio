@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { NameDisplayScene } from './SceneContent';
 import { assembleNameDisplay, buildNameDisplayBlocks } from './geometry';
+import { placePoint } from '../../geometry/placement';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -20,9 +21,11 @@ const config: NameDisplayConfig = {
   nameColor: '#f7f5f2',
   nameOffset: { x: 0, y: 35 },
   nameLetterGapsMm: [0, 0],
+  nameAngleDeg: 0,
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
+  standColor: '#2b2b2b',
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
@@ -54,8 +57,14 @@ function directMeshes(node: TestInstance) {
   return node.children.filter((c) => c.type === 'Mesh');
 }
 
-function nameGroup(node: TestInstance) {
+/** The group carrying the name's placement: turned by the angle, anchored so the turn happens about the name's own pivot. */
+function nameAnchorGroup(node: TestInstance) {
   return node.children.filter((c) => c.type === 'Group')[0];
+}
+
+/** TextBlockMesh's own group inside it — what holds the letters, and the frame drags are measured in. */
+function nameGroup(node: TestInstance) {
+  return nameAnchorGroup(node).children.filter((c) => c.type === 'Group')[0];
 }
 
 // Fake a pointer event whose picking ray, in the given group's local space,
@@ -91,13 +100,26 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     expect(instance.material.color.getHexString()).toBe('f7f5f2');
   }, 30000);
 
-  it('seats the name group at the pocket floor, so it sits in the recess', async () => {
+  it('seats the name at the pocket floor, so it sits in the recess', async () => {
     const { renderer, assembly } = await renderScene();
-    const group = nameGroup(root(renderer)).instance as unknown as THREE.Group;
-    expect(group.position.x).toBeCloseTo(config.nameOffset.x, 5);
-    expect(group.position.y).toBeCloseTo(config.nameOffset.y, 5);
-    expect(group.position.z).toBeCloseTo(assembly.nameZMm, 5);
+    const group = nameGroup(root(renderer)).instance as unknown as THREE.Object3D;
+    group.updateMatrixWorld(true);
+    expect(group.getWorldPosition(new THREE.Vector3()).z).toBeCloseTo(assembly.nameZMm, 5);
     expect(assembly.nameZMm).toBeCloseTo(12 - 2.5, 5);
+  }, 30000);
+
+  it.each([0, 20, -35])('places the name exactly where the pocket was cut, at %i°', async (nameAngleDeg) => {
+    const { renderer, assembly } = await renderScene({ nameAngleDeg });
+    const group = nameGroup(root(renderer)).instance as unknown as THREE.Object3D;
+    group.updateMatrixWorld(true);
+    const world = group.getWorldPosition(new THREE.Vector3());
+
+    // The scene's composed transform has to reproduce placePoint exactly — it
+    // is the same placement the pocket boolean used, so any disagreement here
+    // is a recess that doesn't line up with the name sitting in it.
+    const expected = placePoint(0, 0, assembly.namePlacement);
+    expect(world.x).toBeCloseTo(expected.x, 4);
+    expect(world.y).toBeCloseTo(expected.y, 4);
   }, 30000);
 
   it('adds a base rail under the initial, and only the initial, in rail mode', async () => {
@@ -135,6 +157,25 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     // otherwise every drag would teleport the name back toward the origin.
     const committed = onNameOffsetCommit.mock.calls[0][0];
     expect(committed.x).toBeCloseTo(config.nameOffset.x + 20, 1);
+    expect(committed.y).toBeCloseTo(config.nameOffset.y + 10, 1);
+  }, 30000);
+
+  it('turns a tilted name\'s drag back into the initial\'s frame', async () => {
+    const onNameOffsetCommit = vi.fn();
+    const { renderer } = await renderScene({ nameAngleDeg: 90 }, onNameOffsetCommit);
+    const group = nameGroup(root(renderer));
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    const firstLetter = () => group.children.filter((c) => c.type === 'Mesh')[0];
+
+    // Drag 10mm along the *name's own* x, which at 90° points straight up in
+    // the initial's frame. Committed unrotated, the name would track the cursor
+    // sideways instead of following it.
+    await act(async () => (firstLetter().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
+    await act(async () => (firstLetter().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 10, 0)));
+    await act(async () => (firstLetter().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 10, 0)));
+
+    const committed = onNameOffsetCommit.mock.calls[0][0];
+    expect(committed.x).toBeCloseTo(config.nameOffset.x, 1);
     expect(committed.y).toBeCloseTo(config.nameOffset.y + 10, 1);
   }, 30000);
 

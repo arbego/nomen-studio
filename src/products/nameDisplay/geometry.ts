@@ -6,6 +6,7 @@ import { combineGeometries } from '../../geometry/combine';
 import { combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
 import { growRegion, intersectRegions, regionFromContours, regionIsEmpty, regionToShapes, subtractRegions, type Region } from '../../geometry/clipper';
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
+import { degToRad, type Placement2D } from '../../geometry/placement';
 import type { NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
 
 /**
@@ -42,6 +43,8 @@ export interface NameDisplayAssembly {
   nameZMm: number;
   /** Whether the name overlaps the initial at all. A name dragged clear of it has nothing holding it. */
   overlapsInitial: boolean;
+  /** The exact placement the pocket was cut from — the preview applies this same transform, so the two can't drift apart. */
+  namePlacement: Placement2D;
 }
 
 /** The pocket depth actually used, after capping (see MAX_POCKET_FRACTION). */
@@ -52,22 +55,40 @@ export function effectivePocketDepthMm(config: NameDisplayAssemblyConfig & { ini
 
 /**
  * Every letter of a block as one filled 2D region, with each letter shifted to
- * its current gap-adjusted position and the whole block shifted by `offset` —
- * the block's true printed silhouette, counters included, which is what a
- * boolean has to work against.
+ * its current gap-adjusted position and the whole block then `placement`d — the
+ * block's true printed silhouette, counters included, which is what a boolean
+ * has to work against.
+ *
+ * A letter's gap shift is applied *before* the placement, since it moves the
+ * letter along the block's own baseline, which tilts with the block.
  *
  * `letterGapsMm` is per line, indexed the same as `block.lines`, matching the
  * convention combinedBlockBounds and the cake topper's merge already use.
  */
-export function blockRegion(block: TextBlock, letterGapsMm: number[][], offset: Offset2D): Region {
+export function blockRegion(block: TextBlock, letterGapsMm: number[][], placement: Placement2D = {}): Region {
   const paths: Region = [];
   block.lines.forEach((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, letterGapsMm[lineIndex] ?? []));
     line.letters.forEach((letter, i) => {
-      paths.push(...regionFromContours(letter.contours, { x: cascade[i] + offset.x, y: offset.y }));
+      paths.push(...regionFromContours(letter.contours, { ...placement, preTranslate: { x: cascade[i], y: 0 } }));
     });
   });
   return paths;
+}
+
+/** Where the name turns when it's tilted: the center of its own silhouette, so the angle tilts it in place rather than swinging it off the initial. */
+export function namePivot(block: TextBlock, letterGapsMm: number[]): Offset2D {
+  const bounds = combinedBlockBounds(block, [letterGapsMm], [{ x: 0, y: 0 }]);
+  return { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 };
+}
+
+/** How the name is placed onto the initial — the one description the preview transform and the pocket boolean both follow, so the recess can never drift from what's on screen. */
+export function namePlacement(blocks: NameDisplayBlocks, config: NameDisplayConfig): Placement2D {
+  return {
+    translate: config.nameOffset,
+    rotationRad: degToRad(config.nameAngleDeg),
+    pivot: namePivot(blocks.name, config.nameLetterGapsMm),
+  };
 }
 
 /**
@@ -129,8 +150,9 @@ function applyTrim(block: TextBlock, config: NameDisplayBlocksConfig, extrudeDep
 export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDisplayConfig): NameDisplayAssembly {
   const pocketDepth = effectivePocketDepthMm(config);
   const backDepth = config.initialDepthMm - pocketDepth;
-  const face = blockRegion(blocks.initial, [], { x: 0, y: 0 });
-  const nameRegion = blockRegion(blocks.name, [config.nameLetterGapsMm], config.nameOffset);
+  const face = blockRegion(blocks.initial, []);
+  const placement = namePlacement(blocks, config);
+  const nameRegion = blockRegion(blocks.name, [config.nameLetterGapsMm], placement);
 
   const parts: THREE.BufferGeometry[] = [];
   const backSlab = extrudeMmShapes(regionToShapes(face), backDepth);
@@ -154,6 +176,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     protrusionMm: config.nameDepthMm - pocketDepth,
     nameZMm: backDepth,
     overlapsInitial: !regionIsEmpty(intersectRegions(face, nameRegion)),
+    namePlacement: placement,
   };
 }
 

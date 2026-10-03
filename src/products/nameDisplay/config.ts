@@ -37,6 +37,13 @@ export interface NameDisplayAssemblyConfig {
   nameOffset: Offset2D;
   /** Extra per-letter-gap shift within the name, exactly as the cake topper's letterGapsMm works (one array, since the name is a single line). */
   nameLetterGapsMm: number[];
+  /**
+   * How far the name is tilted across the initial, in degrees (positive tilts
+   * it up to the right). Turns about the name's own center, so changing it
+   * tilts the name in place instead of swinging it off the letter. The pocket
+   * is cut from the rotated silhouette, so the recess always matches.
+   */
+  nameAngleDeg: number;
 
   /**
    * How deep the name is recessed into the initial's front face. The name
@@ -53,7 +60,14 @@ export interface NameDisplayAssemblyConfig {
 }
 
 export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayAssemblyConfig {
-  /** Cosmetic only — the physical colors come from the two filaments. */
+  /** Cosmetic only — the physical colors come from the filaments. */
   initialColor: string;
   nameColor: string;
+  /**
+   * The base rail's own color. The rail is merged into the initial and prints
+   * as one piece, but since these print standing up the rail is the first
+   * layers — so a filament swap partway up really does produce a
+   * differently-colored base, and the preview can show it.
+   */
+  standColor: string;
 }

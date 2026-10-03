@@ -27,11 +27,13 @@ const DEFAULT_CONFIG: NameDisplayConfig = {
   // sitting across the initial's lower middle, as these displays are usually laid out.
   nameOffset: { x: 0, y: 35 },
   nameLetterGapsMm: defaultLetterGaps(DEFAULT_NAME),
+  nameAngleDeg: 0,
 
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
 
   standMode: 'none',
+  standColor: COLOR_PRESETS[3].hex,
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
@@ -98,6 +100,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
   const {
     nameOffset,
     nameLetterGapsMm,
+    nameAngleDeg,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,
@@ -105,11 +108,13 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railMarginMm,
     initialColor,
     nameColor,
+    standColor,
   } = state;
   return {
     ...selectNameDisplayBlocksConfig(state),
     nameOffset,
     nameLetterGapsMm,
+    nameAngleDeg,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,
@@ -117,5 +122,6 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railMarginMm,
     initialColor,
     nameColor,
+    standColor,
   };
 }

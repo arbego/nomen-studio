@@ -16,9 +16,11 @@ const config: NameDisplayConfig = {
   nameColor: '#f7f5f2',
   nameOffset: { x: 0, y: 45 },
   nameLetterGapsMm: [],
+  nameAngleDeg: 0,
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
+  standColor: '#2b2b2b',
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
@@ -178,5 +180,43 @@ describe('print geometry', () => {
 
     // The initial, which is the piece that actually stands, is cut.
     expect(built.blocks.initial.lines[0].letters[0].contours.length).toBeGreaterThan(0);
+  }, 30000);
+});
+
+describe('name angle', () => {
+  it('cuts the pocket from the tilted silhouette, so the recess follows the name', async () => {
+    const straight = await buildNameDisplay(config);
+    const tilted = await buildNameDisplay({ ...config, nameAngleDeg: 20 });
+    // A different pocket shape means a differently triangulated front slab.
+    expect(vertexCount(tilted.initialGeometry)).not.toBe(vertexCount(straight.initialGeometry));
+  }, 30000);
+
+  it('turns the name about its own center, so tilting does not swing it off the initial', async () => {
+    const tilted = await buildNameDisplay({ ...config, nameAngleDeg: 30 });
+    expect(tilted.overlapsInitial).toBe(true);
+
+    // The pivot the pocket turned about is the name's own center, and it stays
+    // put: a point at the pivot maps to pivot + offset at any angle.
+    const { pivot, translate } = tilted.namePlacement;
+    const straight = await buildNameDisplay(config);
+    expect(pivot!.x).toBeCloseTo(straight.namePlacement.pivot!.x, 6);
+    expect(pivot!.y).toBeCloseTo(straight.namePlacement.pivot!.y, 6);
+    expect(translate!.y).toBe(config.nameOffset.y);
+  }, 30000);
+
+  it('exports the name unrotated — the angle only decides where the pocket went', async () => {
+    const straight = await buildNameDisplay(config);
+    const tilted = await buildNameDisplay({ ...config, nameAngleDeg: 30 });
+    const a = bounds(namePrintGeometry(straight.blocks, config));
+    const b = bounds(namePrintGeometry(tilted.blocks, { ...config, nameAngleDeg: 30 }));
+    expect(b.min.x).toBeCloseTo(a.min.x, 5);
+    expect(b.max.x).toBeCloseTo(a.max.x, 5);
+    expect(b.max.y).toBeCloseTo(a.max.y, 5);
+  }, 30000);
+
+  it('leaves the initial itself alone — only the pocket in its face changes', async () => {
+    const straight = await buildNameDisplay({ ...config, pocketDepthMm: 0 });
+    const tilted = await buildNameDisplay({ ...config, pocketDepthMm: 0, nameAngleDeg: 30 });
+    expect(vertexCount(tilted.initialGeometry)).toBe(vertexCount(straight.initialGeometry));
   }, 30000);
 });

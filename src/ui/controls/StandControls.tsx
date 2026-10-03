@@ -1,4 +1,5 @@
 import type { StandMode } from '../../geometry/baseGeometry';
+import { ColorSwatchPicker } from './ColorSwatchPicker';
 
 interface StandControlsProps {
   mode: StandMode;
@@ -11,6 +12,9 @@ interface StandControlsProps {
   onChangeTrimOffset: (mm: number) => void;
   /** Which piece this affects, when a product has more than one and only some of them stand. */
   hint?: string;
+  /** The rail's own color. Omit for a product that doesn't preview the stand separately; a flat cut never shows it, since it adds no material of its own. */
+  color?: string;
+  onChangeColor?: (hex: string) => void;
   className?: string;
 }
 
@@ -31,6 +35,8 @@ export function StandControls({
   trimOffsetMm,
   onChangeTrimOffset,
   hint,
+  color,
+  onChangeColor,
   className = '',
 }: StandControlsProps) {
   const active = MODES.find((m) => m.value === mode);
@@ -74,6 +80,9 @@ export function StandControls({
             </div>
             <input type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800" />
           </label>
+          {color !== undefined && onChangeColor && (
+            <ColorSwatchPicker value={color} onChange={onChangeColor} label="Rail color" variant="field" />
+          )}
         </>
       )}
 

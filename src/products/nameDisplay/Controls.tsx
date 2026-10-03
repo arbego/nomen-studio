@@ -49,6 +49,15 @@ export function NameDisplayControls() {
           <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Matilde'} />
           <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
           <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
+          <SliderField
+            label="Angle"
+            value={config.nameAngleDeg}
+            onChange={(nameAngleDeg) => onChange({ nameAngleDeg })}
+            min={-45}
+            max={45}
+            unit="°"
+            hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
+          />
           <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
           <p className="flex items-center justify-between text-xs text-stone-400">
             <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
@@ -99,6 +108,8 @@ export function NameDisplayControls() {
           onChangeRailDepth={(railDepthMm) => onChange({ railDepthMm })}
           trimOffsetMm={config.trimOffsetMm}
           onChangeTrimOffset={(trimOffsetMm) => onChange({ trimOffsetMm })}
+          color={config.standColor}
+          onChangeColor={(standColor) => onChange({ standColor })}
         />
       </div>
 
