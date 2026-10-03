@@ -1,4 +1,4 @@
-import { SIZE_PRESETS_MM } from '../../store/topperStore';
+import { SIZE_PRESETS_MM } from '../presets';
 
 interface SizePickerProps {
   value: number;

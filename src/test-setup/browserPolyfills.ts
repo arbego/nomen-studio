@@ -10,8 +10,8 @@ import { JSDOM } from 'jsdom';
 // branches on `typeof document` to decide whether to use its own headless
 // scene-graph mode or set up a real WebGLRenderer against an actual <canvas> —
 // a jsdom `document` is enough to trip it into the latter, which then fails
-// since jsdom's canvas has no WebGL support. PickMesh guards its own
-// `document.body.style.cursor` calls instead (see PickMesh.tsx).
+// since jsdom's canvas has no WebGL support. TextBlockMesh guards its own
+// `document.body.style.cursor` calls instead (see TextBlockMesh.tsx).
 if (typeof globalThis.DOMParser === 'undefined') {
   globalThis.DOMParser = new JSDOM('<!DOCTYPE html>').window.DOMParser;
 }

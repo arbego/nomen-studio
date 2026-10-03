@@ -2,10 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { StickOffset } from '../geometry/types';
+import type { Offset2D } from '../geometry/types';
 import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from '../geometry/stickGeometry';
 import { localDragPoint } from './dragUtils';
-import type { StickParams } from './PickMesh';
+import type { StickParams } from './TextBlockMesh';
 
 // OrbitControls listens to native pointer events directly on the canvas, so a
 // synthetic-event stopPropagation() from a mesh handler doesn't stop it from
@@ -21,16 +21,16 @@ function setCursor(cursor: string) {
 }
 
 interface StickMeshProps {
-  /** The piece it's attaching to's current combined bounds, in the pick group's local space — used to clamp where this stick is allowed to sit. */
+  /** The piece it's attaching to's current combined bounds, in the block group's local space — used to clamp where this stick is allowed to sit. */
   bounds: THREE.Box3;
   color: string;
   stick: StickParams;
-  offset: StickOffset;
-  /** The pick's own group — a stick's (x, y) is in that group's local space, not its own. */
+  offset: Offset2D;
+  /** The block's own group — a stick's (x, y) is in that group's local space, not its own. */
   referenceObject: React.RefObject<THREE.Group | null>;
-  onOffsetCommit: (offset: StickOffset) => void;
+  onOffsetCommit: (offset: Offset2D) => void;
   /**
-   * Whether *something* in this pick (any letter, line, or stick — not
+   * Whether *something* in this block (any letter, line, or stick — not
    * necessarily this one) is currently being dragged. React Three Fiber's
    * pointer capture only guarantees drag *events* keep reaching the captured
    * object — it still raycasts and fires onPointerOver/onPointerOut on
@@ -43,17 +43,17 @@ interface StickMeshProps {
   onDraggingChange: (dragging: boolean) => void;
 }
 
-/** One draggable stick. A pick with multiple sticks renders one of these per stick, each independently grabbable. */
+/** One draggable stick. A block with multiple sticks renders one of these per stick, each independently grabbable. */
 export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit, anyDragActive, onDraggingChange }: StickMeshProps) {
   const [hovered, setHovered] = useState(false);
-  const [liveOffset, setLiveOffset] = useState<StickOffset | null>(null);
+  const [liveOffset, setLiveOffset] = useState<Offset2D | null>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
   // The (x, y) delta between where the pointer first landed and the stick's
   // offset at that moment — captured once on pointer down and held constant
   // for the rest of the drag, so the stick keeps whatever relationship it had
   // to the cursor at grab time instead of snapping its offset to exactly the
   // clicked point (which is almost never (0, 0) on the stick's own body).
-  const grabDeltaRef = useRef<StickOffset>({ x: 0, y: 0 });
+  const grabDeltaRef = useRef<Offset2D>({ x: 0, y: 0 });
 
   const currentOffset = liveOffset ?? offset;
 

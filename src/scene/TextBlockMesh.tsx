@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { Pick, StickOffset } from '../geometry/types';
+import type { TextBlock, Offset2D } from '../geometry/types';
 import {
-  combinedPickBounds,
+  combinedBlockBounds,
   cumulativeGaps,
   normalizedLetterGaps,
   clampDesiredLetterPosition,
@@ -27,18 +27,31 @@ export interface StickParams {
 // also rotating the camera during a drag — it has to be disabled explicitly.
 type ToggleableControls = { enabled: boolean };
 
-interface PickMeshProps {
-  pick: Pick;
+interface TextBlockMeshProps {
+  block: TextBlock;
   color: string;
-  positionX: number;
-  stick: StickParams;
-  stickColor: string;
-  stickOffsets: StickOffset[];
-  onStickOffsetCommit: (index: number, offset: StickOffset) => void;
+  /** Where this block sits in its parent's space (mm). Z matters for products that stack blocks front-to-back, like the name display's inlay. */
+  position: [number, number, number];
+  /**
+   * Whether the letters respond to pointer drags at all. A product that
+   * positions a block by other means — the name display's background initial,
+   * which the name is placed *onto* — turns this off so the block reads as
+   * fixed scenery rather than something that looks grabbable but isn't.
+   */
+  draggable?: boolean;
+  /**
+   * Sticks attached to this block, if the product has any. The cake topper
+   * does; the name display stands on a base rail instead and omits all four
+   * stick props.
+   */
+  stick?: StickParams;
+  stickColor?: string;
+  stickOffsets?: Offset2D[];
+  onStickOffsetCommit?: (index: number, offset: Offset2D) => void;
   letterGapsMm: number[][];
   onLetterGapCommit: (lineIndex: number, gapIndex: number, gapMm: number) => void;
-  lineOffsets: StickOffset[];
-  onLineOffsetCommit: (lineIndex: number, offset: StickOffset) => void;
+  lineOffsets: Offset2D[];
+  onLineOffsetCommit: (lineIndex: number, offset: Offset2D) => void;
   /**
    * Notified whenever a letter-gap or line drag starts/stops (not a stick
    * drag, which doesn't move any letter). The outline card can't cheaply
@@ -58,22 +71,23 @@ interface DraggingGap {
 
 interface DraggingLine {
   lineIndex: number;
-  offset: StickOffset;
+  offset: Offset2D;
 }
 
 /**
- * One pick: every line's letters (each a separate, individually draggable
- * mesh — see LetterMesh) plus its sticks. Dragging any letter but a line's
+ * One block: every line's letters (each a separate, individually draggable
+ * mesh — see LetterMesh) plus any sticks the product attached to it. Dragging any letter but a line's
  * first closes/opens the gap before it and cascades to every letter after it
  * within that same line; dragging a line's first letter instead repositions
  * the whole line. Both kinds of drag state live here (not in LetterMesh)
  * because a single drag can affect several other letters/meshes at once, so
  * they all need to see the same live value.
  */
-export function PickMesh({
-  pick,
+export function TextBlockMesh({
+  block,
   color,
-  positionX,
+  position,
+  draggable = true,
   stick,
   stickColor,
   stickOffsets,
@@ -83,7 +97,7 @@ export function PickMesh({
   lineOffsets,
   onLineOffsetCommit,
   onLetterDragActiveChange,
-}: PickMeshProps) {
+}: TextBlockMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
   const [draggingGap, setDraggingGap] = useState<DraggingGap | null>(null);
@@ -109,12 +123,12 @@ export function PickMesh({
   // the drag. Without it, the dragged thing would snap to align exactly with
   // wherever on it you happened to click, instead of keeping the relationship
   // it had to the cursor at grab time.
-  const grabDeltaRef = useRef<StickOffset>({ x: 0, y: 0 });
+  const grabDeltaRef = useRef<Offset2D>({ x: 0, y: 0 });
 
-  const naturalXsMmByLine = useMemo(() => pick.lines.map((line) => line.letters.map((letter) => letter.naturalXMm)), [pick.lines]);
+  const naturalXsMmByLine = useMemo(() => block.lines.map((line) => line.letters.map((letter) => letter.naturalXMm)), [block.lines]);
   const gapsByLine = useMemo(
-    () => pick.lines.map((line, i) => normalizedLetterGaps(line.letters.length, letterGapsMm[i] ?? [])),
-    [pick.lines, letterGapsMm],
+    () => block.lines.map((line, i) => normalizedLetterGaps(line.letters.length, letterGapsMm[i] ?? [])),
+    [block.lines, letterGapsMm],
   );
   const effectiveGapsByLine = draggingGap
     ? gapsByLine.map((gaps, i) => (i === draggingGap.lineIndex ? gaps.map((gap, gi) => (gi === draggingGap.gapIndex ? draggingGap.gapMm : gap)) : gaps))
@@ -124,8 +138,8 @@ export function PickMesh({
     : lineOffsets;
   const cascadesByLine = useMemo(() => effectiveGapsByLine.map((gaps) => cumulativeGaps(gaps)), [effectiveGapsByLine]);
   const bounds = useMemo(
-    () => combinedPickBounds(pick, effectiveGapsByLine, effectiveLineOffsets),
-    [pick, effectiveGapsByLine, effectiveLineOffsets],
+    () => combinedBlockBounds(block, effectiveGapsByLine, effectiveLineOffsets),
+    [block, effectiveGapsByLine, effectiveLineOffsets],
   );
 
   function updateGapDrag(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>, isInitial: boolean) {
@@ -136,7 +150,7 @@ export function PickMesh({
     const offset = lineOffsets[lineIndex] ?? { x: 0, y: 0 };
     const naturalXsMm = naturalXsMmByLine[lineIndex];
     const gaps = gapsByLine[lineIndex];
-    // point.x is in the pick group's space, which already includes this
+    // point.x is in the block group's space, which already includes this
     // line's own (committed) offset, so it's subtracted back out before
     // solving in the line's own natural-position frame.
     const pointInLineFrame = point.x - offset.x;
@@ -209,8 +223,8 @@ export function PickMesh({
   }
 
   return (
-    <group ref={groupRef} position={[positionX, 0, 0]}>
-      {pick.lines.map((line, lineIndex) =>
+    <group ref={groupRef} position={position}>
+      {block.lines.map((line, lineIndex) =>
         line.letters.map((letter, i) => {
           const offset = effectiveLineOffsets[lineIndex] ?? { x: 0, y: 0 };
           return (
@@ -220,7 +234,7 @@ export function PickMesh({
               color={color}
               xMm={cascadesByLine[lineIndex][i] + offset.x}
               yMm={offset.y}
-              draggable
+              draggable={draggable}
               dragging={i === 0 ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
               anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}
@@ -230,19 +244,20 @@ export function PickMesh({
           );
         }),
       )}
-      {stickOffsets.map((offset, index) => (
-        <StickMesh
-          key={index}
-          bounds={bounds}
-          color={stickColor}
-          stick={stick}
-          offset={offset}
-          referenceObject={groupRef}
-          onOffsetCommit={(newOffset) => onStickOffsetCommit(index, newOffset)}
-          anyDragActive={anyDragActive}
-          onDraggingChange={(dragging) => setDraggingStickIndex(dragging ? index : null)}
-        />
-      ))}
+      {stick &&
+        stickOffsets?.map((offset, index) => (
+          <StickMesh
+            key={index}
+            bounds={bounds}
+            color={stickColor ?? color}
+            stick={stick}
+            offset={offset}
+            referenceObject={groupRef}
+            onOffsetCommit={(newOffset) => onStickOffsetCommit?.(index, newOffset)}
+            anyDragActive={anyDragActive}
+            onDraggingChange={(dragging) => setDraggingStickIndex(dragging ? index : null)}
+          />
+        ))}
     </group>
   );
 }

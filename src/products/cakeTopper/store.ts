@@ -1,16 +1,7 @@
 import { create } from 'zustand';
-import type { MainGeometryConfig, PickId, StickOffset, TopperConfig } from '../geometry/types';
-
-export const SIZE_PRESETS_MM = [100, 120, 150] as const;
-
-export const COLOR_PRESETS = [
-  { id: 'white', label: 'Weiß', hex: '#f7f5f2' },
-  { id: 'beige', label: 'Beige', hex: '#e8d9c3' },
-  { id: 'rosa', label: 'Rosa', hex: '#f0c6d0' },
-  { id: 'altrosa', label: 'Altrosa', hex: '#d9a9ab' },
-  { id: 'sage', label: 'Sage', hex: '#b7c4ac' },
-  { id: 'black', label: 'Schwarz', hex: '#2b2b2b' },
-] as const;
+import type { Offset2D } from '../../geometry/types';
+import { COLOR_PRESETS } from '../../ui/presets';
+import type { CakeTopperConfig, CakeTopperGeometryConfig, CakeTopperBlockId } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(line: string): number[] {
@@ -21,7 +12,7 @@ const DEFAULT_LINE = 'Emma';
 /** One base line plus up to 2 more — matches the "+" button's disabled state in LinesControls. */
 const MAX_LINES = 3;
 
-const DEFAULT_CONFIG: TopperConfig = {
+const DEFAULT_CONFIG: CakeTopperConfig = {
   lines: [DEFAULT_LINE],
   wordFontId: 'dancing-script',
   sizeMm: 100,
@@ -43,25 +34,25 @@ const DEFAULT_CONFIG: TopperConfig = {
 /** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
 const NEW_STICK_SPACING_MM = 15;
 /** Sanity cap — matches the disabled state of the "+" button in StickControls, enforced here too in case of other future callers. */
-const MAX_STICKS_PER_PICK = 5;
+const MAX_STICKS_PER_BLOCK = 5;
 
-interface TopperStore extends TopperConfig {
-  setConfig: (partial: Partial<TopperConfig>) => void;
-  setStickOffset: (pickId: PickId, index: number, offset: StickOffset) => void;
-  addStick: (pickId: PickId) => void;
-  removeStick: (pickId: PickId, index: number) => void;
-  setSticksEnabled: (pickId: PickId, enabled: boolean) => void;
+interface CakeTopperStore extends CakeTopperConfig {
+  setConfig: (partial: Partial<CakeTopperConfig>) => void;
+  setStickOffset: (blockId: CakeTopperBlockId, index: number, offset: Offset2D) => void;
+  addStick: (blockId: CakeTopperBlockId) => void;
+  removeStick: (blockId: CakeTopperBlockId, index: number) => void;
+  setSticksEnabled: (blockId: CakeTopperBlockId, enabled: boolean) => void;
   setLineText: (index: number, text: string) => void;
   addLine: () => void;
   removeLine: (index: number) => void;
-  setLineOffset: (index: number, offset: StickOffset) => void;
+  setLineOffset: (index: number, offset: Offset2D) => void;
   setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
   reset: () => void;
 }
 
-export const useTopperStore = create<TopperStore>((set) => ({
+export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
   ...DEFAULT_CONFIG,
   setConfig: (partial) =>
     set((state) => {
@@ -87,36 +78,36 @@ export const useTopperStore = create<TopperStore>((set) => ({
       }
       return partial;
     }),
-  setStickOffset: (pickId, index, offset) =>
+  setStickOffset: (blockId, index, offset) =>
     set((state) => ({
       stickOffsets: {
         ...state.stickOffsets,
-        [pickId]: state.stickOffsets[pickId].map((existing, i) => (i === index ? offset : existing)),
+        [blockId]: state.stickOffsets[blockId].map((existing, i) => (i === index ? offset : existing)),
       },
     })),
-  addStick: (pickId) =>
+  addStick: (blockId) =>
     set((state) => {
-      const existing = state.stickOffsets[pickId];
-      if (existing.length >= MAX_STICKS_PER_PICK) return {};
+      const existing = state.stickOffsets[blockId];
+      if (existing.length >= MAX_STICKS_PER_BLOCK) return {};
       const last = existing[existing.length - 1];
-      const next: StickOffset = { x: (last?.x ?? 0) + NEW_STICK_SPACING_MM, y: last?.y ?? 0 };
-      return { stickOffsets: { ...state.stickOffsets, [pickId]: [...existing, next] } };
+      const next: Offset2D = { x: (last?.x ?? 0) + NEW_STICK_SPACING_MM, y: last?.y ?? 0 };
+      return { stickOffsets: { ...state.stickOffsets, [blockId]: [...existing, next] } };
     }),
-  removeStick: (pickId, index) =>
+  removeStick: (blockId, index) =>
     set((state) => {
-      const existing = state.stickOffsets[pickId];
+      const existing = state.stickOffsets[blockId];
       if (existing.length <= 0) return {};
-      return { stickOffsets: { ...state.stickOffsets, [pickId]: existing.filter((_, i) => i !== index) } };
+      return { stickOffsets: { ...state.stickOffsets, [blockId]: existing.filter((_, i) => i !== index) } };
     }),
-  setSticksEnabled: (pickId, enabled) =>
+  setSticksEnabled: (blockId, enabled) =>
     set((state) => {
-      const existing = state.stickOffsets[pickId];
+      const existing = state.stickOffsets[blockId];
       if (enabled) {
         if (existing.length > 0) return {};
-        return { stickOffsets: { ...state.stickOffsets, [pickId]: [{ x: 0, y: 0 }] } };
+        return { stickOffsets: { ...state.stickOffsets, [blockId]: [{ x: 0, y: 0 }] } };
       }
       if (existing.length === 0) return {};
-      return { stickOffsets: { ...state.stickOffsets, [pickId]: [] } };
+      return { stickOffsets: { ...state.stickOffsets, [blockId]: [] } };
     }),
   setLineText: (index, text) =>
     set((state) => ({
@@ -168,13 +159,13 @@ export const useTopperStore = create<TopperStore>((set) => ({
 }));
 
 /** The subset that drives the expensive async geometry build — excludes stick and letter-gap/line-offset fields on purpose. */
-export function selectMainGeometryConfig(state: TopperStore): MainGeometryConfig {
+export function selectCakeTopperGeometryConfig(state: CakeTopperStore): CakeTopperGeometryConfig {
   const { lines, wordFontId, sizeMm, extrudeDepthMm } = state;
   return { lines, wordFontId, sizeMm, extrudeDepthMm };
 }
 
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
-export function selectTopperConfig(state: TopperStore): TopperConfig {
+export function selectCakeTopperConfig(state: CakeTopperStore): CakeTopperConfig {
   const {
     lines,
     wordFontId,

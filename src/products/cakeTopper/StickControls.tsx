@@ -1,4 +1,4 @@
-import type { PickId } from '../../geometry/types';
+import type { CakeTopperBlockId } from './config';
 
 interface StickControlsProps {
   enabled: boolean;
@@ -7,17 +7,17 @@ interface StickControlsProps {
   lengthMm: number;
   onChangeWidth: (widthMm: number) => void;
   onChangeLength: (lengthMm: number) => void;
-  stickCounts: Record<PickId, number>;
-  onAddStick: (pickId: PickId) => void;
-  onRemoveStick: (pickId: PickId) => void;
+  stickCounts: Record<CakeTopperBlockId, number>;
+  onAddStick: (blockId: CakeTopperBlockId) => void;
+  onRemoveStick: (blockId: CakeTopperBlockId) => void;
   className?: string;
 }
 
 const WIDTH_RANGE = { min: 2, max: 10, step: 0.5 };
 const LENGTH_RANGE = { min: 40, max: 120, step: 1 };
-const MAX_STICKS_PER_PICK = 5;
+const MAX_STICKS_PER_BLOCK = 5;
 
-const PICK_LABELS: Record<PickId, string> = { word: 'Name' };
+const PICK_LABELS: Record<CakeTopperBlockId, string> = { word: 'Name' };
 
 export function StickControls({
   enabled,
@@ -31,7 +31,7 @@ export function StickControls({
   onRemoveStick,
   className = '',
 }: StickControlsProps) {
-  const pickIds: PickId[] = ['word'];
+  const pickIds: CakeTopperBlockId[] = ['word'];
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -51,25 +51,25 @@ export function StickControls({
           <p className="text-xs text-stone-400">Drag a stick in the preview to reposition it.</p>
 
           <div className="flex flex-col gap-2">
-            {pickIds.map((pickId) => (
-              <div key={pickId} className="flex items-center justify-between text-sm text-stone-600">
+            {pickIds.map((blockId) => (
+              <div key={blockId} className="flex items-center justify-between text-sm text-stone-600">
                 <span>Sticks amount</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => onRemoveStick(pickId)}
-                    disabled={stickCounts[pickId] <= 1}
-                    aria-label={`Remove a ${PICK_LABELS[pickId]} stick`}
+                    onClick={() => onRemoveStick(blockId)}
+                    disabled={stickCounts[blockId] <= 1}
+                    aria-label={`Remove a ${PICK_LABELS[blockId]} stick`}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 text-stone-600 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     −
                   </button>
-                  <span className="w-4 text-center tabular-nums">{stickCounts[pickId]}</span>
+                  <span className="w-4 text-center tabular-nums">{stickCounts[blockId]}</span>
                   <button
                     type="button"
-                    onClick={() => onAddStick(pickId)}
-                    disabled={stickCounts[pickId] >= MAX_STICKS_PER_PICK}
-                    aria-label={`Add a ${PICK_LABELS[pickId]} stick`}
+                    onClick={() => onAddStick(blockId)}
+                    disabled={stickCounts[blockId] >= MAX_STICKS_PER_BLOCK}
+                    aria-label={`Add a ${PICK_LABELS[blockId]} stick`}
                     className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 text-stone-600 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     +

@@ -1,63 +1,30 @@
-export type PickId = 'word';
+/**
+ * Identifies one text block within a product's design (e.g. the cake topper's
+ * 'word', or the name display's 'initial' and 'name'). Products choose their own
+ * ids; nothing in the shared core interprets them.
+ */
+export type BlockId = string;
 
-export interface StickOffset {
+/** A plain (x, y) offset in millimeters — a line's draggable position, a stick's attach point, a block's placement. */
+export interface Offset2D {
   x: number;
   y: number;
 }
 
-/** The fields that drive the expensive, async, font-dependent geometry build. Stick
- * fields are deliberately excluded — repositioning/resizing a stick must stay cheap
- * and never re-trigger font extrusion. */
-export interface MainGeometryConfig {
-  /** 1-3 lines of text, stacked top to bottom, sharing one font/scale — see textGeometry.ts. */
-  lines: string[];
-  wordFontId: string;
-  /** Target width of the widest line, in millimeters — drives the shared scale of every line. */
-  sizeMm: number;
-  extrudeDepthMm: number;
-}
-
-export interface TopperConfig extends MainGeometryConfig {
-  stickLengthMm: number;
-  stickWidthMm: number;
-  stickEmbedMm: number;
-  /** Where each pick's sticks attach, in mm from that pick's own local origin —
-   * one or more per pick, each independently draggable. */
-  stickOffsets: Record<PickId, StickOffset[]>;
+/**
+ * One closed boundary of a glyph: its outer contour plus any counters (the hole
+ * in "a"/"o"/"B") the font draws as their own subpaths. Both are in the same
+ * final mm-space and natural-position convention as the letter's own `geometry`.
+ */
+export interface GlyphContour {
+  outer: import('three').Vector2[];
   /**
-   * Extra horizontal shift (mm), applied on top of the font's own kerning, at
-   * each letter-to-letter gap within a line — one array per line (indexed the
-   * same as `lines`); within a line, index i adjusts the gap between letter i
-   * and letter i+1, and (since positions are cumulative) cascades to every
-   * letter after it too. Each line's array is always length
-   * `lines[i].length - 1`; reset to all zeros whenever that line's text (or
-   * the line count) changes (see topperStore's setConfig).
+   * Note that some script fonts instead draw a counter as a single
+   * self-approaching *outer* contour, so an empty `holes` does not mean the
+   * glyph has no visual hole — see outline.ts, which relies on Clipper
+   * rediscovering those from `outer` alone.
    */
-  letterGapsMm: number[][];
-  /**
-   * Each line's draggable (x, y) position, on top of its baked-in natural
-   * stacked position (see textGeometry.ts) — index-aligned with `lines`.
-   * Unlike a stick's offset, a line has no "must stay attached" constraint, so
-   * this is never clamped.
-   */
-  lineOffsets: StickOffset[];
-  /** Cosmetic only — the physical color comes from 3D printer filament, not the file. */
-  previewColor: string;
-  /** Whether a growable solid backing card is added under the word — see outline.ts. */
-  outlineEnabled: boolean;
-  /** How far the outline card extends past the letters, in mm. Growing it far enough merges nearby disconnected pieces (e.g. an "i"'s dot and its stem) into one connected card — see outline.ts. */
-  outlineGrowMm: number;
-  /** The outline's own color, independent of previewColor (the word's). */
-  outlineColor: string;
-  /** The outline card's own thickness (mm), independent of extrudeDepthMm (the word's) — kept shallower by default so the letters visibly stand proud of the card instead of being flush with (and so, from the front, hidden behind) it. */
-  outlineDepthMm: number;
-  /**
-   * Counter holes (e.g. the "a" in a script font) the user has manually chosen
-   * to fill in solid, as `outlineHoleKey(lineIndex, letterIndex)` strings (see
-   * outline.ts). Reset whenever any line's text or `wordFontId` changes, since
-   * a different letter/glyph at that position invalidates the key.
-   */
-  closedOutlineHoles: string[];
+  holes: import('three').Vector2[][];
 }
 
 export interface LetterGeometry {
@@ -74,31 +41,39 @@ export interface LetterGeometry {
   /** This letter's natural resting x (mm), before any gap override. */
   naturalXMm: number;
   /**
-   * The outer boundary of each of this glyph's disconnected shapes, in the
-   * same mm-space/natural-position convention as `geometry`. Almost always
-   * one contour; a glyph like "i"/"j" has two (the stem and the dot). Some
-   * script fonts draw a letter's counter (the hole in "a"/"e"/"o"...) as a
-   * single self-approaching contour rather than a separate hole subpath;
-   * Clipper's own polygon offsetting (see outline.ts) discovers that as a
-   * genuine hole with no extra pre-processing needed. See outline.ts, which
-   * is the only consumer of this.
+   * The boundary of each of this glyph's disconnected shapes, in the same
+   * mm-space/natural-position convention as `geometry`. Almost always one
+   * contour; a glyph like "i"/"j" has two (the stem and the dot).
+   *
+   * Consumers that grow the silhouette outward (outline.ts) read only `outer`
+   * and let Clipper rediscover the holes; consumers that need the glyph's true
+   * filled area — the name display's inlay pocket, which must not fill in the
+   * counter of an "A" or "O" — need `holes` as well.
    */
-  outlineContours: import('three').Vector2[][];
+  contours: GlyphContour[];
 }
 
 export interface LineGeometry {
-  /** This line's letters, in reading order — no stick, no gap/line-offset
-   * overrides baked in (same convention as Pick.letters used to be). */
+  /** This line's letters, in reading order — no gap/line-offset overrides baked in. */
   letters: LetterGeometry[];
 }
 
-export interface Pick {
-  id: PickId;
+/**
+ * One printable piece of lettering: one or more stacked lines of text sharing a
+ * single font, scale and baseline (see textGeometry.ts). Within-line gap
+ * overrides and per-line position offsets are applied as a position offset at
+ * render/export time — both cheap and synchronous, so neither has to re-run font
+ * extrusion. Whatever a product adds on top (a cake topper's sticks, a name
+ * display's base rail) is generated separately and merged in at export.
+ */
+export interface TextBlock {
+  id: BlockId;
   label: string;
-  /** One or more stacked lines of text (see textGeometry.ts for how they
-   * share one scale/baseline). Sticks are generated separately, and both
-   * within-line gap overrides and per-line position offsets are applied as
-   * a position offset at render/export time, both cheap and synchronous so
-   * neither has to re-run font extrusion. */
   lines: LineGeometry[];
+  /**
+   * The y (mm) of the text's typographic baseline in this block's own local
+   * space. Descenders dip below it, which is exactly where a flat-bottom trim
+   * wants to cut by default — see baseGeometry.ts.
+   */
+  baselineYMm: number;
 }

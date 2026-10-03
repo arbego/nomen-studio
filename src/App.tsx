@@ -1,83 +1,41 @@
-import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { useTopperStore, selectTopperConfig, selectMainGeometryConfig } from './store/topperStore';
-import { useTopperPicks } from './hooks/useTopperPicks';
-import { AppShell } from './ui/Layout/AppShell';
-import { ControlsPanel } from './ui/ControlsPanel';
-import { TopperCanvas } from './scene/TopperCanvas';
+import { Fragment } from 'react';
+import { useAppStore } from './store/appStore';
+import { getProduct } from './products/registry';
+import { AppShell } from './ui/AppShell';
+import { ProductPicker } from './ui/ProductPicker';
+import { ProductHeader } from './ui/ProductHeader';
+import { StudioCanvas } from './scene/StudioCanvas';
 
+/**
+ * Either the product picker or one product's studio. The shell knows nothing
+ * about any product beyond what its registry entry exposes — see
+ * products/types.ts.
+ */
 function App() {
-  const config = useTopperStore(useShallow(selectTopperConfig));
-  const mainConfig = useTopperStore(useShallow(selectMainGeometryConfig));
-  const setConfig = useTopperStore((s) => s.setConfig);
-  const setStickOffset = useTopperStore((s) => s.setStickOffset);
-  const addStick = useTopperStore((s) => s.addStick);
-  const removeStick = useTopperStore((s) => s.removeStick);
-  const setSticksEnabled = useTopperStore((s) => s.setSticksEnabled);
-  const setLineText = useTopperStore((s) => s.setLineText);
-  const addLine = useTopperStore((s) => s.addLine);
-  const removeLine = useTopperStore((s) => s.removeLine);
-  const setLineOffset = useTopperStore((s) => s.setLineOffset);
-  const setLetterGap = useTopperStore((s) => s.setLetterGap);
-  const resetLetterGaps = useTopperStore((s) => s.resetLetterGaps);
-  const toggleClosedOutlineHole = useTopperStore((s) => s.toggleClosedOutlineHole);
-  const { picks, loading, error } = useTopperPicks(mainConfig);
+  const selectedProductId = useAppStore((s) => s.selectedProductId);
+  const selectProduct = useAppStore((s) => s.selectProduct);
+  const clearProduct = useAppStore((s) => s.clearProduct);
 
-  // A stick is embedded into the outline card when there is one, so it reads
-  // as (and is sized/colored like) part of that piece rather than the
-  // lettering — matches buildTopper.ts's stickThicknessMm, used at export time.
-  const stickThicknessMm = config.outlineEnabled ? config.outlineDepthMm : config.extrudeDepthMm;
-  const stickColor = config.outlineEnabled ? config.outlineColor : config.previewColor;
+  const product = selectedProductId ? getProduct(selectedProductId) : undefined;
+  if (!product) {
+    return <ProductPicker onSelect={selectProduct} />;
+  }
 
-  const stick = useMemo(
-    () => ({
-      lengthMm: config.stickLengthMm,
-      widthMm: config.stickWidthMm,
-      embedMm: config.stickEmbedMm,
-      thicknessMm: stickThicknessMm,
-    }),
-    [config.stickLengthMm, config.stickWidthMm, config.stickEmbedMm, stickThicknessMm],
-  );
-
+  // Both halves of the studio mount inside the product's own provider, so state
+  // they share (its geometry build) is created once, above both.
+  const Provider = product.Provider ?? Fragment;
   return (
-    <AppShell
-      sidebar={
-        <ControlsPanel
-          config={config}
-          onChange={setConfig}
-          picks={picks}
-          loading={loading}
-          error={error}
-          onAddStick={addStick}
-          onRemoveStick={removeStick}
-          onSetSticksEnabled={setSticksEnabled}
-          onChangeLine={setLineText}
-          onAddLine={addLine}
-          onRemoveLine={removeLine}
-          onResetLetterGaps={resetLetterGaps}
-          onToggleClosedOutlineHole={toggleClosedOutlineHole}
-        />
-      }
-      main={
-        <TopperCanvas
-          picks={picks}
-          color={config.previewColor}
-          stick={stick}
-          stickColor={stickColor}
-          stickOffsets={config.stickOffsets}
-          onStickOffsetCommit={setStickOffset}
-          letterGapsMm={config.letterGapsMm}
-          onLetterGapCommit={(_pickId, lineIndex, gapIndex, gapMm) => setLetterGap(lineIndex, gapIndex, gapMm)}
-          lineOffsets={config.lineOffsets}
-          onLineOffsetCommit={(_pickId, lineIndex, offset) => setLineOffset(lineIndex, offset)}
-          outlineEnabled={config.outlineEnabled}
-          outlineGrowMm={config.outlineGrowMm}
-          outlineColor={config.outlineColor}
-          outlineDepthMm={config.outlineDepthMm}
-          closedOutlineHoles={config.closedOutlineHoles}
-        />
-      }
-    />
+    <Provider>
+      <AppShell
+        header={<ProductHeader product={product} onBack={clearProduct} />}
+        sidebar={<product.Controls />}
+        main={
+          <StudioCanvas>
+            <product.SceneContent />
+          </StudioCanvas>
+        }
+      />
+    </Provider>
   );
 }
 

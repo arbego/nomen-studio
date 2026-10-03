@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { linesToLineGeometries } from './textGeometry';
+import { buildTextBlock } from './textGeometry';
 import { FONT_REGISTRY } from '../fonts/registry';
+
+/** The old lines-only entry point this file's assertions were written against — buildTextBlock sizes by width the same way. */
+async function buildLines(lines: string[], fontId: string, widthMm: number, extrudeDepthMm: number) {
+  const block = await buildTextBlock({ id: 'word', label: 'test', lines, fontId, fit: { mode: 'width', mm: widthMm }, extrudeDepthMm });
+  return block.lines;
+}
+
 
 describe('linesToLineGeometries (single line)', () => {
   it('renders every registered font to one valid geometry per letter, together spanning the target width', async () => {
     for (const font of FONT_REGISTRY) {
       const sample = 'Emma';
-      const [{ letters }] = await linesToLineGeometries([sample], font.id, 100, 3);
+      const [{ letters }] = await buildLines([sample], font.id, 100, 3);
       expect(letters).toHaveLength(sample.length);
 
       let combinedMinX = Infinity;
@@ -31,11 +38,11 @@ describe('linesToLineGeometries (single line)', () => {
   }, 30000);
 
   it('rejects empty text', async () => {
-    await expect(linesToLineGeometries([''], 'dancing-script', 100, 3)).rejects.toThrow();
+    await expect(buildLines([''], 'dancing-script', 100, 3)).rejects.toThrow();
   });
 
   it('positions letters left to right, each at its own distinct natural x', async () => {
-    const [{ letters }] = await linesToLineGeometries(['Emma'], 'dancing-script', 100, 3);
+    const [{ letters }] = await buildLines(['Emma'], 'dancing-script', 100, 3);
     for (let i = 1; i < letters.length; i++) {
       expect(letters[i].naturalXMm).toBeGreaterThan(letters[i - 1].naturalXMm);
     }
@@ -45,7 +52,7 @@ describe('linesToLineGeometries (single line)', () => {
     // 'p' descends below the classic baseline; 'H' doesn't. If each letter were
     // independently bottom-anchored (the way a single whole-word extrusion is),
     // both would incorrectly start at the same y, losing the descender.
-    const [{ letters }] = await linesToLineGeometries(['Happy'], 'dancing-script', 100, 3);
+    const [{ letters }] = await buildLines(['Happy'], 'dancing-script', 100, 3);
     const [h, , p] = letters;
     h.geometry.computeBoundingBox();
     p.geometry.computeBoundingBox();
@@ -64,7 +71,7 @@ describe('linesToLineGeometries (single line)', () => {
 
 describe('linesToLineGeometries (multi-line)', () => {
   it('gives every line the same letter size, even when line lengths differ wildly', async () => {
-    const [short, long] = await linesToLineGeometries(['Hi', 'Happy Birthday'], 'dancing-script', 100, 3);
+    const [short, long] = await buildLines(['Hi', 'Happy Birthday'], 'dancing-script', 100, 3);
 
     short.letters[0].geometry.computeBoundingBox();
     long.letters[0].geometry.computeBoundingBox();
@@ -78,7 +85,7 @@ describe('linesToLineGeometries (multi-line)', () => {
   });
 
   it('stacks a second line below the first, both sharing one horizontal centerline', async () => {
-    const [line0, line1] = await linesToLineGeometries(['Hi', 'Bye'], 'dancing-script', 100, 3);
+    const [line0, line1] = await buildLines(['Hi', 'Bye'], 'dancing-script', 100, 3);
 
     const bb0 = line0.letters.reduce(
       (box, letter) => {
@@ -99,7 +106,7 @@ describe('linesToLineGeometries (multi-line)', () => {
   });
 
   it('gives an empty line zero letters without breaking the other lines', async () => {
-    const [empty, real] = await linesToLineGeometries(['', 'Emma'], 'dancing-script', 100, 3);
+    const [empty, real] = await buildLines(['', 'Emma'], 'dancing-script', 100, 3);
     expect(empty.letters).toHaveLength(0);
     expect(real.letters).toHaveLength(4);
   });

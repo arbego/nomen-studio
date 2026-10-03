@@ -28,7 +28,7 @@ function frontCapNormalZ(geometry: THREE.BufferGeometry): number {
 
 describe('extrudeShapesToMm', () => {
   it('scales a shape to the target width and flips into y-up, bottom-anchored space', () => {
-    const geometry = extrudeShapesToMm([unitSquareShape()], { targetWidthMm: 50, extrudeDepthMm: 4 });
+    const geometry = extrudeShapesToMm([unitSquareShape()], { fit: { mode: 'width', mm: 50 }, extrudeDepthMm: 4 });
     geometry.computeBoundingBox();
     const bb = geometry.boundingBox!;
 
@@ -51,12 +51,12 @@ describe('extrudeShapesToMm', () => {
     // front instead, and looks the same from a distance), but very visible
     // once anything else sits directly behind the "hole" left where the
     // actual front cap should have been.
-    const geometry = extrudeShapesToMm([unitSquareShape()], { targetWidthMm: 50, extrudeDepthMm: 4 });
+    const geometry = extrudeShapesToMm([unitSquareShape()], { fit: { mode: 'width', mm: 50 }, extrudeDepthMm: 4 });
     expect(frontCapNormalZ(geometry)).toBeCloseTo(1, 5);
   });
 
   it('produces a finite, non-degenerate geometry with no NaNs', () => {
-    const geometry = extrudeShapesToMm([unitSquareShape()], { targetWidthMm: 50, extrudeDepthMm: 4 });
+    const geometry = extrudeShapesToMm([unitSquareShape()], { fit: { mode: 'width', mm: 50 }, extrudeDepthMm: 4 });
     const position = geometry.getAttribute('position');
     let hasNaN = false;
     for (let i = 0; i < position.count * 3; i++) {
@@ -67,14 +67,14 @@ describe('extrudeShapesToMm', () => {
   });
 
   it('rejects an empty shape list', () => {
-    expect(() => extrudeShapesToMm([], { targetWidthMm: 50, extrudeDepthMm: 4 })).toThrow();
+    expect(() => extrudeShapesToMm([], { fit: { mode: 'width', mm: 50 }, extrudeDepthMm: 4 })).toThrow();
   });
 });
 
 describe('extrudeGlyphShapesToMm', () => {
   it('winds every glyph so its front cap faces the camera (+z), same fix as extrudeShapesToMm', () => {
     const glyphs = [{ shapes: [unitSquareShape()], anchorX: 0 }];
-    const [{ geometry }] = extrudeGlyphShapesToMm(glyphs, { targetWidthMm: 50, extrudeDepthMm: 4 });
+    const { glyphs: [{ geometry }] } = extrudeGlyphShapesToMm(glyphs, { fit: { mode: 'width', mm: 50 }, extrudeDepthMm: 4 });
     expect(frontCapNormalZ(geometry)).toBeCloseTo(1, 5);
   });
 });

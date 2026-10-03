@@ -7,9 +7,9 @@ import {
   clampDesiredLetterPosition,
   normalizedLetterGaps,
   combinedLetterBounds,
-  combinedPickBounds,
+  combinedBlockBounds,
 } from './letterLayout';
-import type { LetterGeometry, Pick } from './types';
+import type { LetterGeometry, TextBlock } from './types';
 
 describe('cumulativeGaps', () => {
   it('starts at 0 and accumulates each gap in order', () => {
@@ -92,7 +92,7 @@ describe('normalizedLetterGaps', () => {
 function fakeLetter(minX: number, maxX: number, minY: number, maxY: number): LetterGeometry {
   const geometry = new THREE.BoxGeometry(maxX - minX, maxY - minY, 3);
   geometry.translate((minX + maxX) / 2, (minY + maxY) / 2, 0);
-  return { char: '?', geometry, naturalXMm: minX, outlineContours: [] };
+  return { char: '?', geometry, naturalXMm: minX, contours: [] };
 }
 
 describe('combinedLetterBounds', () => {
@@ -110,15 +110,16 @@ describe('combinedLetterBounds', () => {
   });
 });
 
-describe('combinedPickBounds', () => {
+describe('combinedBlockBounds', () => {
   it('unions every line\'s own combined bounds, each shifted by that line\'s offset', () => {
-    const pick: Pick = {
+    const block: TextBlock = {
       id: 'word',
       label: 'test',
       lines: [{ letters: [fakeLetter(0, 10, 0, 20)] }, { letters: [fakeLetter(0, 10, 0, 20)] }],
+      baselineYMm: 0,
     };
     // Line 0 stays put; line 1 is shifted 30mm right and 40mm down.
-    const bounds = combinedPickBounds(pick, [[], []], [{ x: 0, y: 0 }, { x: 30, y: -40 }]);
+    const bounds = combinedBlockBounds(block, [[], []], [{ x: 0, y: 0 }, { x: 30, y: -40 }]);
     expect(bounds.min.x).toBeCloseTo(0, 5);
     expect(bounds.max.x).toBeCloseTo(40, 5); // line 1's right edge (10) + 30
     expect(bounds.min.y).toBeCloseTo(-40, 5); // line 1's bottom (0) - 40

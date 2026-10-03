@@ -2,7 +2,7 @@ import * as ClipperLib from 'clipper-lib';
 import * as THREE from 'three';
 import { DEFAULT_CURVE_SEGMENTS } from './units';
 import { cumulativeGaps, normalizedLetterGaps } from './letterLayout';
-import type { Pick, StickOffset } from './types';
+import type { TextBlock, Offset2D } from './types';
 
 // Clipper works in integers for numerical robustness; this scales millimeters
 // up before handing coordinates to it (and back down when reading results),
@@ -10,7 +10,7 @@ import type { Pick, StickOffset } from './types';
 // print scale.
 const CLIPPER_SCALE = 1000;
 
-const ZERO_OFFSET: StickOffset = { x: 0, y: 0 };
+const ZERO_OFFSET: Offset2D = { x: 0, y: 0 };
 
 function toClipperPath(points: THREE.Vector2[]): ClipperLib.Path {
   return points.map((p) => ({ X: Math.round(p.x * CLIPPER_SCALE), Y: Math.round(p.y * CLIPPER_SCALE) }));
@@ -65,13 +65,13 @@ interface LetterRef {
  * within-line gap cascade *and* its line's own draggable (x, y) offset — the
  * "natural" (un-grown) silhouette the outline is built from.
  */
-function currentOutlinePaths(pick: Pick, letterGapsMm: number[][], lineOffsets: StickOffset[]): ClipperLib.Path[] {
+function currentOutlinePaths(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[]): ClipperLib.Path[] {
   const paths: ClipperLib.Path[] = [];
-  pick.lines.forEach((line, lineIndex) => {
+  block.lines.forEach((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, letterGapsMm[lineIndex] ?? []));
     const offset = lineOffsets[lineIndex] ?? ZERO_OFFSET;
     line.letters.forEach((letter, letterIndex) => {
-      for (const contour of letter.outlineContours) {
+      for (const { outer: contour } of letter.contours) {
         const shifted = contour.map((p) => new THREE.Vector2(p.x + cascade[letterIndex] + offset.x, p.y + offset.y));
         const path = toClipperPath(shifted);
         // ClipperOffset expects consistent outer-contour orientation; every
@@ -95,15 +95,15 @@ function currentOutlinePaths(pick: Pick, letterGapsMm: number[][], lineOffsets: 
  * line-offset-shifted mm-space `buildOutlineShapes` uses — used to attribute
  * a resulting hole (see attributeHoleToLetter) back to the letter it came
  * from. Parallel-indexed with the returned `refs`. */
-function letterBoundsList(pick: Pick, letterGapsMm: number[][], lineOffsets: StickOffset[]): { bounds: THREE.Box2[]; refs: LetterRef[] } {
+function letterBoundsList(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[]): { bounds: THREE.Box2[]; refs: LetterRef[] } {
   const bounds: THREE.Box2[] = [];
   const refs: LetterRef[] = [];
-  pick.lines.forEach((line, lineIndex) => {
+  block.lines.forEach((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, letterGapsMm[lineIndex] ?? []));
     const offset = lineOffsets[lineIndex] ?? ZERO_OFFSET;
     line.letters.forEach((letter, letterIndex) => {
       const box = new THREE.Box2();
-      for (const contour of letter.outlineContours) {
+      for (const { outer: contour } of letter.contours) {
         for (const p of contour) {
           box.expandByPoint(new THREE.Vector2(p.x + cascade[letterIndex] + offset.x, p.y + offset.y));
         }
@@ -175,12 +175,12 @@ export interface OutlineHoleCandidate {
  * reopen) a hole they already closed. Most letters contribute none; a script
  * font's "a"/"e"/"o"-style counters typically contribute one each.
  */
-export function detectOutlineHoleCandidates(pick: Pick, letterGapsMm: number[][], lineOffsets: StickOffset[], growMm: number): OutlineHoleCandidate[] {
-  const shapes = naturalOutlineShapes(pick, letterGapsMm, lineOffsets, growMm);
+export function detectOutlineHoleCandidates(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], growMm: number): OutlineHoleCandidate[] {
+  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm);
   if (shapes.length === 0) {
     return [];
   }
-  const { bounds, refs } = letterBoundsList(pick, letterGapsMm, lineOffsets);
+  const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
   const candidates: OutlineHoleCandidate[] = [];
   for (const shape of shapes) {
     for (const hole of shape.holes) {
@@ -192,11 +192,11 @@ export function detectOutlineHoleCandidates(pick: Pick, letterGapsMm: number[][]
 }
 
 /** The outline's natural shapes (every hole Clipper's offsetting actually finds), with no manual "closed" overrides applied yet. */
-function naturalOutlineShapes(pick: Pick, letterGapsMm: number[][], lineOffsets: StickOffset[], growMm: number): THREE.Shape[] {
+function naturalOutlineShapes(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], growMm: number): THREE.Shape[] {
   if (growMm <= 0) {
     return [];
   }
-  const naturalPaths = currentOutlinePaths(pick, letterGapsMm, lineOffsets);
+  const naturalPaths = currentOutlinePaths(block, letterGapsMm, lineOffsets);
   if (naturalPaths.length === 0) {
     return [];
   }
@@ -212,7 +212,7 @@ function naturalOutlineShapes(pick: Pick, letterGapsMm: number[][], lineOffsets:
 }
 
 /**
- * Builds the 2D shapes for a solid backing card under a pick's current
+ * Builds the 2D shapes for a solid backing card under a block's current
  * (gap-adjusted, line-offset-shifted) letter silhouettes across every line —
  * the combined outline, grown outward by `growMm` and filled solid except
  * where a letter's own counter (e.g. the hole in "a") survives the grow as a
@@ -229,19 +229,19 @@ function naturalOutlineShapes(pick: Pick, letterGapsMm: number[][], lineOffsets:
  * simply omitted, leaving that area part of the solid card instead of a void.
  */
 export function buildOutlineShapes(
-  pick: Pick,
+  block: TextBlock,
   letterGapsMm: number[][],
-  lineOffsets: StickOffset[],
+  lineOffsets: Offset2D[],
   growMm: number,
   closedOutlineHoles: readonly string[] = [],
 ): THREE.Shape[] {
-  const shapes = naturalOutlineShapes(pick, letterGapsMm, lineOffsets, growMm);
+  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm);
   if (shapes.length === 0 || closedOutlineHoles.length === 0) {
     return shapes;
   }
 
   const closed = new Set(closedOutlineHoles);
-  const { bounds, refs } = letterBoundsList(pick, letterGapsMm, lineOffsets);
+  const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
   for (const shape of shapes) {
     shape.holes = shape.holes.filter((hole) => {
       const ref = refs[attributeHoleToLetter(centroid(hole.getPoints(8)), bounds, growMm)];
@@ -256,16 +256,16 @@ export interface OutlineGeometry {
   bounds: THREE.Box3;
 }
 
-/** The outline's extruded solid (see buildOutlineShapes), or null when there's nothing to show — disabled, not grown at all, or the pick has no letters yet. */
+/** The outline's extruded solid (see buildOutlineShapes), or null when there's nothing to show — disabled, not grown at all, or the block has no letters yet. */
 export function buildOutlineGeometry(
-  pick: Pick,
+  block: TextBlock,
   letterGapsMm: number[][],
-  lineOffsets: StickOffset[],
+  lineOffsets: Offset2D[],
   growMm: number,
   extrudeDepthMm: number,
   closedOutlineHoles: readonly string[] = [],
 ): OutlineGeometry | null {
-  const shapes = buildOutlineShapes(pick, letterGapsMm, lineOffsets, growMm, closedOutlineHoles);
+  const shapes = buildOutlineShapes(block, letterGapsMm, lineOffsets, growMm, closedOutlineHoles);
   if (shapes.length === 0) {
     return null;
   }

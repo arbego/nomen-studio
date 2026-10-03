@@ -1,28 +1,37 @@
 import type * as THREE from 'three';
-import type { MainGeometryConfig, Pick, TopperConfig } from './types';
-import { linesToLineGeometries } from './textGeometry';
-import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from './stickGeometry';
-import { combineGeometries } from './combine';
-import { combinedPickBounds, cumulativeGaps, normalizedLetterGaps } from './letterLayout';
+import type { TextBlock } from '../../geometry/types';
+import { buildTextBlock } from '../../geometry/textGeometry';
+import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from '../../geometry/stickGeometry';
+import { combineGeometries } from '../../geometry/combine';
+import { combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
+import type { CakeTopperBlockId, CakeTopperConfig, CakeTopperGeometryConfig } from './config';
 
 /**
- * Builds the word pick's letter geometry — the expensive, async, font-dependent
+ * Builds the word block's letter geometry — the expensive, async, font-dependent
  * part. Deliberately excludes sticks and letter-gap/line-offset positioning:
  * all cheap, synchronous adjustments applied on top of these letters (see
- * sticksForPick and mergedPickGeometry below), so none of them needs to re-run
+ * sticksForBlock and mergedBlockGeometry below), so none of them needs to re-run
  * font extrusion.
  */
-export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick[]> {
-  const lines = await linesToLineGeometries(config.lines, config.wordFontId, config.sizeMm, config.extrudeDepthMm);
-  return [{ id: 'word', label: config.lines.join(' '), lines }];
+export async function buildCakeTopperBlocks(config: CakeTopperGeometryConfig): Promise<TextBlock[]> {
+  return [
+    await buildTextBlock({
+      id: 'word',
+      label: config.lines.join(' '),
+      lines: config.lines,
+      fontId: config.wordFontId,
+      fit: { mode: 'width', mm: config.sizeMm },
+      extrudeDepthMm: config.extrudeDepthMm,
+    }),
+  ];
 }
 
 /**
- * Every stick for one pick, at their current (clamped) offsets — cheap and
+ * Every stick for one block, at their current (clamped) offsets — cheap and
  * synchronous, safe to call every drag frame. Each stick's extruded length is
- * individually adjusted so all of a pick's tips land level with each other
+ * individually adjusted so all of a block's tips land level with each other
  * (see stickLengthForLevelTip) regardless of where each one was dragged. Sticks
- * are clamped against the whole pick's current, gap- and line-offset-adjusted
+ * are clamped against the whole block's current, gap- and line-offset-adjusted
  * combined bounds (every line together), so repositioning a line or
  * closing/opening a letter gap also shifts where a stick is allowed to sit.
  */
@@ -32,13 +41,13 @@ export async function buildTopperPicks(config: MainGeometryConfig): Promise<Pick
  * poking out the front or leaving a gap at the back), or the letters
  * themselves otherwise.
  */
-export function stickThicknessMm(config: TopperConfig): number {
+export function stickThicknessMm(config: CakeTopperConfig): number {
   return config.outlineEnabled ? config.outlineDepthMm : config.extrudeDepthMm;
 }
 
-export function sticksForPick(pick: Pick, config: TopperConfig): THREE.BufferGeometry[] {
-  const bounds = combinedPickBounds(pick, config.letterGapsMm, config.lineOffsets);
-  return config.stickOffsets[pick.id].map((rawOffset) => {
+export function sticksForBlock(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry[] {
+  const bounds = combinedBlockBounds(block, config.letterGapsMm, config.lineOffsets);
+  return config.stickOffsets[block.id as CakeTopperBlockId].map((rawOffset) => {
     const offset = clampStickOffsetToBounds(bounds, rawOffset, config.stickWidthMm, config.stickEmbedMm);
     const lengthMm = stickLengthForLevelTip(config.stickLengthMm, config.stickEmbedMm, offset.y);
     return stickToGeometry({
@@ -52,14 +61,14 @@ export function sticksForPick(pick: Pick, config: TopperConfig): THREE.BufferGeo
 }
 
 /**
- * The final printable solid for one pick — every letter of every line,
+ * The final printable solid for one block — every letter of every line,
  * shifted to its current gap-adjusted and line-offset-shifted position,
  * merged with all its sticks. Used at export time; each letter's own
  * geometry is left untouched (cloned before shifting) since the live scene
  * still needs the natural-position original.
  */
-export function mergedPickGeometry(pick: Pick, config: TopperConfig): THREE.BufferGeometry {
-  const letterParts = pick.lines.flatMap((line, lineIndex) => {
+export function mergedBlockGeometry(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry {
+  const letterParts = block.lines.flatMap((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, config.letterGapsMm[lineIndex] ?? []));
     const offset = config.lineOffsets[lineIndex] ?? { x: 0, y: 0 };
     return line.letters.map((letter, i) => {
@@ -68,5 +77,5 @@ export function mergedPickGeometry(pick: Pick, config: TopperConfig): THREE.Buff
       return dx === 0 && dy === 0 ? letter.geometry : letter.geometry.clone().translate(dx, dy, 0);
     });
   });
-  return combineGeometries([...letterParts, ...sticksForPick(pick, config)]);
+  return combineGeometries([...letterParts, ...sticksForBlock(block, config)]);
 }

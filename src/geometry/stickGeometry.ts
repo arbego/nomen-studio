@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { StickOffset } from './types';
+import type { Offset2D } from './types';
 
 export interface StickOptions {
   /** Total visible length of the stick, in mm (handle + embedded portion). */
@@ -9,13 +9,13 @@ export interface StickOptions {
   /** How far the stick extends upward past the attach point to overlap into the piece above it. */
   embedMm: number;
   /** Where the stick attaches to the piece above it, in the piece's local mm space. */
-  offset?: StickOffset;
+  offset?: Offset2D;
   /** Number of segments used to approximate the rounded tip's curve. */
   curveSegments?: number;
 }
 
 const DEFAULT_CURVE_SEGMENTS = 12;
-const DEFAULT_OFFSET: StickOffset = { x: 0, y: 0 };
+const DEFAULT_OFFSET: Offset2D = { x: 0, y: 0 };
 // Requiring the drag range to keep the *full* embed depth inside the piece (often
 // 15mm+) left very little vertical room to drag on typical letter heights, making
 // vertical dragging feel broken even though it worked. A smaller minimum overlap
@@ -39,7 +39,7 @@ const MIN_Y_OVERLAP_MM = 1;
 const MIN_VISIBLE_STICK_MM = 5;
 
 /**
- * A pick stick with a flat top (embedded in the piece above, so its shape doesn't
+ * A block stick with a flat top (embedded in the piece above, so its shape doesn't
  * matter) and a rounded, bullet-nose bottom tip — both easier and safer to push
  * into a cake, and free of the sharp edges a plain box tip leaves.
  *
@@ -85,7 +85,7 @@ export function stickToGeometry(options: StickOptions): THREE.BufferGeometry {
 
 /**
  * The extruded length to actually use for a stick attached at `offsetY`, so that
- * every stick on the same pick has its rounded tip land at the same absolute
+ * every stick on the same block has its rounded tip land at the same absolute
  * height — level with each other, like legs of the same height — no matter how
  * high or low each one was individually dragged. Without this, two sticks at
  * different attach heights but the same `baseLengthMm` would have tips at
@@ -118,7 +118,7 @@ export function stickLengthForLevelTip(baseLengthMm: number, embedMm: number, of
  * several separately-generated solids — e.g. a word's letters, whose combined
  * extent shifts as letter-gap overrides move individual letters around.
  */
-export function clampStickOffsetToBounds(bb: THREE.Box3, offset: StickOffset, stickWidthMm: number, embedMm: number): StickOffset {
+export function clampStickOffsetToBounds(bb: THREE.Box3, offset: Offset2D, stickWidthMm: number, embedMm: number): Offset2D {
   const xMargin = stickWidthMm / 2;
   const xMin = bb.min.x + xMargin;
   const xMax = bb.max.x - xMargin;

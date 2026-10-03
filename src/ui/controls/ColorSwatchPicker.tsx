@@ -1,4 +1,4 @@
-import { COLOR_PRESETS } from '../../store/topperStore';
+import { COLOR_PRESETS } from '../presets';
 
 interface ColorSwatchPickerProps {
   value: string;

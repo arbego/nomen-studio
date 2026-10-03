@@ -19,7 +19,7 @@ interface LetterMeshProps {
   draggable: boolean;
   dragging: boolean;
   /**
-   * Whether *something* in this pick (any letter, line, or stick — not
+   * Whether *something* in this block (any letter, line, or stick — not
    * necessarily this one) is currently being dragged. React Three Fiber's
    * pointer capture only guarantees drag *events* keep reaching the captured
    * object — it still raycasts and fires onPointerOver/onPointerOut on

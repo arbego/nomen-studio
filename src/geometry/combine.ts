@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
- * Merges every part of a pick — its letters and its sticks — into one printable
+ * Merges every part of a block — its letters and its sticks — into one printable
  * geometry. This is a plain, non-boolean buffer merge — not a CSG union. Every
  * input is already an individually watertight manifold solid with real
  * volumetric overlap where parts meet (letters at their natural kerning
