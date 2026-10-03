@@ -1,57 +1,11 @@
 import * as ClipperLib from 'clipper-lib';
+import { CLIPPER_SCALE, toClipperPath, shapesFromPolyTree } from './clipper';
 import * as THREE from 'three';
 import { DEFAULT_CURVE_SEGMENTS } from './units';
 import { cumulativeGaps, normalizedLetterGaps } from './letterLayout';
 import type { TextBlock, Offset2D } from './types';
 
-// Clipper works in integers for numerical robustness; this scales millimeters
-// up before handing coordinates to it (and back down when reading results),
-// giving roughly micron precision — far finer than anything that matters at
-// print scale.
-const CLIPPER_SCALE = 1000;
-
 const ZERO_OFFSET: Offset2D = { x: 0, y: 0 };
-
-function toClipperPath(points: THREE.Vector2[]): ClipperLib.Path {
-  return points.map((p) => ({ X: Math.round(p.x * CLIPPER_SCALE), Y: Math.round(p.y * CLIPPER_SCALE) }));
-}
-
-function fromClipperPath(path: ClipperLib.Path): THREE.Vector2[] {
-  return path.map((p) => new THREE.Vector2(p.X / CLIPPER_SCALE, p.Y / CLIPPER_SCALE));
-}
-
-/**
- * Clipper's plain `Execute(Paths, delta)` overload returns every resulting
- * contour as one flat, unrelated list — it never reports which ones are
- * holes of which outer contour, so building a `THREE.Shape` per path (as if
- * each were independently solid) would just stack a shrunk hole polygon
- * directly on top of the outer as an opaque smudge instead of a see-through
- * hole. The `PolyTree` overload keeps that nesting; this walks it (following
- * Clipper's usual outer -> hole -> island -> hole -> ... alternation) into
- * proper `THREE.Shape`s with real `.holes`.
- *
- * Some script fonts draw a letter's counter (the hole in "a"/"e"/"o"...) as
- * one simple, self-approaching contour rather than a separate hole subpath
- * (confirmed by inspecting Dancing Script's "a": a single M...Z subpath).
- * Growing such a contour is still correct Minkowski-sum offsetting, and
- * Clipper's own robust handling of the result — read through this PolyTree
- * walk — discovers the resulting enclosed counter as a genuine hole on its
- * own; no extra pre-processing of the input is needed for that.
- */
-function collectShapesFromPolyTree(node: ClipperLib.PolyNode, shapes: THREE.Shape[]): void {
-  if (!node.IsHole() && node.Contour().length > 0) {
-    const shape = new THREE.Shape(fromClipperPath(node.Contour()));
-    for (const child of node.Childs()) {
-      if (child.IsHole()) {
-        shape.holes.push(new THREE.Path(fromClipperPath(child.Contour())));
-      }
-    }
-    shapes.push(shape);
-  }
-  for (const child of node.Childs()) {
-    collectShapesFromPolyTree(child, shapes);
-  }
-}
 
 /** Which letter, across every line, a flat index into letterBoundsList's arrays refers to. */
 interface LetterRef {
@@ -207,7 +161,7 @@ function naturalOutlineShapes(block: TextBlock, letterGapsMm: number[][], lineOf
   offset.Execute(tree, growMm * CLIPPER_SCALE);
 
   const shapes: THREE.Shape[] = [];
-  collectShapesFromPolyTree(tree, shapes);
+  shapesFromPolyTree(tree, shapes);
   return shapes;
 }
 

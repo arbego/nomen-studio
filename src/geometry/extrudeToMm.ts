@@ -98,6 +98,29 @@ export function extrudeShapesToMm(shapes: THREE.Shape[], options: ExtrudeToMmOpt
   return geometry;
 }
 
+/**
+ * Extrudes shapes that are *already* in final mm-space and y-up — the output of
+ * a 2D boolean (see clipper.ts) or a grown outline — straight back into a
+ * solid, with no scaling, flipping or re-anchoring. Deliberately skips the
+ * winding fix the functions above need: nothing is mirrored here, so the
+ * extrusion's own winding is already correct.
+ *
+ * Returns null when there is nothing to extrude, so callers can treat "the
+ * boolean removed everything" as the ordinary case it is.
+ */
+export function extrudeMmShapes(shapes: THREE.Shape[], depthMm: number, curveSegments = DEFAULT_CURVE_SEGMENTS): THREE.BufferGeometry | null {
+  if (shapes.length === 0 || !(depthMm > 0)) {
+    return null;
+  }
+  let geometry: THREE.BufferGeometry = new THREE.ExtrudeGeometry(shapes, { depth: depthMm, bevelEnabled: false, curveSegments });
+  if (geometry.index) {
+    geometry = geometry.toNonIndexed();
+  }
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  return geometry;
+}
+
 export interface AnchoredGlyphShapes {
   shapes: THREE.Shape[];
   /** This glyph's natural x offset, in the same raw (pre-scale) coordinate space as `shapes` — normally where the shapes were already positioned when generated (e.g. via glyph.getPath(x, ...)). */
