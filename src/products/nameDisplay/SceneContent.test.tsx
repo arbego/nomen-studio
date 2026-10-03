@@ -100,25 +100,21 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     expect(assembly.nameZMm).toBeCloseTo(12 - 2.5, 5);
   }, 30000);
 
-  it('adds a base rail under each piece in rail mode', async () => {
+  it('adds a base rail under the initial, and only the initial, in rail mode', async () => {
     const { renderer } = await renderScene({ standMode: 'rail' });
-    // The initial's own mesh plus the rail under it.
+    // The initial's own mesh plus the rail under it — and no second rail, since
+    // the name is suspended partway up the initial by the pocket, not standing.
     expect(directMeshes(root(renderer))).toHaveLength(2);
-    // The name's rail is the second group, placed like the name itself.
-    expect(root(renderer).children.filter((c) => c.type === 'Group')).toHaveLength(2);
+    expect(root(renderer).children.filter((c) => c.type === 'Group')).toHaveLength(1);
   }, 30000);
 
-  it("puts the name's rail at the name's own depth, not behind it", async () => {
-    const { renderer, assembly } = await renderScene({ standMode: 'rail' });
-    const groups = root(renderer).children.filter((c) => c.type === 'Group');
-    const railGroup = groups[1].instance as unknown as THREE.Object3D;
-
-    // Built in the name's local frame, so it has to be placed by the same
-    // transform as the name — including sitting forward at the pocket floor.
-    // Left at the origin it would float behind the initial entirely.
-    expect(railGroup.position.z).toBeCloseTo(assembly.nameZMm, 5);
-    expect(railGroup.position.x).toBeCloseTo(config.nameOffset.x, 5);
-    expect(railGroup.position.y).toBeCloseTo(config.nameOffset.y, 5);
+  it("puts the rail under the initial's own depth, not the name's", async () => {
+    const { renderer, config: used } = await renderScene({ standMode: 'rail' });
+    const rail = directMeshes(root(renderer))[1].instance as unknown as THREE.Mesh;
+    const bb = (rail.geometry as THREE.BufferGeometry).boundingBox!;
+    expect(bb.max.z - bb.min.z).toBeCloseTo(used.railDepthMm, 3);
+    // Centered on the initial's thickness, so it overhangs equally front and back.
+    expect((bb.min.z + bb.max.z) / 2).toBeCloseTo(used.initialDepthMm / 2, 3);
   }, 30000);
 
   it('commits a drag of the name as an absolute offset, not a relative one', async () => {

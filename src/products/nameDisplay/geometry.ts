@@ -98,9 +98,13 @@ export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): P
     }),
   ]);
 
+  // Standing applies to the initial alone. The initial is the piece that stands
+  // on the table; the name is held by the pocket it drops into, so it needs no
+  // foot of its own — and cutting its descenders flat, or hanging a rail off a
+  // piece that is suspended halfway up another one, would only disfigure it.
   return {
     initial: applyTrim(rawInitial, config, config.initialDepthMm),
-    name: applyTrim(rawName, config, config.nameDepthMm),
+    name: rawName,
   };
 }
 
@@ -153,33 +157,39 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   };
 }
 
-/** A block's base rail, if the design has one — null for the other two standing modes. */
-export function standGeometryFor(block: TextBlock, config: NameDisplayConfig, blockDepthMm: number, letterGapsMm: number[][]): THREE.BufferGeometry | null {
+/**
+ * The initial's base rail, in the initial's own local frame — null unless the
+ * design stands on one. Only the initial gets one: it is the piece that stands,
+ * and the name is suspended partway up it by the pocket.
+ */
+export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDisplayConfig): THREE.BufferGeometry | null {
   if (config.standMode !== 'rail') {
     return null;
   }
-  const bounds = combinedBlockBounds(block, letterGapsMm, [{ x: 0, y: 0 }]);
   return baseRailGeometry({
-    bounds,
-    baselineYMm: block.baselineYMm,
+    bounds: combinedBlockBounds(blocks.initial, [], [{ x: 0, y: 0 }]),
+    baselineYMm: blocks.initial.baselineYMm,
     heightMm: config.railHeightMm,
     depthMm: config.railDepthMm,
     marginMm: config.railMarginMm,
-    blockDepthMm,
+    blockDepthMm: config.initialDepthMm,
   });
 }
 
 /** The initial's complete printable solid — the pocketed letter plus its base rail, if any. */
 export function initialPrintGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
-  const rail = standGeometryFor(blocks.initial, config, config.initialDepthMm, []);
+  const rail = initialRailGeometry(blocks, config);
   return rail ? combineGeometries([assembly.initialGeometry, rail]) : assembly.initialGeometry;
 }
 
 /**
- * The name's complete printable solid — every letter at its current
- * gap-adjusted position, plus its base rail, if any. Built in the name's own
- * local frame (not shifted by nameOffset), since it prints as a separate piece
- * lying on its own: the offset only decides where the pocket went.
+ * The name's complete printable solid — just its letters, at their current
+ * gap-adjusted positions, with no foot of any kind: it is held by the initial's
+ * pocket, and a thin piece like this prints lying flat on the bed anyway.
+ *
+ * Built in the name's own local frame (not shifted by nameOffset), since it
+ * prints as a separate piece on its own: the offset only decides where the
+ * pocket went.
  */
 export function namePrintGeometry(blocks: NameDisplayBlocks, config: NameDisplayConfig): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
@@ -188,10 +198,6 @@ export function namePrintGeometry(blocks: NameDisplayBlocks, config: NameDisplay
     line.letters.forEach((letter, i) => {
       parts.push(cascade[i] === 0 ? letter.geometry : letter.geometry.clone().translate(cascade[i], 0, 0));
     });
-  }
-  const rail = standGeometryFor(blocks.name, config, config.nameDepthMm, [config.nameLetterGapsMm]);
-  if (rail) {
-    parts.push(rail);
   }
   return combineGeometries(parts);
 }

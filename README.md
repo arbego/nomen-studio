@@ -77,7 +77,9 @@ build that feeds both — goes in the definition's optional `Provider`.
   non-zero fill rule with normalized orientation, because script fonts routinely
   overlap adjacent letters and even-odd would cancel the shared area away.
 - **Standing** (`geometry/baseGeometry.ts`): three ways to make a piece stand —
-  nothing, a base rail, or a flat cut at the typographic baseline.
+  nothing, a base rail, or a flat cut at the typographic baseline. A product
+  applies it only to the pieces that actually stand: on a name display that is
+  the initial alone, since the name is held by the pocket it drops into.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
 - **Merging** (`geometry/combine.ts`): a plain buffer merge, not a CSG union —

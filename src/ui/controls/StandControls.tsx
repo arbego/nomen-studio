@@ -9,6 +9,8 @@ interface StandControlsProps {
   onChangeRailDepth: (mm: number) => void;
   trimOffsetMm: number;
   onChangeTrimOffset: (mm: number) => void;
+  /** Which piece this affects, when a product has more than one and only some of them stand. */
+  hint?: string;
   className?: string;
 }
 
@@ -28,6 +30,7 @@ export function StandControls({
   onChangeRailDepth,
   trimOffsetMm,
   onChangeTrimOffset,
+  hint,
   className = '',
 }: StandControlsProps) {
   const active = MODES.find((m) => m.value === mode);
@@ -35,6 +38,7 @@ export function StandControls({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Standing</span>
+      {hint && <p className="text-xs text-stone-400">{hint}</p>}
 
       <div className="flex gap-1 rounded-lg bg-stone-100 p-1">
         {MODES.map((option) => (

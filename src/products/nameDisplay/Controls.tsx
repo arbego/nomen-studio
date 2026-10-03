@@ -90,6 +90,7 @@ export function NameDisplayControls() {
 
         <StandControls
           className={SECTION}
+          hint="Applies to the initial — it's the piece that stands. The name needs no foot of its own: the pocket holds it."
           mode={config.standMode}
           onChangeMode={setStandMode}
           railHeightMm={config.railHeightMm}

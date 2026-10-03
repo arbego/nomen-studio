@@ -4,7 +4,7 @@ import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { StandMesh } from '../../scene/StandMesh';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
-import { standGeometryFor, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
+import { initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 interface NameDisplaySceneProps {
@@ -23,15 +23,12 @@ interface NameDisplaySceneProps {
  * is also not draggable — the name moves *onto* it, not the other way round.
  */
 export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit, onNameLetterGapCommit }: NameDisplaySceneProps) {
-  // Memoized because these allocate: React Three Fiber never disposes a
-  // geometry handed to it via the `geometry` prop, so rebuilding them on every
-  // render (a slider drag is dozens per second) would leak GPU buffers.
-  const initialRail = useMemo(() => standGeometryFor(blocks.initial, config, config.initialDepthMm, []), [blocks.initial, config]);
-  const nameRail = useMemo(() => standGeometryFor(blocks.name, config, config.nameDepthMm, [config.nameLetterGapsMm]), [blocks.name, config]);
+  // Memoized because it allocates: React Three Fiber never disposes a geometry
+  // handed to it via the `geometry` prop, so rebuilding it on every render
+  // (a slider drag is dozens per second) would leak GPU buffers. Only the
+  // initial has a rail — the name is held by the pocket.
+  const initialRail = useMemo(() => initialRailGeometry(blocks, config), [blocks, config]);
 
-  // Both rails are built in their block's own local frame, so each one is
-  // placed by the same transform as the block it stands under — in the name's
-  // case that includes sitting forward at the pocket floor.
   const namePosition: [number, number, number] = [config.nameOffset.x, config.nameOffset.y, assembly.nameZMm];
 
   return (
@@ -54,11 +51,6 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
         lineOffsets={[{ x: 0, y: 0 }]}
         onLineOffsetCommit={(_lineIndex, offset) => onNameOffsetCommit({ x: config.nameOffset.x + offset.x, y: config.nameOffset.y + offset.y })}
       />
-      {nameRail && (
-        <group position={namePosition}>
-          <StandMesh geometry={nameRail} color={config.nameColor} />
-        </group>
-      )}
     </group>
   );
 }

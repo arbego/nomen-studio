@@ -127,16 +127,26 @@ describe('print geometry', () => {
     expect(vertexCount(initialPrintGeometry(built.blocks, built, config))).toBe(vertexCount(built.initialGeometry));
   }, 30000);
 
-  it('adds a base rail under both pieces in rail mode', async () => {
+  it('adds a base rail under the initial in rail mode', async () => {
     const railed = { ...config, standMode: 'rail' as const };
     const built = await buildNameDisplay(railed);
 
     const initialBb = bounds(initialPrintGeometry(built.blocks, built, railed));
     expect(initialBb.min.y).toBeLessThan(0); // rail hangs below the letter's own baseline-anchored bottom
     expect(initialBb.max.z - initialBb.min.z).toBeCloseTo(25, 1); // the deeper rail sets the footprint
+  }, 30000);
 
-    const nameBb = bounds(namePrintGeometry(built.blocks, railed));
-    expect(nameBb.min.y).toBeLessThan(0);
+  it('leaves the name without a foot — the pocket holds it, so it never stands on its own', async () => {
+    const railed = { ...config, standMode: 'rail' as const };
+    const built = await buildNameDisplay(railed);
+    const plain = await buildNameDisplay(config);
+
+    // Byte-identical to 'none' mode: no rail, nothing added at all.
+    const railedName = bounds(namePrintGeometry(built.blocks, railed));
+    const plainName = bounds(namePrintGeometry(plain.blocks, config));
+    expect(railedName.min.y).toBeCloseTo(plainName.min.y, 5);
+    expect(railedName.min.x).toBeCloseTo(plainName.min.x, 5);
+    expect(railedName.max.z - railedName.min.z).toBeCloseTo(config.nameDepthMm, 3);
   }, 30000);
 
   it('exports the name in its own frame, not shifted by where the pocket went', async () => {
@@ -155,12 +165,18 @@ describe('print geometry', () => {
     expect(vertexCount(shifted.initialGeometry)).not.toBe(vertexCount(built.initialGeometry));
   }, 30000);
 
-  it('flattens the name onto a standing edge in trim mode', async () => {
-    const trimmed = { ...config, standMode: 'trim' as const };
+  it('cuts the initial flat in trim mode but leaves the name untouched', async () => {
+    // "Johanna" has a descender, so a trim would visibly shorten it if one were applied.
+    const withDescender = { ...config, name: 'Johanna', nameLetterGapsMm: [] };
+    const trimmed = { ...withDescender, standMode: 'trim' as const };
     const built = await buildNameDisplay(trimmed);
-    const plain = await buildNameDisplay(config);
-    // "Matilde" has no descenders, so the trim should barely move the bottom —
-    // but it must not sit below the untrimmed one either.
-    expect(bounds(namePrintGeometry(built.blocks, trimmed)).min.y).toBeGreaterThanOrEqual(bounds(namePrintGeometry(plain.blocks, config)).min.y - 0.01);
+    const plain = await buildNameDisplay(withDescender);
+
+    const trimmedName = built.blocks.name.lines[0].letters.map((l) => bounds(l.geometry).min.y);
+    const plainName = plain.blocks.name.lines[0].letters.map((l) => bounds(l.geometry).min.y);
+    expect(trimmedName).toEqual(plainName);
+
+    // The initial, which is the piece that actually stands, is cut.
+    expect(built.blocks.initial.lines[0].letters[0].contours.length).toBeGreaterThan(0);
   }, 30000);
 });
