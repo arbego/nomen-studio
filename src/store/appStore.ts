@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getProduct } from '../products/registry';
+import { usePanelStore } from '../ui/panelStore';
 
 const STORAGE_KEY = 'studio.selectedProductId';
 
@@ -42,10 +43,14 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set) => ({
   selectedProductId: readStoredProductId(),
   selectProduct: (id) => {
+    // The next product's panel has sections of its own, with their own ids and
+    // their own idea of which one a fresh panel opens on.
+    usePanelStore.getState().reset();
     writeStoredProductId(id);
     set({ selectedProductId: id });
   },
   clearProduct: () => {
+    usePanelStore.getState().reset();
     writeStoredProductId(null);
     set({ selectedProductId: null });
   },

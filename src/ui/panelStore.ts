@@ -24,39 +24,81 @@ const SETTLED_FRAMES = 3;
 const SETTLE_TIMEOUT_MS = 1000;
 
 interface FocusRequest {
-  /** Which target to reveal. Products name their own — see each one's focus.ts. */
-  key: string;
+  /** The section holding what was clicked. Opened, with every other one closed. */
+  section: string;
+  /** The control inside it to scroll to and flash — the section itself, when it has no finer target. */
+  target: string;
 }
 
-interface FocusStore {
+interface PanelStore {
   request: FocusRequest | null;
-  /** Reveal the control for `key`: scroll it into the panel and light it briefly. */
-  focus: (key: string) => void;
+  /**
+   * Which collapsible things are open, by id — sections and the repeated cards
+   * inside them alike, since nothing here needs to tell the two apart. A
+   * missing entry means whatever that thing's own default is, for as long as
+   * defaults still apply.
+   */
+  open: Record<string, boolean>;
+  /**
+   * Whether a thing with no entry above still falls back to its own default.
+   *
+   * True until the preview has asked for something. A panel should arrive with
+   * its first section open rather than entirely shut — but once you have
+   * pointed at a piece of the design, "everything else closed" has to mean
+   * everything, and a default that kept one section open anyway would make the
+   * answer two things instead of one.
+   */
+  defaultsApply: boolean;
+  /**
+   * What the preview asks for when a piece of the design is clicked: show me
+   * the controls for this.
+   */
+  focus: (section: string, target?: string) => void;
+  /** A header click. Merges, so two sections can be held open side by side to compare — and leaves defaults alone, so opening a second section doesn't shut the one the panel arrived with. */
+  setOpen: (id: string, open: boolean) => void;
+  /** Back to how a panel arrives. Called when the product changes, since the next one's sections have ids and defaults of their own. */
+  reset: () => void;
 }
 
 /**
- * Which control the preview last asked for, for as long as it is lit.
+ * The state of the controls panel: which of its sections are open, and which
+ * control the preview last asked it to reveal.
  *
  * Global rather than per-product because it is about the shell's two halves,
  * not about any design: the scene and the panel are mounted in separate
  * subtrees (see AppShell), and this is the one thing they have to say to each
- * other. Products never share a key — only one is ever mounted — so each names
- * its own however reads best.
+ * other. Products never share an id — only one is ever mounted — so each names
+ * its own however reads best, in its focus.ts.
  *
  * The store holds the flash's lifetime itself, rather than every target running
  * a timer of its own, so a target's own "am I lit" is a plain derivation from
- * state instead of state that has to be kept in step with it. A fresh object on
- * every call, deliberately: clicking the same thing twice has to scroll to it
- * twice, and identity is what the effect below wakes on.
+ * state instead of state that has to be kept in step with it. A fresh request
+ * object on every call, deliberately: clicking the same thing twice has to
+ * scroll to it twice, and identity is what the effect below wakes on.
  */
-export const useFocusStore = create<FocusStore>((set) => ({
+export const usePanelStore = create<PanelStore>((set) => ({
   request: null,
-  focus: (key) => {
+  open: {},
+  defaultsApply: true,
+  focus: (section, target = section) => {
     clearTimeout(flashTimer);
-    set({ request: { key } });
+    // Only what was pointed at: you asked about one piece of the design, so the
+    // panel answers with one piece of itself. Holding several open at once is
+    // still possible — it just has to be asked for, by hand, through setOpen.
+    set({ request: { section, target }, open: { [section]: true, [target]: true }, defaultsApply: false });
     flashTimer = setTimeout(() => set({ request: null }), FLASH_MS);
   },
+  setOpen: (id, isOpen) => set((state) => ({ open: { ...state.open, [id]: isOpen } })),
+  reset: () => {
+    clearTimeout(flashTimer);
+    set({ request: null, open: {}, defaultsApply: true });
+  },
 }));
+
+/** Whether one collapsible thing is open, falling back to its own default until the preview has said otherwise. */
+export function useIsOpen(id: string, defaultOpen = false): boolean {
+  return usePanelStore((state) => state.open[id] ?? (state.defaultsApply && defaultOpen));
+}
 
 // Module-level because there is only ever one flash: a second click supersedes
 // the first rather than lighting two things at once.
@@ -71,12 +113,12 @@ let flashTimer: ReturnType<typeof setTimeout> | undefined;
  * at it — it then simply never matches.
  */
 export function useFocusTarget(key: string | undefined) {
-  const request = useFocusStore((s) => s.request);
+  const request = usePanelStore((state) => state.request);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const element = ref.current;
-    if (!element || key === undefined || request?.key !== key) return;
+    if (!element || key === undefined || request?.target !== key) return;
     // 'center' rather than 'nearest': the point is to say "here", and a control
     // that happened to be in view already would otherwise not move at all,
     // leaving only the flash to carry the message.

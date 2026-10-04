@@ -4,8 +4,8 @@ import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { StandMesh } from '../../scene/StandMesh';
 import { useTapGesture } from '../../scene/tapGesture';
 import { rotateOffset } from '../../geometry/placement';
-import { useFocusStore } from '../../ui/focusStore';
-import { decoratorFocusKey, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY } from './focus';
+import { usePanelStore } from '../../ui/panelStore';
+import { decoratorFocusKey, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
@@ -138,7 +138,7 @@ export function NameDisplaySceneContent() {
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
   const setDecoratorOffset = useNameDisplayStore((s) => s.setDecoratorOffset);
-  const focus = useFocusStore((s) => s.focus);
+  const focus = usePanelStore((s) => s.focus);
   const { blocks, assembly } = useNameDisplayGeometry();
 
   if (!blocks || !assembly) {
@@ -153,9 +153,9 @@ export function NameDisplaySceneContent() {
       onNameOffsetCommit={setNameOffset}
       onNameLetterGapCommit={setNameLetterGap}
       onDecoratorOffsetCommit={setDecoratorOffset}
-      onInitialTap={() => focus(INITIAL_FOCUS_KEY)}
-      onNameTap={() => focus(NAME_FOCUS_KEY)}
-      onDecoratorTap={(id) => focus(decoratorFocusKey(id))}
+      onInitialTap={() => focus(SECTIONS.initial, INITIAL_FOCUS_KEY)}
+      onNameTap={() => focus(SECTIONS.name, NAME_FOCUS_KEY)}
+      onDecoratorTap={(id) => focus(SECTIONS.decorators, decoratorFocusKey(id))}
     />
   );
 }

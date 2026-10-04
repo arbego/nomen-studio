@@ -1,8 +1,8 @@
 import { SIZE_PRESETS_MM } from '../presets';
 
 interface SizePickerProps {
-  /** What this dimension is called in this product — "word width" for a cake topper, something else elsewhere. */
-  label?: string;
+  /** What this dimension is called in this product — "word width" for a cake topper, something else elsewhere. `null` drops the heading, for use inside a section that already carries one. */
+  label?: string | null;
   value: number;
   onChange: (sizeMm: number) => void;
   depthMm: number;
@@ -20,7 +20,7 @@ const DEPTH_STEP_MM = 0.25;
 export function SizePicker({ label = 'Size (word width)', value, onChange, depthMm, onChangeDepth, className = '' }: SizePickerProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>
+      {label !== null && <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>}
       <div className="flex flex-wrap gap-2">
         {SIZE_PRESETS_MM.map((preset) => (
           <button

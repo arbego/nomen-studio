@@ -1,4 +1,5 @@
 import type { StandMode } from '../../geometry/baseGeometry';
+import { MODES } from './standModes';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 
 interface StandControlsProps {
@@ -21,12 +22,6 @@ interface StandControlsProps {
   className?: string;
 }
 
-const MODES: { value: StandMode; label: string; hint: string }[] = [
-  { value: 'none', label: 'None', hint: 'Relies on the font having a flat bottom of its own, like a slab serif does.' },
-  { value: 'rail', label: 'Base rail', hint: 'A slab under the piece, with a socket cut into it for the piece to drop into. Works with any font, including scripts.' },
-  { value: 'trim', label: 'Flat cut', hint: 'Slices the piece off flat at the baseline. Adds no material, but leaves a narrow footprint.' },
-];
-
 /** How a design is made to stand up — see geometry/baseGeometry.ts. Shared, so any product with a piece that has to stand gets the same three choices. */
 export function StandControls({
   mode,
@@ -48,7 +43,6 @@ export function StandControls({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Standing</span>
       {hint && <p className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
 
       <div className="flex gap-1 rounded-lg bg-stone-100 dark:bg-stone-800 p-1">

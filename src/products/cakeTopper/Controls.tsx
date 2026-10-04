@@ -5,11 +5,20 @@ import { LinesControls } from '../../ui/controls/LinesControls';
 import { FontField } from '../../ui/controls/FontField';
 import { SizePicker } from '../../ui/controls/SizePicker';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
+import { CollapsibleSection } from '../../ui/controls/CollapsibleSection';
 import { StickControls } from './StickControls';
 import { OutlineControls } from '../../ui/controls/OutlineControls';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
-import { lineFocusKey } from './focus';
+import { lineFocusKey, SECTIONS } from './focus';
+import { COLOR_PRESETS } from '../../ui/presets';
+
+const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
+
+/** What a shut section says it is set to — enough to not have to open it to find out. */
+function colorName(hex: string): string {
+  return COLOR_PRESETS.find((color) => color.hex === hex)?.label ?? hex;
+}
 
 export function CakeTopperControls() {
   const [fontOpen, setFontOpen] = useState(false);
@@ -29,11 +38,12 @@ export function CakeTopperControls() {
   const wordBlock = blocks.find((p) => p.id === 'word');
   const outlineHoleCandidates =
     config.outlineEnabled && wordBlock ? detectOutlineHoleCandidates(wordBlock, config.letterGapsMm, config.lineOffsets, config.outlineGrowMm) : [];
+  const stickCount = config.stickOffsets.word.length;
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-4">
+        <CollapsibleSection id={SECTIONS.text} title="Text" defaultOpen summary={config.lines.filter(Boolean).join(' ')}>
           <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} focusKeyForLine={lineFocusKey} />
           <FontField
             label="Font"
@@ -51,43 +61,52 @@ export function CakeTopperControls() {
               </button>
             )}
           </p>
-        </div>
+        </CollapsibleSection>
 
-        <SizePicker
-          value={config.sizeMm}
-          onChange={(sizeMm) => onChange({ sizeMm })}
-          depthMm={config.extrudeDepthMm}
-          onChangeDepth={(extrudeDepthMm) => onChange({ extrudeDepthMm })}
-          className="border-t border-stone-100 dark:border-stone-800 pt-5"
-        />
-        <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} className="border-t border-stone-100 dark:border-stone-800 pt-5" />
-        <StickControls
-          enabled={config.stickOffsets.word.length > 0}
-          onChangeEnabled={(enabled) => onSetSticksEnabled('word', enabled)}
-          widthMm={config.stickWidthMm}
-          lengthMm={config.stickLengthMm}
-          onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
-          onChangeLength={(stickLengthMm) => onChange({ stickLengthMm })}
-          stickCounts={{ word: config.stickOffsets.word.length }}
-          onAddStick={onAddStick}
-          onRemoveStick={(blockId) => onRemoveStick(blockId, config.stickOffsets[blockId].length - 1)}
-          className="border-t border-stone-100 dark:border-stone-800 pt-5"
-        />
-        <OutlineControls
-          enabled={config.outlineEnabled}
-          onChangeEnabled={(outlineEnabled) => onChange({ outlineEnabled })}
-          growMm={config.outlineGrowMm}
-          onChangeGrow={(outlineGrowMm) => onChange({ outlineGrowMm })}
-          color={config.outlineColor}
-          onChangeColor={(outlineColor) => onChange({ outlineColor })}
-          depthMm={config.outlineDepthMm}
-          onChangeDepth={(outlineDepthMm) => onChange({ outlineDepthMm })}
-          maxDepthMm={config.extrudeDepthMm}
-          holeCandidates={outlineHoleCandidates}
-          closedOutlineHoles={config.closedOutlineHoles}
-          onToggleHole={onToggleClosedOutlineHole}
-          className="border-t border-stone-100 dark:border-stone-800 pt-5"
-        />
+        <CollapsibleSection id={SECTIONS.size} title="Size" summary={`${config.sizeMm} mm wide, ${config.extrudeDepthMm} mm thick`} className={SECTION}>
+          <SizePicker
+            label={null}
+            value={config.sizeMm}
+            onChange={(sizeMm) => onChange({ sizeMm })}
+            depthMm={config.extrudeDepthMm}
+            onChangeDepth={(extrudeDepthMm) => onChange({ extrudeDepthMm })}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection id={SECTIONS.color} title="Color" summary={colorName(config.previewColor)} className={SECTION}>
+          <ColorSwatchPicker label={null} value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
+        </CollapsibleSection>
+
+        <CollapsibleSection id={SECTIONS.sticks} title="Sticks" summary={stickCount === 0 ? 'None' : `${stickCount}, ${config.stickLengthMm} mm`} className={SECTION}>
+          <StickControls
+            enabled={stickCount > 0}
+            onChangeEnabled={(enabled) => onSetSticksEnabled('word', enabled)}
+            widthMm={config.stickWidthMm}
+            lengthMm={config.stickLengthMm}
+            onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
+            onChangeLength={(stickLengthMm) => onChange({ stickLengthMm })}
+            stickCounts={{ word: stickCount }}
+            onAddStick={onAddStick}
+            onRemoveStick={(blockId) => onRemoveStick(blockId, config.stickOffsets[blockId].length - 1)}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection id={SECTIONS.outline} title="Outline card" summary={config.outlineEnabled ? `${config.outlineGrowMm} mm, ${colorName(config.outlineColor)}` : 'Off'} className={SECTION}>
+          <OutlineControls
+            enabled={config.outlineEnabled}
+            onChangeEnabled={(outlineEnabled) => onChange({ outlineEnabled })}
+            growMm={config.outlineGrowMm}
+            onChangeGrow={(outlineGrowMm) => onChange({ outlineGrowMm })}
+            color={config.outlineColor}
+            onChangeColor={(outlineColor) => onChange({ outlineColor })}
+            depthMm={config.outlineDepthMm}
+            onChangeDepth={(outlineDepthMm) => onChange({ outlineDepthMm })}
+            maxDepthMm={config.extrudeDepthMm}
+            holeCandidates={outlineHoleCandidates}
+            closedOutlineHoles={config.closedOutlineHoles}
+            onToggleHole={onToggleClosedOutlineHole}
+          />
+        </CollapsibleSection>
       </div>
 
       {/* Only ever present while there is something to say — exporting moved to

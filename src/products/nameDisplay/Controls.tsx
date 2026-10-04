@@ -7,7 +7,10 @@ import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StandControls } from '../../ui/controls/StandControls';
 import { FocusTarget } from '../../ui/FocusTarget';
 import { DecoratorControls } from './DecoratorControls';
-import { INITIAL_FOCUS_KEY, NAME_FOCUS_KEY } from './focus';
+import { CollapsibleSection } from '../../ui/controls/CollapsibleSection';
+import { INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
+import { getFontDefinition } from '../../fonts/registry';
+import { STAND_MODE_LABELS } from '../../ui/controls/standModes';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
@@ -40,7 +43,7 @@ export function NameDisplayControls() {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-4">
+        <CollapsibleSection id={SECTIONS.initial} title="Initial" defaultOpen summary={`${config.initial} in ${getFontDefinition(config.initialFontId).family}`}>
           {/* The field alone, not the section: clicking the letter asks what
               that letter is, and washing over everything down to its color
               would say less, not more. Centering the field brings the rest of
@@ -67,9 +70,9 @@ export function NameDisplayControls() {
             hint="The initial is the structural piece — it holds the name and keeps the display upright."
           />
           <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />
-        </div>
+        </CollapsibleSection>
 
-        <div className={`flex flex-col gap-4 ${SECTION}`}>
+        <CollapsibleSection id={SECTIONS.name} title="Name" summary={config.name || 'Empty'} className={SECTION}>
           <FocusTarget focusKey={NAME_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
             <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
           </FocusTarget>
@@ -102,10 +105,9 @@ export function NameDisplayControls() {
             )}
           </p>
           {detached && <p className="text-xs text-amber-700 dark:text-amber-400">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
-        </div>
+        </CollapsibleSection>
 
-        <div className={`flex flex-col gap-3 ${SECTION}`}>
-          <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Inlay</span>
+        <CollapsibleSection id={SECTIONS.inlay} title="Inlay" summary={`${pocketDepth.toFixed(2)} mm deep`} className={SECTION}>
           <p className="text-xs text-stone-400 dark:text-stone-500">The name is recessed into the initial's face, so the two pieces lock together. Print them in different filaments.</p>
           <SliderField
             label="Pocket depth"
@@ -129,39 +131,46 @@ export function NameDisplayControls() {
             step={0.05}
             hint="How much larger the pocket is cut than the name, so the printed pieces actually go together."
           />
-        </div>
+        </CollapsibleSection>
 
-        <DecoratorControls
+        <CollapsibleSection
+          id={SECTIONS.decorators}
+          title="Decorators"
+          summary={config.decorators.length === 0 ? 'None' : `${config.decorators.length}`}
           className={SECTION}
-          decorators={config.decorators}
-          placements={config.decoratorPlacements}
-          colors={config.decoratorColors}
-          fallbackColor={config.nameColor}
-          pocketDepthMm={pocketDepth}
-          detachedIds={detachedDecoratorIds}
-          onAdd={addDecorator}
-          onUpdate={updateDecorator}
-          onRemove={removeDecorator}
-          onChangeAngle={setDecoratorAngle}
-          onChangeColor={setDecoratorColor}
-        />
+        >
+          <DecoratorControls
+            decorators={config.decorators}
+            placements={config.decoratorPlacements}
+            colors={config.decoratorColors}
+            fallbackColor={config.nameColor}
+            pocketDepthMm={pocketDepth}
+            detachedIds={detachedDecoratorIds}
+            onAdd={addDecorator}
+            onUpdate={updateDecorator}
+            onRemove={removeDecorator}
+            onChangeAngle={setDecoratorAngle}
+            onChangeColor={setDecoratorColor}
+          />
+        </CollapsibleSection>
 
-        <StandControls
-          className={SECTION}
-          hint="Applies to the initial — it's the piece that stands. The name needs no foot of its own: the pocket holds it."
-          mode={config.standMode}
-          onChangeMode={setStandMode}
-          railHeightMm={config.railHeightMm}
-          onChangeRailHeight={(railHeightMm) => onChange({ railHeightMm })}
-          railDepthMm={config.railDepthMm}
-          onChangeRailDepth={(railDepthMm) => onChange({ railDepthMm })}
-          railSocketDepthMm={config.railSocketDepthMm}
-          onChangeRailSocketDepth={(railSocketDepthMm) => onChange({ railSocketDepthMm })}
-          trimOffsetMm={config.trimOffsetMm}
-          onChangeTrimOffset={(trimOffsetMm) => onChange({ trimOffsetMm })}
-          color={config.standColor}
-          onChangeColor={(standColor) => onChange({ standColor })}
-        />
+        <CollapsibleSection id={SECTIONS.standing} title="Standing" summary={STAND_MODE_LABELS[config.standMode]} className={SECTION}>
+          <StandControls
+            hint="Applies to the initial — it's the piece that stands. The name needs no foot of its own: the pocket holds it."
+            mode={config.standMode}
+            onChangeMode={setStandMode}
+            railHeightMm={config.railHeightMm}
+            onChangeRailHeight={(railHeightMm) => onChange({ railHeightMm })}
+            railDepthMm={config.railDepthMm}
+            onChangeRailDepth={(railDepthMm) => onChange({ railDepthMm })}
+            railSocketDepthMm={config.railSocketDepthMm}
+            onChangeRailSocketDepth={(railSocketDepthMm) => onChange({ railSocketDepthMm })}
+            trimOffsetMm={config.trimOffsetMm}
+            onChangeTrimOffset={(trimOffsetMm) => onChange({ trimOffsetMm })}
+            color={config.standColor}
+            onChangeColor={(standColor) => onChange({ standColor })}
+          />
+        </CollapsibleSection>
       </div>
 
       {/* Only ever present while there is something to say — exporting moved to

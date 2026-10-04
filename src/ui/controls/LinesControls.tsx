@@ -16,7 +16,6 @@ const MAX_LINES = 3;
 export function LinesControls({ lines, onChangeLine, onAddLine, onRemoveLine, focusKeyForLine }: LinesControlsProps) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Text</span>
       <div className="flex flex-col gap-2">
         {lines.map((line, index) => (
           // Padded so the wash has a little room around the field, and pulled back in margin so nothing moves when it isn't lit.

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useFocusTarget } from './focusStore';
+import { useFocusTarget } from './panelStore';
 
 interface FocusTargetProps {
   /** What the preview asks for to reveal this. Undefined for a control with nothing pointing at it. */

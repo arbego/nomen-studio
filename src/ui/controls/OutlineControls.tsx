@@ -40,7 +40,7 @@ export function OutlineControls({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Outline card</span>
+        <span className="text-sm text-stone-600 dark:text-stone-400">Add a solid card behind the name</span>
         <input
           type="checkbox"
           checked={enabled}

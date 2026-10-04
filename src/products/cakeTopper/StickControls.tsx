@@ -1,6 +1,4 @@
-import { FocusTarget } from '../../ui/FocusTarget';
 import type { CakeTopperBlockId } from './config';
-import { STICKS_FOCUS_KEY } from './focus';
 
 interface StickControlsProps {
   enabled: boolean;
@@ -36,11 +34,9 @@ export function StickControls({
   const pickIds: CakeTopperBlockId[] = ['word'];
 
   return (
-    // Clicking a stick in the preview lands here: a stick's own position is set
-    // by dragging it, but everything else about it is in this section.
-    <FocusTarget focusKey={STICKS_FOCUS_KEY} className={`flex flex-col gap-3 ${className}`}>
+    <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Sticks</span>
+        <span className="text-sm text-stone-600 dark:text-stone-400">Add sticks under the name</span>
         <input
           type="checkbox"
           checked={enabled}
@@ -116,6 +112,6 @@ export function StickControls({
           </label>
         </>
       )}
-    </FocusTarget>
+    </div>
   );
 }

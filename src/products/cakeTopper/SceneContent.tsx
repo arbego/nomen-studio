@@ -6,10 +6,10 @@ import { combinedBlockBounds } from '../../geometry/letterLayout';
 import type { StickParams } from '../../scene/TextBlockMesh';
 import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { OutlineMesh } from '../../scene/OutlineMesh';
-import { useFocusStore } from '../../ui/focusStore';
+import { usePanelStore } from '../../ui/panelStore';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
-import { lineFocusKey, STICKS_FOCUS_KEY } from './focus';
+import { lineFocusKey, SECTIONS } from './focus';
 import { stickThicknessMm } from './geometry';
 
 const BLOCK_GAP_MM = 12;
@@ -133,7 +133,7 @@ export function CakeTopperSceneContent() {
   const setStickOffset = useCakeTopperStore((s) => s.setStickOffset);
   const setLetterGap = useCakeTopperStore((s) => s.setLetterGap);
   const setLineOffset = useCakeTopperStore((s) => s.setLineOffset);
-  const focus = useFocusStore((s) => s.focus);
+  const focus = usePanelStore((s) => s.focus);
   const { blocks } = useCakeTopperGeometry();
 
   // A stick is embedded into the outline card when there is one, so it reads
@@ -167,8 +167,8 @@ export function CakeTopperSceneContent() {
       outlineColor={config.outlineColor}
       outlineDepthMm={config.outlineDepthMm}
       closedOutlineHoles={config.closedOutlineHoles}
-      onLineTap={(lineIndex) => focus(lineFocusKey(lineIndex))}
-      onStickTap={() => focus(STICKS_FOCUS_KEY)}
+      onLineTap={(lineIndex) => focus(SECTIONS.text, lineFocusKey(lineIndex))}
+      onStickTap={() => focus(SECTIONS.sticks)}
     />
   );
 }

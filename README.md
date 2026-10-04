@@ -115,17 +115,35 @@ beside the design (`ScaleReference`), because millimeters on a slider don't tell
 you how big the print will be. Both are scenery, rendered so that the grid never
 drags the camera's auto-fit away from the design.
 
-Clicking a piece of the design — rather than dragging it — scrolls the panel to
-the control that shapes it and blinks that control (`ui/focusStore.ts`,
-`ui/FocusTarget.tsx`). A letter points at its line's text field, a stick at the
-sticks section, an ornament at its own card. The panel is long enough to scroll,
-and pointing at a thing is a more direct way of asking "what changes this?" than
-hunting for the section that owns it. Click and drag are told apart by how far
-the pointer travelled in screen pixels (`scene/tapGesture.ts`) — not in the
-model's millimeters, since the same wobble is a huge drag zoomed in and nothing
-at all zoomed out — and the blink waits for the scroll to settle, so a long one
-can't swallow it. Each product names its own targets in its `focus.ts`, which is
-the one module its panel and its scene both import.
+### The controls panel
+
+The panel is built from collapsible sections (`ui/controls/CollapsibleSection.tsx`),
+because with everything open both products ran to several screens — most of a
+design you cannot see at once. Shut, a section is one line that still names what
+it holds and what it is set to ("Liam", "1.00 mm deep", "2, 40 mm"), so folding
+it away costs no information. The two tall things inside them fold too: a font
+picker sits behind a `Change` link (`ui/controls/FontField.tsx`), since choosing
+a face is something you do once per design rather than keep adjusting, and each
+ornament's card folds to the row naming it. Together that takes the name display
+from 3004px to 784px and the cake topper from 2104px to 743px, both about one
+screen.
+
+Clicking a piece of the design — rather than dragging it — opens the section
+that shapes it, closes the others, scrolls to the control and blinks it
+(`ui/panelStore.ts`, `ui/FocusTarget.tsx`). A letter points at its line's text
+field, a stick at the sticks section, an ornament at its own card. Pointing at a
+thing is a more direct way of asking "what changes this?" than hunting for the
+section that owns it. Clicking a section header, by contrast, toggles only that
+section, so two can be held open side by side — the initial's thickness and the
+name's thickness are genuinely read together, and a panel that closed one to
+show the other would make that a chore.
+
+Click and drag are told apart by how far the pointer travelled in screen pixels
+(`scene/tapGesture.ts`) — not in the model's millimeters, since the same wobble
+is a huge drag zoomed in and nothing at all zoomed out — and the blink waits for
+the scroll to settle, so a long one can't swallow it. Each product names its own
+sections and targets in its `focus.ts`, which is the one module its panel and
+its scene both import.
 
 Pinned over the preview's top-right corner is the one Export button
 (`ui/ExportButton.tsx`), the same control in every product. It lives here rather
