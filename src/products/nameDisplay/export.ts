@@ -11,12 +11,9 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
   const rail = initialRailGeometry(blocks, config);
   return [
     { name: `${config.initial} (initial)`, color: config.initialColor, geometry: assembly.initialGeometry },
-    // A part of its own rather than merged into the initial. It prints as the
-    // first layers of the same piece — which is exactly where a filament swap is
-    // easy, and which is why it has its own color in the first place — and a
-    // part is the thing a slicer lets you assign a filament to. It still comes
-    // off the bed as one solid: it reaches up into the letter by RAIL_EMBED_MM,
-    // and the parts of one object are unioned when sliced.
+    // A piece in its own right: it has a socket cut into it that the initial
+    // drops into, so the two are printed separately and assembled, exactly as
+    // the name and its pocket are. Hence its own part and its own color.
     ...(rail ? [{ name: 'Base rail', color: config.standColor, geometry: rail }] : []),
     { name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) },
     // Each ornament prints as its own piece, dropping into its own recess, so

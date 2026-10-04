@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { assembleNameDisplay, buildNameDisplayBlocks, effectivePocketDepthMm, initialRailGeometry, namePrintGeometry } from './geometry';
+import { pointIsInsideSolid } from '../../test-setup/pointInSolid';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -27,6 +28,7 @@ const config: NameDisplayConfig = {
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
+  railSocketDepthMm: 5,
   trimOffsetMm: 0,
 };
 
@@ -146,15 +148,27 @@ describe('print geometry', () => {
     expect(vertexCount(built.initialGeometry)).toBe(vertexCount(plain.initialGeometry));
   }, 30000);
 
-  it('reaches up into the letter, so a slicer unions them into one printed piece', async () => {
+  it('rises past the letter\'s bottom by the socket depth, which is how far it swallows it', async () => {
     const railed = { ...config, standMode: 'rail' as const };
     const built = await buildNameDisplay(railed);
 
     const rail = bounds(initialRailGeometry(built.blocks, railed)!);
     const letter = bounds(built.initialGeometry);
-    // Overlapping, not merely touching — two solids meeting on an exact plane
-    // share a face with opposing normals and leave a seam inside the print.
-    expect(rail.max.y).toBeGreaterThan(letter.min.y);
+    expect(rail.max.y).toBeCloseTo(letter.min.y + railed.railSocketDepthMm, 3);
+  }, 30000);
+
+  it('keeps the socket out of the rail by exactly the fit clearance', async () => {
+    const railed = { ...config, standMode: 'rail' as const, pocketClearanceMm: 0.4 };
+    const built = await buildNameDisplay(railed);
+    const rail = initialRailGeometry(built.blocks, railed)!;
+
+    const letter = bounds(built.initialGeometry);
+    const y = railed.railSocketDepthMm / 2;
+    const z = railed.initialDepthMm / 2;
+    // Just outside the letter's left edge: within the clearance it is still cut
+    // away, beyond it the rail is solid again.
+    expect(pointIsInsideSolid(rail, letter.min.x - 0.2, y, z)).toBe(false);
+    expect(pointIsInsideSolid(rail, letter.min.x - 1, y, z)).toBe(true);
   }, 30000);
 
   it('leaves the name without a foot — the pocket holds it, so it never stands on its own', async () => {

@@ -26,7 +26,7 @@ const MAX_POCKET_FRACTION = 0.6;
  * another. Two slabs stacked on an exactly coincident plane would instead share
  * a face with opposing normals and leave interior geometry in the STL — the
  * same non-manifold seam stickGeometry's embedMm and baseGeometry's
- * RAIL_EMBED_MM exist to avoid.
+ * WALL_OVERLAP_MM exist to avoid.
  */
 const SLAB_OVERLAP_MM = 0.01;
 
@@ -272,11 +272,10 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
  * design stands on one. Only the initial gets one: it is the piece that stands,
  * and the name is suspended partway up it by the pocket.
  *
- * Kept apart from the initial's own solid rather than merged into it, in the
- * preview and in the exported file alike: it is the piece a filament swap most
- * obviously applies to, so it is worth being able to point at. The two
- * interpenetrate by RAIL_EMBED_MM, which is what lets a slicer union them back
- * into one printed piece.
+ * A piece of its own in the preview and in the exported file alike, with a
+ * socket cut into it shaped like the letter: the two print separately and go
+ * together afterwards, which is both how the letter is held and why the rail
+ * can honestly have a filament of its own.
  */
 export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDisplayConfig): THREE.BufferGeometry | null {
   if (config.standMode !== 'rail') {
@@ -289,6 +288,12 @@ export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDispl
     depthMm: config.railDepthMm,
     marginMm: config.railMarginMm,
     blockDepthMm: config.initialDepthMm,
+    // The letter's own silhouette, which is what the socket is a cast of.
+    socketRegion: blockRegion(blocks.initial, []),
+    socketDepthMm: config.railSocketDepthMm,
+    // The same tolerance the name is inlaid with: it is a property of the
+    // printer, not of which joint it happens to be.
+    socketClearanceMm: config.pocketClearanceMm,
   });
 }
 

@@ -8,6 +8,9 @@ interface StandControlsProps {
   onChangeRailHeight: (mm: number) => void;
   railDepthMm: number;
   onChangeRailDepth: (mm: number) => void;
+  /** How deep the socket in the rail is — omit for a product whose rail has none. */
+  railSocketDepthMm?: number;
+  onChangeRailSocketDepth?: (mm: number) => void;
   trimOffsetMm: number;
   onChangeTrimOffset: (mm: number) => void;
   /** Which piece this affects, when a product has more than one and only some of them stand. */
@@ -20,7 +23,7 @@ interface StandControlsProps {
 
 const MODES: { value: StandMode; label: string; hint: string }[] = [
   { value: 'none', label: 'None', hint: 'Relies on the font having a flat bottom of its own, like a slab serif does.' },
-  { value: 'rail', label: 'Base rail', hint: 'A slab under the piece. Works with any font, including scripts.' },
+  { value: 'rail', label: 'Base rail', hint: 'A slab under the piece, with a socket cut into it for the piece to drop into. Works with any font, including scripts.' },
   { value: 'trim', label: 'Flat cut', hint: 'Slices the piece off flat at the baseline. Adds no material, but leaves a narrow footprint.' },
 ];
 
@@ -32,6 +35,8 @@ export function StandControls({
   onChangeRailHeight,
   railDepthMm,
   onChangeRailDepth,
+  railSocketDepthMm,
+  onChangeRailSocketDepth,
   trimOffsetMm,
   onChangeTrimOffset,
   hint,
@@ -80,6 +85,26 @@ export function StandControls({
             </div>
             <input type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
           </label>
+          {railSocketDepthMm !== undefined && onChangeRailSocketDepth && (
+            <label className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
+                <span>Socket depth</span>
+                <span className="tabular-nums text-stone-400 dark:text-stone-500">{railSocketDepthMm} mm</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={20}
+                step={0.5}
+                value={railSocketDepthMm}
+                onChange={(e) => onChangeRailSocketDepth(Number(e.target.value))}
+                className="h-1.5 accent-stone-800 dark:accent-stone-300"
+              />
+              <span className="text-xs text-stone-400 dark:text-stone-500">
+                How far the piece sits down into the rail. They print as two parts and go together afterwards, so deeper holds better — and hides that much of the piece.
+              </span>
+            </label>
+          )}
           {color !== undefined && onChangeColor && (
             <ColorSwatchPicker value={color} onChange={onChangeColor} label="Rail color" variant="field" />
           )}

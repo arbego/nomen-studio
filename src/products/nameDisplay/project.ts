@@ -122,6 +122,7 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
     railHeightMm: asNumber(field(raw, 'railHeightMm'), defaults.railHeightMm, { min: 0.1, max: 100 }),
     railDepthMm: asNumber(field(raw, 'railDepthMm'), defaults.railDepthMm, { min: 0.1, max: 200 }),
     railMarginMm: asNumber(field(raw, 'railMarginMm'), defaults.railMarginMm, { min: 0, max: 100 }),
+    railSocketDepthMm: asNumber(field(raw, 'railSocketDepthMm'), defaults.railSocketDepthMm, { min: 0, max: 50 }),
     trimOffsetMm: asNumber(field(raw, 'trimOffsetMm'), defaults.trimOffsetMm, { min: -200, max: 200 }),
   };
 }

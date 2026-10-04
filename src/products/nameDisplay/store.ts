@@ -71,6 +71,7 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
+  railSocketDepthMm: 5,
   trimOffsetMm: 0,
 };
 
@@ -231,6 +232,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railHeightMm,
     railDepthMm,
     railMarginMm,
+    railSocketDepthMm,
     initialColor,
     nameColor,
     standColor,
@@ -247,6 +249,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railHeightMm,
     railDepthMm,
     railMarginMm,
+    railSocketDepthMm,
     initialColor,
     nameColor,
     standColor,

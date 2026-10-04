@@ -128,6 +128,8 @@ export function NameDisplayControls() {
           onChangeRailHeight={(railHeightMm) => onChange({ railHeightMm })}
           railDepthMm={config.railDepthMm}
           onChangeRailDepth={(railDepthMm) => onChange({ railDepthMm })}
+          railSocketDepthMm={config.railSocketDepthMm}
+          onChangeRailSocketDepth={(railSocketDepthMm) => onChange({ railSocketDepthMm })}
           trimOffsetMm={config.trimOffsetMm}
           onChangeTrimOffset={(trimOffsetMm) => onChange({ trimOffsetMm })}
           color={config.standColor}

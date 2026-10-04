@@ -132,6 +132,19 @@ export interface NameDisplayAssemblyConfig {
   railHeightMm: number;
   railDepthMm: number;
   railMarginMm: number;
+  /**
+   * How far the initial sinks into its base rail.
+   *
+   * The rail has a socket cut into it shaped like the letter, so the two print
+   * as separate pieces and go together afterwards — this is how deep that
+   * socket is, measured from the letter's baseline up to the rail's top face.
+   * Deeper holds better and hides more of the letter; the rail grows taller to
+   * match, since its height is measured below the baseline either way.
+   *
+   * The fit is `pocketClearanceMm`, the same tolerance the name is inlaid with:
+   * it describes the printer, not the joint.
+   */
+  railSocketDepthMm: number;
 }
 
 export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayAssemblyConfig {
@@ -139,10 +152,9 @@ export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayA
   initialColor: string;
   nameColor: string;
   /**
-   * The base rail's own color. The rail is merged into the initial and prints
-   * as one piece, but since these print standing up the rail is the first
-   * layers — so a filament swap partway up really does produce a
-   * differently-colored base, and the preview can show it.
+   * The base rail's own color. It prints as a piece of its own, with a socket
+   * the initial drops into, so this is a real second filament rather than a
+   * preview conceit.
    */
   standColor: string;
   /**

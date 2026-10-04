@@ -30,6 +30,7 @@ const base: NameDisplayConfig = {
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
+  railSocketDepthMm: 5,
   trimOffsetMm: 0,
 };
 

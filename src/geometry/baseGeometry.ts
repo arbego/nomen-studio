@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LineGeometry, TextBlock } from './types';
-import { intersectRegions, rectRegion, regionFromContours, regionIsEmpty, regionToShapes } from './clipper';
+import { growRegion, intersectRegions, rectRegion, regionFromContours, regionIsEmpty, regionToShapes, subtractRegions, type Region } from './clipper';
+import { combineGeometries } from './combine';
 import { extrudeMmShapes } from './extrudeToMm';
 
 /**
@@ -18,13 +19,25 @@ export const STAND_MODES = ['none', 'rail', 'trim'] as const;
 
 export type StandMode = (typeof STAND_MODES)[number];
 
-/** How far the rail reaches up into the piece above it, so the plain buffer merge in combine.ts has real volumetric overlap to bond rather than a bare tangent touch — the same trick stickGeometry.ts uses with embedMm. */
-const RAIL_EMBED_MM = 1;
+/** Solid material left under the deepest point of the socket, so the piece lands in a cup rather than over an open hole. */
+const RAIL_FLOOR_MM = 2;
+
+/**
+ * How far the rail's front and back walls reach into the socket band, so the
+ * three slabs the rail is built from genuinely interpenetrate.
+ *
+ * They are joined by a plain buffer merge, not a CSG union (see combine.ts),
+ * which relies on real volumetric overlap. Slabs meeting on an exactly
+ * coincident plane would instead share a face with opposing normals and leave
+ * interior geometry in the export — the same seam the name display's
+ * SLAB_OVERLAP_MM avoids.
+ */
+const WALL_OVERLAP_MM = 0.01;
 
 export interface BaseRailOptions {
   /** The block's current bounds, in its own local mm space. */
   bounds: THREE.Box3;
-  /** The block's baseline — where the rail's top sits, so every letter resting on it is bonded. */
+  /** The block's baseline — the line the socket is measured from, so every letter sits in it to the same depth. */
   baselineYMm: number;
   /** How far the rail drops below the baseline. Extended automatically if descenders reach lower. */
   heightMm: number;
@@ -34,43 +47,83 @@ export interface BaseRailOptions {
   marginMm: number;
   /** The lettering's own z depth, so the rail can be centered on it rather than sitting flush with one face. */
   blockDepthMm: number;
+  /** The block's own silhouette, in the same local frame as `bounds` — this is what gets cut out of the rail. */
+  socketRegion: Region;
+  /** How far the piece sinks into the rail: the distance from the baseline up to the rail's top face. */
+  socketDepthMm: number;
+  /** How much larger than the piece the socket is cut, all round, so the two printed parts actually go together. */
+  socketClearanceMm: number;
 }
 
 /**
- * A plain slab under a block, centered on the block's own depth so the piece
- * is supported equally front and back.
+ * A slab under a block with a socket cut into it, shaped like the block itself,
+ * so the piece drops into the base instead of running through it.
  *
- * Anchored to the *baseline*, not to the block's lowest point. Anchoring it to
- * the lowest point would put the rail under the descenders only, leaving every
- * letter without one (in "Peggy", the P and the e) floating 15mm above it —
- * and since parts are merged, not unioned, the export would be three disjoint
- * shells that fall apart off the print bed. The top is pushed
- * `RAIL_EMBED_MM` above the baseline so the solids genuinely interpenetrate,
- * and the bottom always clears the lowest ink, so descenders end up swallowed
- * by the rail rather than poking out of it.
+ * Anchored to the *baseline*, not to the block's lowest point: the socket's
+ * depth is measured from there, so every letter of a block sinks in by the same
+ * amount rather than only the ones with descenders reaching the rail at all.
+ * The bottom always clears the lowest ink by the clearance plus `RAIL_FLOOR_MM`,
+ * so a descender ends up inside the socket with material still under it.
+ *
+ * Built as three slabs stacked front to back rather than as a 3D boolean: the
+ * socket is only as deep as the piece is thick, so the rail keeps unbroken
+ * front and back walls which locate the piece in z and leave its faces whole.
+ * Each is a planar prism — a 2D region extruded — which is all this app ever
+ * needs (see clipper.ts).
  */
 export function baseRailGeometry(options: BaseRailOptions): THREE.BufferGeometry | null {
-  const { bounds, baselineYMm, heightMm, depthMm, marginMm, blockDepthMm } = options;
+  const { bounds, baselineYMm, heightMm, depthMm, marginMm, blockDepthMm, socketRegion, socketDepthMm, socketClearanceMm } = options;
   if (!(heightMm > 0) || !(depthMm > 0) || bounds.isEmpty()) {
     return null;
   }
-  const width = bounds.max.x - bounds.min.x + 2 * marginMm;
-  if (!(width > 0)) {
+  const left = bounds.min.x - marginMm;
+  const right = bounds.max.x + marginMm;
+  if (!(right > left)) {
     return null;
   }
 
-  const top = baselineYMm + RAIL_EMBED_MM;
-  const bottom = Math.min(baselineYMm - heightMm, bounds.min.y - RAIL_EMBED_MM);
-  const height = top - bottom;
-  if (!(height > 0)) {
+  const top = baselineYMm + Math.max(socketDepthMm, 0);
+  const bottom = Math.min(baselineYMm - heightMm, bounds.min.y - socketClearanceMm - RAIL_FLOOR_MM);
+  if (!(top > bottom)) {
     return null;
   }
 
-  const geometry = new THREE.BoxGeometry(width, height, depthMm).toNonIndexed();
-  geometry.translate((bounds.min.x + bounds.max.x) / 2, (top + bottom) / 2, blockDepthMm / 2);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  return geometry;
+  const outer = rectRegion(left, bottom, right, top);
+  const socketed = subtractRegions(outer, growRegion(socketRegion, socketClearanceMm));
+
+  // Where the rail and the socket sit along z. The block runs from 0 to its own
+  // depth, and the rail is centered on it.
+  const railFront = (blockDepthMm - depthMm) / 2;
+  const railBack = railFront + depthMm;
+  const socketFront = Math.max(-socketClearanceMm, railFront);
+  const socketBack = Math.min(blockDepthMm + socketClearanceMm, railBack);
+
+  const parts: THREE.BufferGeometry[] = [
+    // The walls reach a hair into the socket band so the merge has something to
+    // bond; a rail no deeper than the piece simply has none.
+    slab(outer, railFront, socketFront + WALL_OVERLAP_MM),
+    slab(socketed, socketFront, socketBack),
+    slab(outer, socketBack - WALL_OVERLAP_MM, railBack),
+  ].filter((part): part is THREE.BufferGeometry => part !== null);
+
+  if (parts.length === 0) {
+    return null;
+  }
+  const rail = combineGeometries(parts);
+  // Measured up front, as the single BoxGeometry this replaced arrived already
+  // measured: callers read the box without asking for it.
+  rail.computeBoundingBox();
+  return rail;
+}
+
+/** One planar prism of the rail: a region extruded from `fromZ` to `toZ`, or null if that band has no thickness. */
+function slab(region: Region, fromZ: number, toZ: number): THREE.BufferGeometry | null {
+  const thickness = toZ - fromZ;
+  if (!(thickness > 0)) {
+    return null;
+  }
+  const geometry = extrudeMmShapes(regionToShapes(region), thickness);
+  return geometry ? geometry.translate(0, 0, fromZ) : null;
 }
 
 /**

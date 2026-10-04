@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, namePrintGeometry, placedNameGeometry } from './geometry';
 import { growRegion, regionToShapes } from '../../geometry/clipper';
 import { combined3mfBinary, printObjects } from './export';
+import { pointIsInsideSolid } from '../../test-setup/pointInSolid';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -29,6 +30,7 @@ const config: NameDisplayConfig = {
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
+  railSocketDepthMm: 5,
   trimOffsetMm: 0,
 };
 
@@ -144,15 +146,37 @@ describe('what the name display puts in the file', () => {
     expect(bounds(rail.geometry).min.y).toBeLessThan(bounds(railedInitial.geometry).min.y);
   }, 30000);
 
-  it('overlaps the rail with the letter, so the two print as one solid', async () => {
-    // Parts of one object are unioned when sliced, but only where they really
-    // intersect: left merely touching, they would share a face with opposing
-    // normals and leave a seam inside the print.
+  it('cuts the rail\'s socket from the real letter, not from a box around it', async () => {
+    // The wiring this proves: the letter's own silhouette reaches the socket.
+    // An "M" has a gap between its legs that no bounding box knows about — the
+    // rail has to be solid there and hollow inside the stems.
     const railed = await build({ standMode: 'rail' });
     const [initial, rail] = printObjects(railed.blocks, railed.assembly, railed.config);
 
-    expect(bounds(rail.geometry).max.y).toBeGreaterThan(bounds(initial.geometry).min.y);
-    expect(bounds(rail.geometry).min.x).toBeLessThan(bounds(initial.geometry).min.x);
+    const letter = bounds(initial.geometry);
+    const inTheSocket = railed.config.railSocketDepthMm / 2; // partway up the socket, well above its floor
+    const z = railed.config.initialDepthMm / 2;
+
+    // This M is a slab serif, so just above the baseline it is at its widest:
+    // the serif foot is ink, and the counter beside it is not. A socket cut
+    // from a bounding box would be hollow at both.
+    expect(pointIsInsideSolid(rail.geometry, letter.min.x + 25, inTheSocket, z)).toBe(false);
+    expect(pointIsInsideSolid(rail.geometry, letter.min.x + 60, inTheSocket, z)).toBe(true);
+  }, 30000);
+
+  it('clears the letter everywhere, so the two are parts to assemble rather than one fused lump', async () => {
+    // The opposite of what this used to be: the rail reached into the letter so
+    // a slicer would union them. Now they have to stay apart, with the fit
+    // clearance between them, or the letter would not go in.
+    const railed = await build({ standMode: 'rail' });
+    const [initial, rail] = printObjects(railed.blocks, railed.assembly, railed.config);
+
+    const railBounds = bounds(rail.geometry);
+    const letter = bounds(initial.geometry);
+    // The rail reaches above the letter's bottom — that is the socket — while
+    // the letter's own material at that height sits in clear air.
+    expect(railBounds.max.y).toBeCloseTo(letter.min.y + railed.config.railSocketDepthMm, 3);
+    expect(pointIsInsideSolid(rail.geometry, letter.min.x + 4, 1, railed.config.initialDepthMm / 2)).toBe(false);
   }, 30000);
 
   it('writes no rail part for a design that stands on nothing', async () => {
