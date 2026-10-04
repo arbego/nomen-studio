@@ -33,26 +33,26 @@ export function DecoratorControls({ className = '', decorators, placements, pock
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Decorators</span>
-      <p className="text-xs text-stone-400">Icons inlaid into the initial, each in its own pocket. Drag one in the preview to move it.</p>
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Decorators</span>
+      <p className="text-xs text-stone-400 dark:text-stone-500">Icons inlaid into the initial, each in its own pocket. Drag one in the preview to move it.</p>
 
       {decorators.map((decorator) => (
-        <div key={decorator.id} className="flex flex-col gap-3 rounded-lg border border-stone-200 p-3">
+        <div key={decorator.id} className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-700 p-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setPicking(picking === decorator.id ? null : decorator.id)}
               title="Change icon"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-200 text-stone-700 transition-colors hover:border-stone-400"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500"
             >
               <Icon name={decorator.iconName} className="text-[22px]" />
             </button>
-            <span className="min-w-0 flex-1 truncate text-sm text-stone-600">{decorator.iconName}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-stone-600 dark:text-stone-400">{decorator.iconName}</span>
             <button
               type="button"
               onClick={() => onRemove(decorator.id)}
               aria-label={`Remove ${decorator.iconName}`}
-              className="shrink-0 text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-red-700"
+              className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-red-700 dark:hover:text-red-400"
             >
               Remove
             </button>
@@ -89,7 +89,7 @@ export function DecoratorControls({ className = '', decorators, placements, pock
           />
 
           {detachedIds.includes(decorator.id) && (
-            <p className="text-xs text-amber-700">This one doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">This one doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>
           )}
         </div>
       ))}
@@ -106,7 +106,7 @@ export function DecoratorControls({ className = '', decorators, placements, pock
         <button
           type="button"
           onClick={() => setPicking('new')}
-          className="rounded-lg border border-dashed border-stone-300 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-900"
+          className="rounded-lg border border-dashed border-stone-300 dark:border-stone-600 px-4 py-2 text-sm text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
         >
           Add decorator
         </button>

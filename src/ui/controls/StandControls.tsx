@@ -43,10 +43,10 @@ export function StandControls({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Standing</span>
-      {hint && <p className="text-xs text-stone-400">{hint}</p>}
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Standing</span>
+      {hint && <p className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
 
-      <div className="flex gap-1 rounded-lg bg-stone-100 p-1">
+      <div className="flex gap-1 rounded-lg bg-stone-100 dark:bg-stone-800 p-1">
         {MODES.map((option) => (
           <button
             key={option.value}
@@ -54,31 +54,31 @@ export function StandControls({
             onClick={() => onChangeMode(option.value)}
             aria-pressed={mode === option.value}
             className={`flex-1 rounded-md px-2 py-1.5 text-sm transition-colors ${
-              mode === option.value ? 'bg-white font-medium text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              mode === option.value ? 'bg-white dark:bg-stone-700 font-medium text-stone-900 dark:text-stone-100 shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
             {option.label}
           </button>
         ))}
       </div>
-      {active && <p className="text-xs text-stone-400">{active.hint}</p>}
+      {active && <p className="text-xs text-stone-400 dark:text-stone-500">{active.hint}</p>}
 
       {mode === 'rail' && (
         <>
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Rail height</span>
-              <span className="tabular-nums text-stone-400">{railHeightMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{railHeightMm} mm</span>
             </div>
-            <input type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800" />
-            <span className="text-xs text-stone-400">Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it.</span>
+            <input type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+            <span className="text-xs text-stone-400 dark:text-stone-500">Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it.</span>
           </label>
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Rail depth</span>
-              <span className="tabular-nums text-stone-400">{railDepthMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{railDepthMm} mm</span>
             </div>
-            <input type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800" />
+            <input type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
           </label>
           {color !== undefined && onChangeColor && (
             <ColorSwatchPicker value={color} onChange={onChangeColor} label="Rail color" variant="field" />
@@ -88,15 +88,15 @@ export function StandControls({
 
       {mode === 'trim' && (
         <label className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-sm text-stone-600">
+          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
             <span>Cut height</span>
-            <span className="tabular-nums text-stone-400">
+            <span className="tabular-nums text-stone-400 dark:text-stone-500">
               {trimOffsetMm > 0 ? '+' : ''}
               {trimOffsetMm} mm
             </span>
           </div>
-          <input type="range" min={-10} max={15} step={0.5} value={trimOffsetMm} onChange={(e) => onChangeTrimOffset(Number(e.target.value))} className="h-1.5 accent-stone-800" />
-          <span className="text-xs text-stone-400">Relative to the text's baseline. 0 removes just the descenders.</span>
+          <input type="range" min={-10} max={15} step={0.5} value={trimOffsetMm} onChange={(e) => onChangeTrimOffset(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+          <span className="text-xs text-stone-400 dark:text-stone-500">Relative to the text's baseline. 0 removes just the descenders.</span>
         </label>
       )}
     </div>

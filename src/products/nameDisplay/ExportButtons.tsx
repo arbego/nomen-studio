@@ -36,12 +36,12 @@ export function ExportButtons({ blocks, assembly, config, disabled }: ExportButt
 
   return (
     <div className="flex flex-col gap-2">
-      {failure && <p className="text-sm text-red-600">{failure}</p>}
+      {failure && <p className="text-sm text-red-600 dark:text-red-400">{failure}</p>}
       <button
         type="button"
         onClick={handleExport}
         disabled={disabled || !blocks || !assembly || busy}
-        className="rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-lg bg-stone-800 dark:bg-stone-100 px-4 py-2.5 text-sm font-medium text-white dark:text-stone-900 transition-colors hover:bg-stone-700 dark:hover:bg-stone-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {busy ? 'Preparing…' : 'Export .3mf'}
       </button>

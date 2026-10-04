@@ -34,7 +34,7 @@ export function ExportButtons({ blocks, config, designName, disabled }: ExportBu
       type="button"
       onClick={handleExport}
       disabled={disabled || blocks.length === 0 || busy}
-      className="w-full rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+      className="w-full rounded-lg bg-stone-800 dark:bg-stone-100 px-4 py-2.5 text-sm font-medium text-white dark:text-stone-900 transition-colors hover:bg-stone-700 dark:hover:bg-stone-300 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {busy ? 'Preparing…' : 'Export .3mf'}
     </button>

@@ -43,7 +43,7 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
   const capped = !showAll && (query.trim() ? results.length >= DEFAULT_RESULT_LIMIT : true);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-3">
+    <div className="flex flex-col gap-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-3">
       <div className="flex items-center gap-2">
         <input
           type="search"
@@ -52,24 +52,24 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search icons…"
           aria-label="Search icons"
-          className="min-w-0 flex-1 rounded-md border border-stone-200 px-2.5 py-1.5 text-sm outline-none focus:border-stone-400"
+          className="min-w-0 flex-1 rounded-md border border-stone-200 dark:border-stone-700 px-2.5 py-1.5 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
         />
-        <button type="button" onClick={onClose} className="shrink-0 text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+        <button type="button" onClick={onClose} className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
           Cancel
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-xs text-stone-400">
+      <div className="flex items-center justify-between gap-2 text-xs text-stone-400 dark:text-stone-500">
         <span>
           {showAll && !query.trim() ? `All ${ICON_COUNT} icons` : `${results.length} ${results.length === 1 ? 'icon' : 'icons'}`}
         </span>
         {capped ? (
-          <button type="button" onClick={() => setShowAll(true)} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+          <button type="button" onClick={() => setShowAll(true)} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
             Show all {ICON_COUNT}
           </button>
         ) : (
           showAll && (
-            <button type="button" onClick={() => setShowAll(false)} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+            <button type="button" onClick={() => setShowAll(false)} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
               Show fewer
             </button>
           )
@@ -77,7 +77,7 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
       </div>
 
       {results.length === 0 ? (
-        <p className="py-4 text-center text-xs text-stone-400">No icon matches “{query.trim()}”.</p>
+        <p className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">No icon matches “{query.trim()}”.</p>
       ) : (
         <div className="grid max-h-64 grid-cols-6 gap-1 overflow-y-auto">
           {results.map((icon) => (
@@ -88,8 +88,8 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
               aria-label={icon.name}
               aria-pressed={icon.name === value}
               onClick={() => onChange(icon.name)}
-              className={`flex aspect-square items-center justify-center rounded-md border text-stone-700 transition-colors hover:border-stone-400 hover:bg-stone-50 ${
-                icon.name === value ? 'border-stone-800 bg-stone-100' : 'border-transparent'
+              className={`flex aspect-square items-center justify-center rounded-md border text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 ${
+                icon.name === value ? 'border-stone-800 dark:border-stone-200 bg-stone-100 dark:bg-stone-700' : 'border-transparent'
               }`}
             >
               <Icon name={icon.name} className="text-[22px]" />

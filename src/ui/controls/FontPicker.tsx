@@ -72,13 +72,13 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
       onClick={onSelect}
       aria-pressed={selected}
       className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors ${
-        selected ? 'bg-stone-800 text-white' : 'hover:bg-stone-100'
+        selected ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900' : 'hover:bg-stone-100 dark:hover:bg-stone-800'
       }`}
     >
       <span className="w-full truncate text-lg leading-tight" style={loaded ? { fontFamily: previewFontFamily(entry.id) } : undefined}>
         {previewText}
       </span>
-      <span className={`text-xs ${selected ? 'text-stone-300' : 'text-stone-400'}`}>{entry.family}</span>
+      <span className={`text-xs ${selected ? 'text-stone-300 dark:text-stone-600' : 'text-stone-400 dark:text-stone-500'}`}>{entry.family}</span>
     </button>
   );
 }
@@ -93,7 +93,7 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">{label}</span>
+      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>
       <div className="flex flex-wrap gap-2">
         {FONT_REGISTRY.map((font) => (
           <button
@@ -103,8 +103,8 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
             aria-pressed={value === font.id}
             className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               value === font.id
-                ? 'border-stone-800 bg-stone-800 text-white'
-                : 'border-stone-200 bg-white text-stone-700 hover:border-stone-400'
+                ? 'border-stone-800 dark:border-stone-200 bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900'
+                : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500'
             }`}
           >
             {font.label}
@@ -112,7 +112,7 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
         ))}
       </div>
 
-      {!selectedIsCurated && <p className="text-xs text-stone-500">Selected: {selectedDefinition.family}</p>}
+      {!selectedIsCurated && <p className="text-xs text-stone-500 dark:text-stone-400">Selected: {selectedDefinition.family}</p>}
 
       <div className="flex gap-2 pt-1">
         <input
@@ -120,12 +120,12 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search Google Fonts…"
-          className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 outline-none transition-colors focus:border-stone-500"
+          className="min-w-0 flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none transition-colors focus:border-stone-500 dark:focus:border-stone-400"
         />
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as FontCategory | '')}
-          className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm text-stone-700 outline-none transition-colors focus:border-stone-500"
+          className="rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-2 text-sm text-stone-700 dark:text-stone-300 outline-none transition-colors focus:border-stone-500 dark:focus:border-stone-400"
         >
           {CATEGORY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -135,8 +135,8 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
         </select>
       </div>
 
-      <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 p-1">
-        {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-400">No fonts match your search.</p>}
+      <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
+        {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-400 dark:text-stone-500">No fonts match your search.</p>}
         {results.map((entry) => (
           <FontResultRow key={entry.id} entry={entry} previewText={previewText} selected={value === entry.id} onSelect={() => onChange(entry.id)} />
         ))}

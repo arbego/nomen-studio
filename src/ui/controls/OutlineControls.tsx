@@ -40,25 +40,25 @@ export function OutlineControls({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Outline card</span>
+        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Outline card</span>
         <input
           type="checkbox"
           checked={enabled}
           onChange={(e) => onChangeEnabled(e.target.checked)}
-          className="h-4 w-4 accent-stone-800"
+          className="h-4 w-4 accent-stone-800 dark:accent-stone-300"
           aria-label="Add a solid backing card under the name"
         />
       </label>
 
       {enabled && (
         <>
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-stone-400 dark:text-stone-500">
             A separate solid card behind the name, shaped to its outline. Grow it until a disconnected part (like an "i" dot) merges into the card.
           </p>
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Grow</span>
-              <span className="tabular-nums text-stone-400">{growMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{growMm} mm</span>
             </div>
             <input
               type="range"
@@ -67,13 +67,13 @@ export function OutlineControls({
               step={GROW_RANGE.step}
               value={growMm}
               onChange={(e) => onChangeGrow(Number(e.target.value))}
-              className="h-1.5 accent-stone-800"
+              className="h-1.5 accent-stone-800 dark:accent-stone-300"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Height</span>
-              <span className="tabular-nums text-stone-400">{depthMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{depthMm} mm</span>
             </div>
             <input
               type="range"
@@ -82,19 +82,19 @@ export function OutlineControls({
               step={0.25}
               value={depthMm}
               onChange={(e) => onChangeDepth(Number(e.target.value))}
-              className="h-1.5 accent-stone-800"
+              className="h-1.5 accent-stone-800 dark:accent-stone-300"
             />
           </label>
           <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} variant="field" />
           {holeCandidates.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm text-stone-600">Counter holes</span>
-              <p className="text-xs text-stone-400">Fill one in if you'd rather it print solid, like the rest of the card.</p>
+              <span className="text-sm text-stone-600 dark:text-stone-400">Counter holes</span>
+              <p className="text-xs text-stone-400 dark:text-stone-500">Fill one in if you'd rather it print solid, like the rest of the card.</p>
               <div className="flex flex-col gap-1">
                 {holeCandidates.map((candidate) => {
                   const closed = closedOutlineHoles.includes(candidate.key);
                   return (
-                    <label key={candidate.key} className="flex items-center justify-between text-sm text-stone-600">
+                    <label key={candidate.key} className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
                       <span>
                         “{candidate.char}” (line {candidate.lineIndex + 1}, letter {candidate.letterIndex + 1})
                       </span>
@@ -102,7 +102,7 @@ export function OutlineControls({
                         type="checkbox"
                         checked={closed}
                         onChange={() => onToggleHole(candidate.key)}
-                        className="h-4 w-4 accent-stone-800"
+                        className="h-4 w-4 accent-stone-800 dark:accent-stone-300"
                         aria-label={`Fill the "${candidate.char}" hole (line ${candidate.lineIndex + 1}, letter ${candidate.letterIndex + 1}) solid`}
                       />
                     </label>

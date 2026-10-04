@@ -1,4 +1,5 @@
 import { Grid } from '@react-three/drei';
+import type { Theme } from '../ui/theme';
 
 /**
  * The ground the design stands on: a grid ruled in real millimeters, so it
@@ -23,13 +24,23 @@ const FADE_MM = 900;
 const GRID_Y_MM = -0.2;
 
 /**
+ * Ruling that reads as ruling against either backdrop: dark lines on the light
+ * floor, light ones on the dark, each kept faint enough to stay a ruler rather
+ * than become a pattern.
+ */
+const LINE_COLORS = {
+  light: { cell: '#cfcabb', section: '#a39a8a' },
+  dark: { cell: '#3a3734', section: '#56514b' },
+} as const;
+
+/**
  * A ruled floor under the design, so its size reads against something instead
  * of floating in empty space.
  *
  * Deliberately rendered outside the group the camera fits itself to — the grid
  * is scenery, and framing the view to it would zoom away from the design.
  */
-export function GroundGrid() {
+export function GroundGrid({ theme }: { theme: Theme }) {
   return (
     <Grid
       position={[0, GRID_Y_MM, 0]}
@@ -42,10 +53,10 @@ export function GroundGrid() {
       fadeStrength={1.5}
       cellSize={CELL_MM}
       cellThickness={0.6}
-      cellColor="#cfcabb"
+      cellColor={LINE_COLORS[theme].cell}
       sectionSize={SECTION_MM}
       sectionThickness={1.1}
-      sectionColor="#a39a8a"
+      sectionColor={LINE_COLORS[theme].section}
     />
   );
 }

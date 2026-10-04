@@ -38,6 +38,20 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   one 3MF holding every piece as a separate, named, colored object, already
   fitted together — see below for why not an STL.
 
+## Dark mode
+
+The sun/moon in the corner switches it, and the choice is remembered. Until one
+is made the studio follows the operating system and keeps following it live, so
+the system flipping at sunset flips the studio too — but the moment you pick a
+side, that is the side it stays on. `ui/theme.ts` puts a class on `<html>` when
+the module is first imported, before anything renders, so the page is never
+painted in the wrong theme first.
+
+The 3D preview changes its backdrop and the ruling on its floor, but not its
+lights: those exist to show what a filament will actually look like, and a design
+whose colour shifted with the UI theme would be lying about the thing being
+printed.
+
 ## Saving your work
 
 Every studio has **Save project** and **Open project** in its header. A project

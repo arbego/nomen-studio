@@ -1,6 +1,12 @@
 @import 'tailwindcss';
 
 /*
+ * Dark mode is a class on <html>, not the bare media query Tailwind defaults
+ * to, because the studio lets you override what the system says — see ui/theme.ts.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * The same icon file the geometry is built from (see fonts/registry.ts), loaded
  * here as a webfont so the picker can show the icons themselves rather than a
  * list of their names. Referenced by codepoint, so no ligature support is
@@ -38,4 +44,9 @@ body {
   background: #faf9f7;
   color: #1c1a1f;
   -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background: #1b1917;
+  color: #e7e5e4;
 }

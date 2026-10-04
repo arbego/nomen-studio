@@ -10,7 +10,7 @@ import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
 
-const SECTION = 'border-t border-stone-100 pt-5';
+const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
 
 export function NameDisplayControls() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
@@ -65,20 +65,20 @@ export function NameDisplayControls() {
             hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
           />
           <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
-          <p className="flex items-center justify-between text-xs text-stone-400">
+          <p className="flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
             <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
             {hasCustomGaps && (
-              <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+              <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
                 Reset spacing
               </button>
             )}
           </p>
-          {detached && <p className="text-xs text-amber-700">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
+          {detached && <p className="text-xs text-amber-700 dark:text-amber-400">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
         </div>
 
         <div className={`flex flex-col gap-3 ${SECTION}`}>
-          <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Inlay</span>
-          <p className="text-xs text-stone-400">The name is recessed into the initial's face, so the two pieces lock together. Print them in different filaments.</p>
+          <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Inlay</span>
+          <p className="text-xs text-stone-400 dark:text-stone-500">The name is recessed into the initial's face, so the two pieces lock together. Print them in different filaments.</p>
           <SliderField
             label="Pocket depth"
             value={config.pocketDepthMm}
@@ -131,9 +131,9 @@ export function NameDisplayControls() {
         />
       </div>
 
-      <div className="mt-auto border-t border-stone-200 pt-4">
-        {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
-        {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
+      <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
+        {error && <p className="pb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {loading && !error && <p className="pb-2 text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>}
         <ExportButtons blocks={blocks} assembly={assembly} config={config} disabled={loading || !!error} />
       </div>
     </div>

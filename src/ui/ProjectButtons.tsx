@@ -12,7 +12,7 @@ interface ProjectButtonsProps {
   onOpened: (productId: string) => void;
 }
 
-const LINK_CLASS = 'rounded px-1 py-0.5 text-xs text-stone-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900';
+const LINK_CLASS = 'rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100';
 
 /**
  * Saving the current design to a file and opening one back up.
@@ -69,7 +69,7 @@ export function ProjectButtons({ product, onOpened }: ProjectButtonsProps) {
           }}
         />
       </div>
-      {failure && <p className="text-xs text-red-600">{failure}</p>}
+      {failure && <p className="text-xs text-red-600 dark:text-red-400">{failure}</p>}
     </div>
   );
 }

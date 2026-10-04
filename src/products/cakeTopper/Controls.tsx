@@ -39,10 +39,10 @@ export function CakeTopperControls() {
             onChange={(wordFontId) => onChange({ wordFontId })}
             previewText={config.lines[0] || 'Emma'}
           />
-          <p className="-mt-2 flex items-center justify-between text-xs text-stone-400">
+          <p className="-mt-2 flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
             <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
             {hasCustomLetterGaps && (
-              <button type="button" onClick={onResetLetterGaps} className="text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+              <button type="button" onClick={onResetLetterGaps} className="text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
                 Reset spacing
               </button>
             )}
@@ -54,9 +54,9 @@ export function CakeTopperControls() {
           onChange={(sizeMm) => onChange({ sizeMm })}
           depthMm={config.extrudeDepthMm}
           onChangeDepth={(extrudeDepthMm) => onChange({ extrudeDepthMm })}
-          className="border-t border-stone-100 pt-5"
+          className="border-t border-stone-100 dark:border-stone-800 pt-5"
         />
-        <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} className="border-t border-stone-100 pt-5" />
+        <ColorSwatchPicker value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} className="border-t border-stone-100 dark:border-stone-800 pt-5" />
         <StickControls
           enabled={config.stickOffsets.word.length > 0}
           onChangeEnabled={(enabled) => onSetSticksEnabled('word', enabled)}
@@ -67,7 +67,7 @@ export function CakeTopperControls() {
           stickCounts={{ word: config.stickOffsets.word.length }}
           onAddStick={onAddStick}
           onRemoveStick={(blockId) => onRemoveStick(blockId, config.stickOffsets[blockId].length - 1)}
-          className="border-t border-stone-100 pt-5"
+          className="border-t border-stone-100 dark:border-stone-800 pt-5"
         />
         <OutlineControls
           enabled={config.outlineEnabled}
@@ -82,13 +82,13 @@ export function CakeTopperControls() {
           holeCandidates={outlineHoleCandidates}
           closedOutlineHoles={config.closedOutlineHoles}
           onToggleHole={onToggleClosedOutlineHole}
-          className="border-t border-stone-100 pt-5"
+          className="border-t border-stone-100 dark:border-stone-800 pt-5"
         />
       </div>
 
-      <div className="mt-auto border-t border-stone-200 pt-4">
-        {error && <p className="pb-2 text-sm text-red-600">{error}</p>}
-        {loading && !error && <p className="pb-2 text-sm text-stone-400">Generating geometry…</p>}
+      <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
+        {error && <p className="pb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {loading && !error && <p className="pb-2 text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>}
         <ExportButtons blocks={blocks} config={config} designName={config.lines.join(' ')} disabled={loading || !!error} />
       </div>
     </div>

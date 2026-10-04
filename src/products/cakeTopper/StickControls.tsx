@@ -36,23 +36,23 @@ export function StickControls({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700">Sticks</span>
+        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Sticks</span>
         <input
           type="checkbox"
           checked={enabled}
           onChange={(e) => onChangeEnabled(e.target.checked)}
-          className="h-4 w-4 accent-stone-800"
+          className="h-4 w-4 accent-stone-800 dark:accent-stone-300"
           aria-label="Add sticks under the name"
         />
       </label>
 
       {enabled && (
         <>
-          <p className="text-xs text-stone-400">Drag a stick in the preview to reposition it.</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500">Drag a stick in the preview to reposition it.</p>
 
           <div className="flex flex-col gap-2">
             {pickIds.map((blockId) => (
-              <div key={blockId} className="flex items-center justify-between text-sm text-stone-600">
+              <div key={blockId} className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
                 <span>Sticks amount</span>
                 <div className="flex items-center gap-2">
                   <button
@@ -60,7 +60,7 @@ export function StickControls({
                     onClick={() => onRemoveStick(blockId)}
                     disabled={stickCounts[blockId] <= 1}
                     aria-label={`Remove a ${PICK_LABELS[blockId]} stick`}
-                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 text-stone-600 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     −
                   </button>
@@ -70,7 +70,7 @@ export function StickControls({
                     onClick={() => onAddStick(blockId)}
                     disabled={stickCounts[blockId] >= MAX_STICKS_PER_BLOCK}
                     aria-label={`Add a ${PICK_LABELS[blockId]} stick`}
-                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 text-stone-600 transition-colors hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     +
                   </button>
@@ -80,9 +80,9 @@ export function StickControls({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Width</span>
-              <span className="tabular-nums text-stone-400">{widthMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{widthMm} mm</span>
             </div>
             <input
               type="range"
@@ -91,14 +91,14 @@ export function StickControls({
               step={WIDTH_RANGE.step}
               value={widthMm}
               onChange={(e) => onChangeWidth(Number(e.target.value))}
-              className="h-1.5 accent-stone-800"
+              className="h-1.5 accent-stone-800 dark:accent-stone-300"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600">
+            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
               <span>Length</span>
-              <span className="tabular-nums text-stone-400">{lengthMm} mm</span>
+              <span className="tabular-nums text-stone-400 dark:text-stone-500">{lengthMm} mm</span>
             </div>
             <input
               type="range"
@@ -107,7 +107,7 @@ export function StickControls({
               step={LENGTH_RANGE.step}
               value={lengthMm}
               onChange={(e) => onChangeLength(Number(e.target.value))}
-              className="h-1.5 accent-stone-800"
+              className="h-1.5 accent-stone-800 dark:accent-stone-300"
             />
           </label>
         </>

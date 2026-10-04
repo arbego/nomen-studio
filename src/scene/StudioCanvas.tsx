@@ -7,6 +7,7 @@ import { fitCameraToBoxFrontal } from './cameraFit';
 import { GroundCenter } from './GroundCenter';
 import { GroundGrid } from './GroundGrid';
 import { ScaleReference } from './ScaleReference';
+import { useThemeStore } from '../ui/theme';
 
 interface StudioCanvasProps {
   /** The current product's scene content — see products/<id>/SceneContent.tsx. */
@@ -18,8 +19,19 @@ interface StudioCanvasProps {
 const HOME_CAMERA_POSITION: [number, number, number] = [0, 60, 220];
 const HOME_TARGET: [number, number, number] = [0, 0, 0];
 
+/**
+ * The studio's backdrop, per theme. Only the room changes: the lights are the
+ * same in both, because their job is to show what a filament will actually look
+ * like, and a design that shifts colour when the UI theme does would be lying
+ * about the thing being printed.
+ */
+const BACKGROUND = { light: '#f3f1ec', dark: '#1b1917' } as const;
+
+/** The ground shadow needs less weight on a dark floor, where it has far less room to darken into before it disappears. */
+const SHADOW_OPACITY = { light: 0.35, dark: 0.5 } as const;
+
 const OVERLAY_BUTTON_CLASS =
-  'flex h-10 w-10 items-center justify-center rounded-full border bg-white/90 shadow-md backdrop-blur transition-colors hover:border-stone-400 hover:text-stone-900';
+  'flex h-10 w-10 items-center justify-center rounded-full border bg-white/90 dark:bg-stone-900/90 shadow-md backdrop-blur transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100';
 
 /**
  * The shared 3D preview every product is designed in: lighting, ground shadow,
@@ -32,6 +44,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
   const [showScaleReference, setShowScaleReference] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
 
   // A true frontal view (camera level with the model, looking straight along
   // Z — not tilted down at it) at whatever distance fits the model's current
@@ -70,7 +83,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
   return (
     <div className="relative h-full w-full">
       <Canvas shadows camera={{ position: [0, 60, 220], fov: 35, near: 1, far: 2000 }} gl={{ antialias: true }}>
-        <color attach="background" args={['#f3f1ec']} />
+        <color attach="background" args={[BACKGROUND[theme]]} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[80, 140, 120]} intensity={1.1} castShadow />
         <directionalLight position={[-100, 60, -80]} intensity={0.35} />
@@ -86,8 +99,8 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
           </group>
           {showScaleReference && <ScaleReference contentRef={contentGroupRef} />}
         </group>
-        <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
-        <GroundGrid />
+        <ContactShadows position={[0, -0.1, 0]} opacity={SHADOW_OPACITY[theme]} scale={300} blur={2} far={80} />
+        <GroundGrid theme={theme} />
 
         {/* maxDistance generous enough that fitting the largest possible design (multiple lines, max size, longest sticks) to the frontal view is never clamped closer than it needs to be. */}
         <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.1} minDistance={60} maxDistance={1000} makeDefault />
@@ -100,7 +113,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
           aria-pressed={showScaleReference}
           aria-label={showScaleReference ? 'Hide the 2 euro coin' : 'Show a 2 euro coin for scale'}
           title={showScaleReference ? 'Hide the 2 € coin' : 'Compare with a 2 € coin'}
-          className={`${OVERLAY_BUTTON_CLASS} ${showScaleReference ? 'border-stone-400 text-stone-900' : 'border-stone-200 text-stone-600'}`}
+          className={`${OVERLAY_BUTTON_CLASS} ${showScaleReference ? 'border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100' : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <circle cx="12" cy="12" r="8.5" />
@@ -113,7 +126,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
           onClick={resetToFrontView}
           aria-label="Reset view to front"
           title="Reset view to front"
-          className={`${OVERLAY_BUTTON_CLASS} border-stone-200 text-stone-600`}
+          className={`${OVERLAY_BUTTON_CLASS} border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400`}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <path d="M3 11.5 12 4l9 7.5" />
