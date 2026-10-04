@@ -90,7 +90,8 @@ interface NameDisplayStore extends NameDisplayConfig {
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
   resetNameLetterGaps: () => void;
   setStandMode: (mode: StandMode) => void;
-  addDecorator: (source: NewDecorator) => void;
+  /** Returns the new ornament's id, so a picker that stays open can go on editing the thing it just made. */
+  addDecorator: (source: NewDecorator) => string;
   updateDecorator: (id: string, patch: DecoratorPatch) => void;
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
@@ -141,9 +142,11 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
     })),
   resetNameLetterGaps: () => set((state) => ({ nameLetterGapsMm: defaultLetterGaps(state.name) })),
   setStandMode: (standMode) => set({ standMode }),
-  addDecorator: (source) =>
+  addDecorator: (source) => {
+    // Minted outside the updater so it can be returned: the caller needs to know
+    // which ornament this was, and an updater's return value is the next state.
+    const id = newDecoratorId();
     set((state) => {
-      const id = newDecoratorId();
       // Never thinner than the recess it drops into, or the ornament would sit
       // entirely inside its own pocket and show nothing.
       const depthMm = Math.max(DEFAULT_DECORATOR_DEPTH_MM, state.pocketDepthMm);
@@ -164,7 +167,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
         // opens showing which swatch is in use.
         decoratorColors: { ...state.decoratorColors, [id]: state.nameColor },
       };
-    }),
+    });
+    return id;
+  },
   updateDecorator: (id, patch) =>
     set((state) => ({
       decorators: state.decorators.map((decorator) =>

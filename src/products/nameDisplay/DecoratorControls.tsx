@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SliderField } from '../../ui/controls/SliderField';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { TextField } from '../../ui/controls/TextField';
@@ -22,7 +22,8 @@ interface DecoratorControlsProps {
   pocketDepthMm: number;
   /** Ids of ornaments currently dragged clear of the initial, so nothing holds them. */
   detachedIds: string[];
-  onAdd: (source: NewDecorator) => void;
+  /** Returns the new ornament's id, so the grid that added it can go on changing it instead of adding more. */
+  onAdd: (source: NewDecorator) => string;
   onUpdate: (id: string, patch: DecoratorPatch) => void;
   onRemove: (id: string) => void;
   onChangeAngle: (id: string, angleDeg: number) => void;
@@ -75,13 +76,33 @@ export function DecoratorControls({
   onChangeColor,
 }: DecoratorControlsProps) {
   const [editor, setEditor] = useState<OpenEditor>(null);
-  // Whether the grid for choosing a *new* icon is open, which belongs to no
-  // ornament yet. A word needs no such step — it is added and then typed into.
-  const [addingIcon, setAddingIcon] = useState(false);
+  // The grid for adding an icon, which starts out belonging to no ornament:
+  // `null` means it is closed, `{ added: null }` that it is open and nothing has
+  // been picked yet, and `{ added: id }` that it made that one and is now
+  // changing it. A word needs no such step — it is added and then typed into.
+  const [adding, setAdding] = useState<{ added: string | null } | null>(null);
 
   function toggle(id: string, what: 'icon' | 'font') {
     setEditor(editor?.id === id && editor.what === what ? null : { id, what });
   }
+
+  /** What the add grid should highlight: the ornament it has already made, once it has made one. */
+  function addedIconName(): string | undefined {
+    const added = decorators.find((decorator) => decorator.id === adding?.added);
+    return added?.kind === 'icon' ? added.iconName : undefined;
+  }
+
+  const addGridRef = useRef<HTMLDivElement>(null);
+  const addedId = adding?.added ?? null;
+  useEffect(() => {
+    // The first pick puts a card for the new ornament above this grid, which
+    // pushes the grid itself down the panel — off screen, if you had scrolled
+    // to it. Nudged back to where it was, since browsing on is the whole point
+    // of it staying open.
+    if (addedId) {
+      addGridRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [addedId]);
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -119,14 +140,10 @@ export function DecoratorControls({
           </div>
 
           {decorator.kind === 'icon' && editor?.id === decorator.id && editor.what === 'icon' && (
-            <IconPicker
-              value={decorator.iconName}
-              onChange={(iconName) => {
-                onUpdate(decorator.id, { iconName });
-                setEditor(null);
-              }}
-              onClose={() => setEditor(null)}
-            />
+            // Stays open as you click: every pick lands on the piece
+            // immediately, so trying symbols against the letter is one click
+            // each rather than four. Done closes it.
+            <IconPicker value={decorator.iconName} onChange={(iconName) => onUpdate(decorator.id, { iconName })} onClose={() => setEditor(null)} />
           )}
 
           {decorator.kind === 'text' && (
@@ -188,17 +205,28 @@ export function DecoratorControls({
         </div>
       ))}
 
-      {addingIcon ? (
-        <IconPicker
-          onChange={(iconName) => {
-            onAdd({ kind: 'icon', iconName });
-            setAddingIcon(false);
-          }}
-          onClose={() => setAddingIcon(false)}
-        />
+      {adding ? (
+        // One grid, mounted in one place for both halves of the job: the first
+        // pick adds the ornament, every later one changes that same ornament
+        // rather than adding more. Were this to hand over to the card's own
+        // grid above, it would unmount and take the search and the chosen set
+        // with it — exactly when you are in the middle of browsing.
+        <div ref={addGridRef}>
+          <IconPicker
+            value={addedIconName()}
+            onChange={(iconName) => {
+              if (adding.added) {
+                onUpdate(adding.added, { iconName });
+              } else {
+                setAdding({ added: onAdd({ kind: 'icon', iconName }) });
+              }
+            }}
+            onClose={() => setAdding(null)}
+          />
+        </div>
       ) : (
         <div className="flex gap-2">
-          <button type="button" onClick={() => setAddingIcon(true)} className={ADD_BUTTON_CLASS}>
+          <button type="button" onClick={() => setAdding({ added: null })} className={ADD_BUTTON_CLASS}>
             Add icon
           </button>
           <button type="button" onClick={() => onAdd({ kind: 'text' })} className={ADD_BUTTON_CLASS}>

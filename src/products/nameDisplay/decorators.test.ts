@@ -247,10 +247,13 @@ describe('decorator colors', () => {
 describe('decorator store', () => {
   it('adds one with an icon, a size and a place to stand', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    const id = useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
 
     const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
     expect(decorators).toHaveLength(1);
+    // Handed back so the picker that added it can go on changing that same one
+    // rather than adding a second with the next click.
+    expect(id).toBe(decorators[0].id);
     expect(iconNameOf(decorators[0])).toBe('star');
     expect(decorators[0].widthMm).toBeGreaterThan(0);
     expect(decoratorPlacements[decorators[0].id].offset).toBeDefined();

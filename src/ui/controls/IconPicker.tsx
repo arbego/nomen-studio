@@ -31,6 +31,11 @@ const TAB_CLASS = 'rounded-md px-2.5 py-1 text-xs transition-colors';
  * faster than scrolling would — but the cap is only a default: "Show all" lifts
  * it for anyone who would rather browse, whether they have typed something or
  * not.
+ *
+ * Picking does not close this. Every pick lands on the piece straight away, so
+ * leaving it open turns "try that one against the letter" into one click
+ * instead of four — and the search and the chosen set survive, which is what
+ * makes clicking through a set bearable at all.
  */
 export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
   const [query, setQuery] = useState('');
@@ -65,8 +70,10 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
           aria-label="Search icons"
           className="min-w-0 flex-1 rounded-md border border-stone-200 dark:border-stone-700 px-2.5 py-1.5 text-sm outline-none focus:border-stone-400 dark:focus:border-stone-500"
         />
+        {/* "Done", not "Cancel": a pick lands on the piece the moment it is
+            made, so by the time you close this there is nothing left to undo. */}
         <button type="button" onClick={onClose} className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
-          Cancel
+          Done
         </button>
       </div>
 
