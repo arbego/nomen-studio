@@ -48,6 +48,9 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
   const [showScaleReference, setShowScaleReference] = useState(false);
+  // On by default: a shadow is what tells a 2mm inlay from a colour change.
+  // Off is for looking at the shapes themselves, and for a slower machine.
+  const [showShadows, setShowShadows] = useState(true);
   const theme = useThemeStore((s) => s.theme);
 
   // A true frontal view (camera level with the model, looking straight along
@@ -88,7 +91,7 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
     <div className="relative h-full w-full">
       <Canvas shadows camera={{ position: [0, 60, 220], fov: 35, near: 1, far: 2000 }} gl={{ antialias: true }}>
         <color attach="background" args={[BACKGROUND[theme]]} />
-        <StudioLights />
+        <StudioLights contentRef={contentGroupRef} castShadows={showShadows} />
 
         {/* The camera is framed the moment the design is first centered, so the
             initial load looks exactly like pressing the reset button. */}
@@ -101,7 +104,7 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
           </group>
           {showScaleReference && <ScaleReference contentRef={contentGroupRef} />}
         </group>
-        <ContactShadows position={[0, -0.1, 0]} opacity={SHADOW_OPACITY[theme]} scale={300} blur={2} far={80} />
+        {showShadows && <ContactShadows position={[0, -0.1, 0]} opacity={SHADOW_OPACITY[theme]} scale={300} blur={2} far={80} />}
         <GroundGrid theme={theme} />
 
         {/* maxDistance generous enough that fitting the largest possible design (multiple lines, max size, longest sticks) to the frontal view is never clamped closer than it needs to be. */}
@@ -111,6 +114,21 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
       {actions && <div className="absolute right-4 top-4">{actions}</div>}
 
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowShadows((shown) => !shown)}
+          aria-pressed={showShadows}
+          aria-label={showShadows ? 'Turn shadows off' : 'Turn shadows on'}
+          title={showShadows ? 'Shadows on' : 'Shadows off'}
+          className={`${OVERLAY_BUTTON_CLASS} ${showShadows ? 'border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100' : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
+        >
+          {/* A shape and the shadow it throws, which is the thing being switched. */}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <rect x="3" y="3" width="12" height="12" rx="2.5" />
+            <path d="M9 21h9.5a2.5 2.5 0 0 0 2.5-2.5V9" strokeDasharray="2.5 2.5" />
+          </svg>
+        </button>
+
         <button
           type="button"
           onClick={() => setShowScaleReference((shown) => !shown)}
