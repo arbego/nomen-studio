@@ -99,13 +99,13 @@
 }
 
 .focus-flash {
-  /* A step lighter than the panel it sits on, in either theme. */
-  --focus-flash-color: var(--color-stone-200);
+  /*
+   * The export button's orange, which is the studio's one accent — so the
+   * colour that means "this is the thing" means it everywhere. The same in
+   * both themes, as the button is.
+   */
+  --focus-flash-color: var(--color-orange-300);
   animation: focus-flash 3400ms ease-in-out;
-}
-
-.dark .focus-flash {
-  --focus-flash-color: var(--color-stone-700);
 }
 
 html,
