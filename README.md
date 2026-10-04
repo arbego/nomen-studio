@@ -1,7 +1,7 @@
 # Name Studio
 
 Design personalized 3D-printable lettering — preview it live in 3D and export
-print-ready STL files. Pick a product on the landing screen, then design in that
+print-ready files. Pick a product on the landing screen, then design in that
 product's studio. All fonts are free Google Fonts; the curated defaults are
 self-hosted, and the full catalogue loads on demand.
 
@@ -27,9 +27,9 @@ npm run dev
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
-  move it or tilt it to an angle, and the pocket follows. Exports one STL with
-  the name already seated in the recess, so the fit between the two pieces
-  survives the trip to the slicer.
+  move it or tilt it to an angle, and the pocket follows. Exports one 3MF
+  holding both pieces as separate, named, colored objects, already fitted
+  together — see below for why not an STL.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ src/
   fonts/      font registry + the generated Google Fonts catalogue
   geometry/   framework-agnostic, millimeter-accurate solid generation
   scene/      the shared 3D preview, its draggable meshes and its ground
-  export/     STL bytes
+  export/     STL and 3MF bytes
   ui/         the shell, the product picker, and the generic controls
   products/
     registry.ts     every product, in picker order
@@ -95,6 +95,13 @@ drags the camera's auto-fit away from the design.
   the initial alone, since the name is held by the pocket it drops into.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
+- **File formats** (`export/`): a one-piece design exports as an STL. A design
+  made of several pieces exports as a 3MF, because STL cannot describe one: it
+  has no objects and no colors, and splitting one in a slicer splits by
+  connected shell — on a pocketed name display that is the back slab, every
+  island the pocket cut the front slab into, and every letter, rather than the
+  two pieces anyone meant. A 3MF is an OPC package, so `export/zip.ts` writes
+  one with stored (undeflated) entries; that is the whole dependency.
 - **Merging** (`geometry/combine.ts`): a plain buffer merge, not a CSG union —
   every part is already watertight with real volumetric overlap where parts meet,
   which slicers handle correctly.

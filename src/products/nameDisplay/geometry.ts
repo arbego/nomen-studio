@@ -245,20 +245,3 @@ export function placedNameGeometry(blocks: NameDisplayBlocks, assembly: NameDisp
   return namePrintGeometry(blocks, config).applyMatrix4(matrix);
 }
 
-/**
- * The whole design as one solid: the pocketed initial with the name sitting in
- * its recess, exactly where the preview shows it.
- *
- * The two pieces still print in two filaments, and they stay two separate
- * shells here — the pocket clearance means they never touch. Keeping them in
- * one file keeps the fit between them, which is the part that matters and the
- * part nobody wants to re-establish by hand after loading two files into a
- * slicer. Printed in one material they fuse; printed in two, a slicer splits
- * the file into its parts and takes a filament per part.
- */
-export function assembledPrintGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
-  // No guard for a nameless design: a name with no lettering in it never gets
-  // this far, since extrusion refuses it and the build fails before an assembly
-  // exists at all.
-  return combineGeometries([initialPrintGeometry(blocks, assembly, config), placedNameGeometry(blocks, assembly, config)]);
-}
