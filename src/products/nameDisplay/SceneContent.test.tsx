@@ -24,6 +24,7 @@ const config: NameDisplayConfig = {
   nameAngleDeg: 0,
   decorators: [],
   decoratorPlacements: {},
+  decoratorColors: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
@@ -190,7 +191,7 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
 
   it.each([0, 45, -120])('renders a decorator seated in its own pocket, at %i°', async (angleDeg) => {
     const { renderer, assembly } = await renderScene({
-      decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
+      decorators: [{ kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
       decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg } },
     });
 
@@ -210,10 +211,58 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     expect(world.z).toBeCloseTo(12 - 2.5, 4); // the pocket floor, like the name
   }, 30000);
 
+  it('renders an ornament in its own color, or the inlay color when it has none', async () => {
+    const { renderer } = await renderScene({
+      decorators: [
+        { kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 },
+        { kind: 'text', id: 'd2', text: 'Mia', fontId: 'dancing-script', widthMm: 60, depthMm: 5 },
+      ],
+      decoratorPlacements: { d1: { offset: { x: -25, y: 90 }, angleDeg: 0 }, d2: { offset: { x: 25, y: 90 }, angleDeg: 0 } },
+      decoratorColors: { d1: '#b7c4ac' },
+    });
+
+    const colorOf = (index: number) =>
+      (decoratorGroup(root(renderer), index).children.filter((c) => c.type === 'Mesh')[0].instance as unknown as { material: { color: THREE.Color } }).material.color.getHexString();
+    expect(colorOf(0)).toBe('b7c4ac');
+    expect(colorOf(1)).toBe('f7f5f2'); // the name's
+  }, 30000);
+
+  it('moves a word ornament whichever of its letters is grabbed', async () => {
+    // An ornament is placed, not kerned: it has no gaps for the parent to
+    // store, so a letter-gap drag could only spring back.
+    const onDecoratorOffsetCommit = vi.fn();
+    const { renderer } = await renderScene(
+      {
+        decorators: [{ kind: 'text', id: 'd1', text: 'Mia', fontId: 'dancing-script', widthMm: 60, depthMm: 5 }],
+        decoratorPlacements: { d1: { offset: { x: 0, y: 90 }, angleDeg: 0 } },
+      },
+      () => {},
+      () => {},
+      onDecoratorOffsetCommit,
+    );
+
+    const group = decoratorGroup(root(renderer));
+    const object = group.instance as unknown as THREE.Object3D;
+    const lastLetter = () => {
+      const meshes = group.children.filter((c) => c.type === 'Mesh');
+      return meshes[meshes.length - 1];
+    };
+    expect(group.children.filter((c) => c.type === 'Mesh')).toHaveLength(3);
+
+    await act(async () => (lastLetter().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 0, 0)));
+    await act(async () => (lastLetter().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 12, -6)));
+    await act(async () => (lastLetter().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 12, -6)));
+
+    expect(onDecoratorOffsetCommit).toHaveBeenCalledTimes(1);
+    const [, offset] = onDecoratorOffsetCommit.mock.calls[0];
+    expect(offset.x).toBeCloseTo(12, 1);
+    expect(offset.y).toBeCloseTo(84, 1);
+  }, 30000);
+
   it('commits a decorator drag as an absolute offset', async () => {
     const onDecoratorOffsetCommit = vi.fn();
     const { renderer } = await renderScene(
-      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 0 } } },
+      { decorators: [{ kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 0 } } },
       () => {},
       () => {},
       onDecoratorOffsetCommit,
@@ -237,7 +286,7 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
   it("turns a turned decorator's drag back into the initial's frame", async () => {
     const onDecoratorOffsetCommit = vi.fn();
     const { renderer } = await renderScene(
-      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 90 } } },
+      { decorators: [{ kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 90 } } },
       () => {},
       () => {},
       onDecoratorOffsetCommit,

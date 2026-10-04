@@ -4,25 +4,51 @@ import type { StandMode } from '../../geometry/baseGeometry';
 /** The two fixed pieces: a large background initial, and the script name inlaid into its face. Decorators are added on top of these and identified by their own ids. */
 export type NameDisplayBlockId = 'initial' | 'name';
 
+/** What an ornament is made of. An icon is a glyph and so is a letter, which is why both go down the one pipeline. */
+export const DECORATOR_KINDS = ['icon', 'text'] as const;
+export type DecoratorKind = (typeof DECORATOR_KINDS)[number];
+
+/** As long as the name's own limit: an ornament is a date or a word or two, and every character of it has to be printed. Shared by the input and the file reader so the two agree. */
+export const DECORATOR_TEXT_MAX_LENGTH = 20;
+
 /**
- * One ornament stamped into the initial alongside the name — an icon, inlaid
- * exactly the way the name is, with its own pocket and its own place on the
- * letter.
+ * What every ornament has, whatever it is made of.
  *
- * Where it sits and how it is turned live apart from this, in
- * `decoratorPlacements`, for the same reason the name's position does: moving
- * one must not re-run the font build.
+ * Where it sits, how it is turned and what color it is live apart from this —
+ * in `decoratorPlacements` and `decoratorColors` — for the same reason the
+ * name's position does: moving or recoloring one must not re-run the font build.
  */
-export interface DecoratorConfig {
+interface DecoratorConfigBase {
   /** Stable across edits and reorderings, so an offset can be kept against it. */
   id: string;
-  /** A name from the icon catalogue (see icons/catalog.ts). */
-  iconName: string;
-  /** The icon's finished width across its own ink. Icons are drawn on a square grid, so this is effectively its size. */
+  /** The ornament's finished width across its own ink. Icons are drawn on a square grid, so for one of those this is effectively its size. */
   widthMm: number;
-  /** Must stay at least the pocket depth, or the icon would sit entirely inside its own recess. */
+  /** Must stay at least the pocket depth, or the ornament would sit entirely inside its own recess. */
   depthMm: number;
 }
+
+/** One ornament stamped into the initial alongside the name: a symbol from the icon catalogue (see icons/catalog.ts). */
+export interface IconDecoratorConfig extends DecoratorConfigBase {
+  kind: 'icon';
+  iconName: string;
+}
+
+/**
+ * A second piece of text on the piece — a date, a surname, "est. 2019" — free of
+ * the name's one fixed place and inlaid the same way.
+ *
+ * It is an ornament rather than a second name field because that is what makes
+ * it movable: everything in `decorators` is placed by dragging it where you want
+ * it, while the name has the one spot the design is built around.
+ */
+export interface TextDecoratorConfig extends DecoratorConfigBase {
+  kind: 'text';
+  text: string;
+  /** Its own face, so a date can be set in something other than the name's script. */
+  fontId: string;
+}
+
+export type DecoratorConfig = IconDecoratorConfig | TextDecoratorConfig;
 
 /** Where one ornament ended up on the initial — the cheap half of a decorator, re-applied on every drag without touching a font. */
 export interface DecoratorPlacementConfig {
@@ -60,7 +86,7 @@ export interface NameDisplayBlocksConfig {
   nameWidthMm: number;
   nameDepthMm: number;
 
-  /** Every ornament on the piece, in the order they were added. Only what shapes their glyphs — which icon, how wide, how thick. */
+  /** Every ornament on the piece, in the order they were added. Only what shapes their glyphs — which icon or which word, in which face, how wide, how thick. */
   decorators: DecoratorConfig[];
 
   /** A flat-bottom trim is here, not in the assembly config, because unlike the other standing modes it re-cuts the glyph silhouettes themselves. */
@@ -119,4 +145,26 @@ export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayA
    * differently-colored base, and the preview can show it.
    */
   standColor: string;
+  /**
+   * Each ornament's own color, keyed by id. Kept out of the ornaments themselves
+   * so that recoloring one is the cheap edit it looks like, rather than
+   * re-extruding every glyph on the piece — the same reason the name's color
+   * sits apart from the name.
+   *
+   * An ornament with no entry here prints in the name's color; see
+   * `decoratorColor`.
+   */
+  decoratorColors: Record<string, string>;
+}
+
+/**
+ * One ornament's color.
+ *
+ * Falls back to the name's rather than to a constant: ornaments drop into the
+ * same pockets the name does and are usually run off in the same filament, so
+ * that is both the right default for a new one and the right answer for a file
+ * saved before ornaments had colors of their own.
+ */
+export function decoratorColor(config: NameDisplayConfig, id: string): string {
+  return config.decoratorColors[id] ?? config.nameColor;
 }

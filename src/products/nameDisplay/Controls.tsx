@@ -21,6 +21,7 @@ export function NameDisplayControls() {
   const updateDecorator = useNameDisplayStore((s) => s.updateDecorator);
   const removeDecorator = useNameDisplayStore((s) => s.removeDecorator);
   const setDecoratorAngle = useNameDisplayStore((s) => s.setDecoratorAngle);
+  const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
   const { blocks, assembly, loading, error } = useNameDisplayGeometry();
 
   const hasCustomGaps = config.nameLetterGapsMm.some((gap) => gap !== 0);
@@ -107,12 +108,15 @@ export function NameDisplayControls() {
           className={SECTION}
           decorators={config.decorators}
           placements={config.decoratorPlacements}
+          colors={config.decoratorColors}
+          fallbackColor={config.nameColor}
           pocketDepthMm={pocketDepth}
           detachedIds={detachedDecoratorIds}
           onAdd={addDecorator}
           onUpdate={updateDecorator}
           onRemove={removeDecorator}
           onChangeAngle={setDecoratorAngle}
+          onChangeColor={setDecoratorColor}
         />
 
         <StandControls

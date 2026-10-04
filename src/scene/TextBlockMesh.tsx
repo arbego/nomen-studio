@@ -46,6 +46,17 @@ interface TextBlockMeshProps {
   lineOffsets: Offset2D[];
   onLineOffsetCommit: (lineIndex: number, offset: Offset2D) => void;
   /**
+   * What dragging a letter means.
+   *
+   * 'letters' (the default) is the editing gesture: the first letter moves the
+   * line, any other one closes or opens the gap before it. 'whole' makes every
+   * letter move the whole thing, for a block whose spacing isn't the user's to
+   * tune — an ornament on the name display, which is placed rather than set.
+   * Without it, grabbing the second letter of such a block would drag it live
+   * and then spring back, there being no gap for the parent to store.
+   */
+  dragMode?: 'letters' | 'whole';
+  /**
    * Notified whenever a letter-gap or line drag starts/stops (not a stick
    * drag, which doesn't move any letter). The outline card can't cheaply
    * track a live drag (it's a synchronous but non-trivial re-triangulation,
@@ -89,6 +100,7 @@ export function TextBlockMesh({
   lineOffsets,
   onLineOffsetCommit,
   onLetterDragActiveChange,
+  dragMode = 'letters',
 }: TextBlockMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
@@ -174,12 +186,17 @@ export function TextBlockMesh({
     setDraggingLine({ lineIndex, offset: { x: point.x - grabDeltaRef.current.x, y: point.y - grabDeltaRef.current.y } });
   }
 
+  /** Whether grabbing this letter moves the whole line rather than retuning its own gap. */
+  function movesWholeLine(letterIndex: number): boolean {
+    return dragMode === 'whole' || letterIndex === 0;
+  }
+
   function handlePointerDown(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
     event.stopPropagation();
     (event.target as Element).setPointerCapture(event.pointerId);
     // eslint-disable-next-line react/immutability -- controls is a live Three.js object from useThree, not React state
     if (controls) controls.enabled = false;
-    if (letterIndex === 0) {
+    if (movesWholeLine(letterIndex)) {
       updateLineDrag(lineIndex, event, true);
     } else {
       updateGapDrag(lineIndex, letterIndex, event, true);
@@ -187,7 +204,7 @@ export function TextBlockMesh({
   }
 
   function handlePointerMove(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
-    if (letterIndex === 0) {
+    if (movesWholeLine(letterIndex)) {
       if (!draggingLine || draggingLine.lineIndex !== lineIndex) return;
       event.stopPropagation();
       updateLineDrag(lineIndex, event, false);
@@ -227,7 +244,7 @@ export function TextBlockMesh({
               xMm={cascadesByLine[lineIndex][i] + offset.x}
               yMm={offset.y}
               draggable
-              dragging={i === 0 ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
+              dragging={movesWholeLine(i) ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
               anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}
               onPointerMove={(e) => handlePointerMove(lineIndex, i, e)}

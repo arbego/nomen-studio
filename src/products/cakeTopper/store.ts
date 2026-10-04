@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
-import { COLOR_PRESETS } from '../../ui/presets';
+import { presetColor } from '../../ui/presets';
 import type { CakeTopperConfig, CakeTopperGeometryConfig, CakeTopperBlockId } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
@@ -24,10 +24,10 @@ export const DEFAULT_CAKE_TOPPER_CONFIG: CakeTopperConfig = {
   stickOffsets: { word: [{ x: 0, y: 0 }] },
   letterGapsMm: [defaultLetterGaps(DEFAULT_LINE)],
   lineOffsets: [{ x: 0, y: 0 }],
-  previewColor: COLOR_PRESETS[2].hex,
+  previewColor: presetColor('rosa'),
   outlineEnabled: false,
   outlineGrowMm: 3,
-  outlineColor: COLOR_PRESETS[0].hex,
+  outlineColor: presetColor('white'),
   outlineDepthMm: 1.5,
   closedOutlineHoles: [],
 };

@@ -8,7 +8,7 @@ import { growRegion, intersectRegions, regionFromContours, regionIsEmpty, region
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
 import { degToRad, type Placement2D } from '../../geometry/placement';
 import { buildIconBlock } from '../../icons/iconBlock';
-import type { NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
+import type { DecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
 
 const ORIGIN: Offset2D = { x: 0, y: 0 };
 
@@ -30,7 +30,7 @@ const MAX_POCKET_FRACTION = 0.6;
  */
 const SLAB_OVERLAP_MM = 0.01;
 
-/** One ornament, built from the icon font — paired with the config id it was built for. */
+/** One ornament, built from its glyphs — paired with the config id it was built for. */
 export interface DecoratorBlock {
   id: string;
   block: TextBlock;
@@ -126,6 +126,39 @@ export function decoratorPlacement(decorator: DecoratorBlock, config: NameDispla
 }
 
 /**
+ * One ornament as a solid.
+ *
+ * An icon and a word take the same path — an icon *is* a glyph — so the only
+ * difference is which face and which characters, and both are sized by width:
+ * that is the dimension you judge an ornament by against the piece it sits on.
+ */
+function buildDecoratorBlock(decorator: DecoratorConfig): Promise<TextBlock> {
+  if (decorator.kind === 'text') {
+    return buildTextBlock({
+      id: decorator.id,
+      label: decorator.text,
+      lines: [decorator.text],
+      fontId: decorator.fontId,
+      fit: { mode: 'width', mm: decorator.widthMm },
+      extrudeDepthMm: decorator.depthMm,
+    });
+  }
+  return buildIconBlock({ id: decorator.id, iconName: decorator.iconName, widthMm: decorator.widthMm, extrudeDepthMm: decorator.depthMm });
+}
+
+/**
+ * Whether an ornament has anything to draw at all.
+ *
+ * A text ornament whose text has been cleared is the one empty case, and it is a
+ * state you pass through every time you retype one. Left in, it would fail the
+ * whole build and blank the preview mid-keystroke, so it is dropped from the
+ * build instead — its row stays in the panel, waiting to be typed into.
+ */
+export function decoratorHasInk(decorator: DecoratorConfig): boolean {
+  return decorator.kind !== 'text' || decorator.text.trim().length > 0;
+}
+
+/**
  * Builds both pieces from their fonts. Everything that does *not* change the
  * glyphs themselves — where the name sits, its letter gaps, the pocket, the
  * base rail — is deliberately excluded and applied synchronously by
@@ -151,12 +184,12 @@ export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): P
       fit: { mode: 'width', mm: config.nameWidthMm },
       extrudeDepthMm: config.nameDepthMm,
     }),
-    // One icon font for all of them, so this is one parse however many
-    // ornaments are on the piece — loadFont caches by id.
+    // However many ornaments are on the piece, each distinct face is parsed once
+    // — loadFont caches by id, and all the icons share one font.
     Promise.all(
-      config.decorators.map(async (decorator) => ({
+      config.decorators.filter(decoratorHasInk).map(async (decorator) => ({
         id: decorator.id,
-        block: await buildIconBlock({ id: decorator.id, iconName: decorator.iconName, widthMm: decorator.widthMm, extrudeDepthMm: decorator.depthMm }),
+        block: await buildDecoratorBlock(decorator),
       })),
     ),
   ]);

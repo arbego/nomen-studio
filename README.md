@@ -33,8 +33,10 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
   move it or tilt it to an angle, and the pocket follows. Decorators — icons
-  from the full Material Icons set — can be added alongside it and inlaid the
-  same way, each with its own width, thickness and place on the letter. Exports
+  from the full Material Icons set, or further words in a face of their own —
+  can be added alongside it and inlaid the same way, each with its own width,
+  thickness, angle, color and place on the letter. An icon is a glyph, so both
+  kinds go down the one text pipeline. Exports
   one 3MF holding every piece as a separate, named, colored object, already
   fitted together — see below for why not an STL.
 

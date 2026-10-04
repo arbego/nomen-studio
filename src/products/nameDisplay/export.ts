@@ -1,6 +1,6 @@
 import { threeMfBinary, type ThreeMfObject } from '../../export/threeMfExport';
 import { initialPrintGeometry, placedDecoratorGeometry, placedNameGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
-import type { NameDisplayConfig } from './config';
+import { decoratorColor, type NameDisplayConfig } from './config';
 
 /**
  * The design's two pieces, each in its own color, positioned as they are
@@ -12,10 +12,12 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
     { name: `${config.initial} (initial)`, color: config.initialColor, geometry: initialPrintGeometry(blocks, assembly, config) },
     { name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) },
     // Each ornament prints as its own piece, dropping into its own recess, so
-    // each is its own part rather than being merged into the name.
+    // each is its own part rather than being merged into the name — and each
+    // carries its own color, which is the whole point of being able to set one:
+    // a slicer reads these as separate parts to assign filaments to.
     ...blocks.decorators.map((decorator) => ({
       name: `${decorator.block.label} (decorator)`,
-      color: config.nameColor,
+      color: decoratorColor(config, decorator.id),
       geometry: placedDecoratorGeometry(decorator, assembly),
     })),
   ];

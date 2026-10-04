@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
-import { COLOR_PRESETS } from '../../ui/presets';
-import type { DecoratorConfig, DecoratorPlacementConfig, NameDisplayBlocksConfig, NameDisplayConfig } from './config';
+import { presetColor } from '../../ui/presets';
+import type { DecoratorConfig, DecoratorPlacementConfig, IconDecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, TextDecoratorConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(name: string): number[] {
@@ -11,8 +11,15 @@ function defaultLetterGaps(name: string): number[] {
 
 const DEFAULT_NAME = 'Matilde';
 
+/** An icon arrives at roughly the size of a letter of the name. A word has to be wider to be legible at all, so it arrives wider. */
 export const DEFAULT_DECORATOR_WIDTH_MM = 25;
+export const DEFAULT_TEXT_DECORATOR_WIDTH_MM = 60;
 export const DEFAULT_DECORATOR_DEPTH_MM = 5;
+/** What a text ornament starts out saying — placeholder enough to be obviously meant for replacing, real enough to be visible and draggable. */
+export const DEFAULT_DECORATOR_TEXT = 'Text';
+
+/** What an ornament is, as asked for — everything else about a new one is defaulted below. */
+export type NewDecorator = { kind: 'icon'; iconName: string } | { kind: 'text'; text?: string };
 
 /**
  * Where a newly added ornament lands: the initial's upper middle, clear of where
@@ -38,13 +45,13 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,
   initialDepthMm: 12,
-  initialColor: COLOR_PRESETS[3].hex,
+  initialColor: presetColor('altrosa'),
 
   name: DEFAULT_NAME,
   nameFontId: 'dancing-script',
   nameWidthMm: 150,
   nameDepthMm: 5,
-  nameColor: COLOR_PRESETS[0].hex,
+  nameColor: presetColor('white'),
   // Centered horizontally (both blocks are x-centered on their own origin) and
   // sitting across the initial's lower middle, as these displays are usually laid out.
   nameOffset: { x: 0, y: 35 },
@@ -53,17 +60,28 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
 
   decorators: [],
   decoratorPlacements: {},
+  decoratorColors: {},
 
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
 
   standMode: 'none',
-  standColor: COLOR_PRESETS[3].hex,
+  standColor: presetColor('altrosa'),
   railHeightMm: 8,
   railDepthMm: 25,
   railMarginMm: 4,
   trimOffsetMm: 0,
 };
+
+/**
+ * An edit to one ornament.
+ *
+ * Every field of either kind is optional and none of them is `kind` itself: what
+ * an ornament *is* is fixed when it is added — "turn this heart into the word
+ * Mia" is not an edit anyone makes, it is adding a different ornament — so a
+ * patch can only ever change the details of the kind it already has.
+ */
+export type DecoratorPatch = Partial<Omit<IconDecoratorConfig, 'id' | 'kind'> & Omit<TextDecoratorConfig, 'id' | 'kind'>>;
 
 interface NameDisplayStore extends NameDisplayConfig {
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
@@ -71,11 +89,12 @@ interface NameDisplayStore extends NameDisplayConfig {
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
   resetNameLetterGaps: () => void;
   setStandMode: (mode: StandMode) => void;
-  addDecorator: (iconName: string) => void;
-  updateDecorator: (id: string, patch: Partial<Omit<DecoratorConfig, 'id'>>) => void;
+  addDecorator: (source: NewDecorator) => void;
+  updateDecorator: (id: string, patch: DecoratorPatch) => void;
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
   setDecoratorAngle: (id: string, angleDeg: number) => void;
+  setDecoratorColor: (id: string, color: string) => void;
   /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
   loadConfig: (config: NameDisplayConfig) => void;
   reset: () => void;
@@ -121,17 +140,26 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
     })),
   resetNameLetterGaps: () => set((state) => ({ nameLetterGapsMm: defaultLetterGaps(state.name) })),
   setStandMode: (standMode) => set({ standMode }),
-  addDecorator: (iconName) =>
+  addDecorator: (source) =>
     set((state) => {
       const id = newDecoratorId();
+      // Never thinner than the recess it drops into, or the ornament would sit
+      // entirely inside its own pocket and show nothing.
+      const depthMm = Math.max(DEFAULT_DECORATOR_DEPTH_MM, state.pocketDepthMm);
+      const decorator: DecoratorConfig =
+        source.kind === 'text'
+          ? // In the name's face, so a word added to the piece looks like it
+            // belongs to it; changeable right there in the panel if not.
+            { kind: 'text', id, text: source.text ?? DEFAULT_DECORATOR_TEXT, fontId: state.nameFontId, widthMm: DEFAULT_TEXT_DECORATOR_WIDTH_MM, depthMm }
+          : { kind: 'icon', id, iconName: source.iconName, widthMm: DEFAULT_DECORATOR_WIDTH_MM, depthMm };
+
       return {
-        decorators: [
-          ...state.decorators,
-          // Never thinner than the recess it drops into, or the ornament would
-          // sit entirely inside its own pocket and show nothing.
-          { id, iconName, widthMm: DEFAULT_DECORATOR_WIDTH_MM, depthMm: Math.max(DEFAULT_DECORATOR_DEPTH_MM, state.pocketDepthMm) },
-        ],
+        decorators: [...state.decorators, decorator],
         decoratorPlacements: { ...state.decoratorPlacements, [id]: defaultDecoratorPlacement(state.decorators.length) },
+        // In the inlay filament to begin with, like the name it sits beside —
+        // set explicitly rather than left to the fallback so the color picker
+        // opens showing which swatch is in use.
+        decoratorColors: { ...state.decoratorColors, [id]: state.nameColor },
       };
     }),
   updateDecorator: (id, patch) =>
@@ -141,19 +169,25 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
           ? // Same rule as the name's thickness: an ornament thinner than the
             // pocket would be swallowed by it. The control stops there too, so
             // this only catches a value arriving from elsewhere.
-            { ...decorator, ...patch, depthMm: Math.max(patch.depthMm ?? decorator.depthMm, state.pocketDepthMm) }
+            //
+            // Cast because a patch is the union of both kinds' fields, which TS
+            // can't see staying inside the union once spread — `kind` is not in
+            // a patch, so whichever kind this ornament was, it still is.
+            ({ ...decorator, ...patch, depthMm: Math.max(patch.depthMm ?? decorator.depthMm, state.pocketDepthMm) } as DecoratorConfig)
           : decorator,
       ),
     })),
   removeDecorator: (id) =>
     set((state) => {
-      // The placement goes with it, so a later ornament can never inherit a
-      // position that was meant for a removed one.
-      const { [id]: _removed, ...decoratorPlacements } = state.decoratorPlacements;
-      return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorPlacements };
+      // Its placement and its color go with it, so a later ornament can never
+      // inherit a position or a filament that was meant for a removed one.
+      const { [id]: _removedPlacement, ...decoratorPlacements } = state.decoratorPlacements;
+      const { [id]: _removedColor, ...decoratorColors } = state.decoratorColors;
+      return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorPlacements, decoratorColors };
     }),
   setDecoratorOffset: (id, offset) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
   setDecoratorAngle: (id, angleDeg) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
+  setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
     // Ids from the file share a namespace with the ones this session hands out,
     // so the counter is moved past them — otherwise the next ornament added
@@ -183,6 +217,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     nameLetterGapsMm,
     nameAngleDeg,
     decoratorPlacements,
+    decoratorColors,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,
@@ -198,6 +233,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     nameLetterGapsMm,
     nameAngleDeg,
     decoratorPlacements,
+    decoratorColors,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,

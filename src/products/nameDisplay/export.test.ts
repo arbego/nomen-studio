@@ -21,6 +21,7 @@ const config: NameDisplayConfig = {
   nameAngleDeg: 0,
   decorators: [],
   decoratorPlacements: {},
+  decoratorColors: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',

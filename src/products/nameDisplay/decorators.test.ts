@@ -4,7 +4,7 @@ import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, placedDecorat
 import { growRegion, regionToShapes } from '../../geometry/clipper';
 import { printObjects } from './export';
 import { useNameDisplayStore } from './store';
-import type { DecoratorConfig, NameDisplayConfig } from './config';
+import type { DecoratorConfig, NameDisplayConfig, TextDecoratorConfig } from './config';
 
 const base: NameDisplayConfig = {
   initial: 'M',
@@ -22,6 +22,7 @@ const base: NameDisplayConfig = {
   nameAngleDeg: 0,
   decorators: [],
   decoratorPlacements: {},
+  decoratorColors: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
@@ -32,7 +33,7 @@ const base: NameDisplayConfig = {
   trimOffsetMm: 0,
 };
 
-const heart: DecoratorConfig = { id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 };
+const heart: DecoratorConfig = { kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 };
 
 /** On the initial's upper arm, clear of the name at y=45. */
 const ON_THE_LETTER = { x: 0, y: 90 };
@@ -52,6 +53,14 @@ function withHeart(offset = ON_THE_LETTER, decorator: DecoratorConfig = heart, a
 function bounds(geometry: THREE.BufferGeometry): THREE.Box3 {
   geometry.computeBoundingBox();
   return geometry.boundingBox!;
+}
+
+/** The icon off an ornament that has to be one — a test expecting a symbol should fail loudly if it got a word instead. */
+function iconNameOf(decorator: DecoratorConfig): string {
+  if (decorator.kind !== 'icon') {
+    throw new Error(`Expected an icon ornament, got ${decorator.kind}`);
+  }
+  return decorator.iconName;
 }
 
 function triangleCount(geometry: THREE.BufferGeometry): number {
@@ -155,7 +164,7 @@ describe('decorator geometry', () => {
   }, 30000);
 
   it('carries several ornaments at once, each cutting its own pocket', async () => {
-    const two: DecoratorConfig[] = [heart, { id: 'd2', iconName: 'star', widthMm: 20, depthMm: 5 }];
+    const two: DecoratorConfig[] = [heart, { kind: 'icon', id: 'd2', iconName: 'star', widthMm: 20, depthMm: 5 }];
     const one = await withHeart();
     const both = await build({ decorators: two, decoratorPlacements: { d1: { offset: { x: -30, y: 90 }, angleDeg: 0 }, d2: { offset: { x: 30, y: 90 }, angleDeg: 0 } } });
 
@@ -173,23 +182,121 @@ describe('decorator geometry', () => {
   }, 30000);
 });
 
+describe('text ornaments', () => {
+  const word: TextDecoratorConfig = { kind: 'text', id: 't1', text: 'Mia', fontId: 'dancing-script', widthMm: 60, depthMm: 5 };
+
+  function withWord(text = word.text, offset = ON_THE_LETTER) {
+    return withHeart(offset, { ...word, text });
+  }
+
+  it('is built from its own words, in its own face, at the width it was given', async () => {
+    const built = await withWord();
+    expect(built.blocks.decorators).toHaveLength(1);
+    expect(built.blocks.decorators[0].block.label).toBe('Mia');
+    // One solid per letter, exactly as the name is built — an ornament is a text
+    // block, not a special case.
+    expect(built.blocks.decorators[0].block.lines[0].letters.map((letter) => letter.char)).toEqual(['M', 'i', 'a']);
+
+    const placed = bounds(placedDecoratorGeometry(built.blocks.decorators[0], built.assembly));
+    expect(placed.max.x - placed.min.x).toBeCloseTo(60, 1);
+  }, 30000);
+
+  it('cuts its own pocket and seats in it, like any other ornament', async () => {
+    const plain = await build();
+    const built = await withWord();
+    expect(triangleCount(built.assembly.initialGeometry)).toBeGreaterThan(triangleCount(plain.assembly.initialGeometry));
+    expect(built.assembly.decorators[0].overlapsInitial).toBe(true);
+
+    const placed = bounds(placedDecoratorGeometry(built.blocks.decorators[0], built.assembly));
+    expect(placed.min.z).toBeCloseTo(built.assembly.nameZMm, 4);
+    expect(placed.max.z).toBeCloseTo(built.assembly.nameZMm + word.depthMm, 4);
+  }, 30000);
+
+  it.each(['', '   '])('is dropped from the build while its text is cleared (%p), not left to fail it', async (text) => {
+    // The state you pass through every time you retype one: it must leave the
+    // rest of the piece standing, since the preview is what you are typing at.
+    const plain = await build();
+    const built = await withWord(text);
+    expect(built.blocks.decorators).toHaveLength(0);
+    expect(built.assembly.decorators).toHaveLength(0);
+    expect(triangleCount(built.assembly.initialGeometry)).toBe(triangleCount(plain.assembly.initialGeometry));
+  }, 30000);
+
+  it('exports as its own part, named after what it says', async () => {
+    const built = await withWord();
+    expect(printObjects(built.blocks, built.assembly, built.config).map((o) => o.name)).toEqual(['M (initial)', 'Matilde (name)', 'Mia (decorator)']);
+  }, 30000);
+});
+
+describe('decorator colors', () => {
+  it('prints each ornament in its own filament', async () => {
+    const built = await build({
+      decorators: [heart, { kind: 'icon', id: 'd2', iconName: 'star', widthMm: 20, depthMm: 5 }],
+      decoratorPlacements: { d1: { offset: { x: -30, y: 90 }, angleDeg: 0 }, d2: { offset: { x: 30, y: 90 }, angleDeg: 0 } },
+      decoratorColors: { d1: '#b7c4ac' },
+    });
+
+    const objects = printObjects(built.blocks, built.assembly, built.config);
+    expect(objects[2].color).toBe('#b7c4ac');
+    // d2 was never given one, so it prints in the inlay filament — which is
+    // also what a file saved before ornaments had colors describes.
+    expect(objects[3].color).toBe(built.config.nameColor);
+  }, 30000);
+});
+
 describe('decorator store', () => {
   it('adds one with an icon, a size and a place to stand', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
 
     const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
     expect(decorators).toHaveLength(1);
-    expect(decorators[0].iconName).toBe('star');
+    expect(iconNameOf(decorators[0])).toBe('star');
     expect(decorators[0].widthMm).toBeGreaterThan(0);
     expect(decoratorPlacements[decorators[0].id].offset).toBeDefined();
     expect(decoratorPlacements[decorators[0].id].angleDeg).toBe(0);
   });
 
+  it('adds a word in the name\'s own face, so it looks like it belongs to the piece', () => {
+    useNameDisplayStore.getState().reset();
+    useNameDisplayStore.getState().setConfig({ nameFontId: 'pacifico' });
+    useNameDisplayStore.getState().addDecorator({ kind: 'text' });
+
+    const [added] = useNameDisplayStore.getState().decorators;
+    expect(added.kind).toBe('text');
+    expect(added.kind === 'text' && added.fontId).toBe('pacifico');
+    // Something is there to see and to drag, rather than an ornament that
+    // exists only in the panel.
+    expect(added.kind === 'text' && added.text.trim().length).toBeGreaterThan(0);
+  });
+
+  it('gives a new ornament the inlay filament, and takes it away again with it', () => {
+    useNameDisplayStore.getState().reset();
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    const [{ id }] = useNameDisplayStore.getState().decorators;
+    expect(useNameDisplayStore.getState().decoratorColors[id]).toBe(useNameDisplayStore.getState().nameColor);
+
+    useNameDisplayStore.getState().removeDecorator(id);
+    expect(useNameDisplayStore.getState().decoratorColors[id]).toBeUndefined();
+  });
+
+  it('recolors one ornament without touching the others, or what they are', () => {
+    useNameDisplayStore.getState().reset();
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
+    const [first, second] = useNameDisplayStore.getState().decorators;
+    const before = useNameDisplayStore.getState().decoratorColors[first.id];
+
+    useNameDisplayStore.getState().setDecoratorColor(second.id, '#b7c4ac');
+    expect(useNameDisplayStore.getState().decoratorColors[second.id]).toBe('#b7c4ac');
+    expect(useNameDisplayStore.getState().decoratorColors[first.id]).toBe(before);
+    expect(useNameDisplayStore.getState().decorators).toEqual([first, second]);
+  });
+
   it('puts a second one somewhere other than exactly on top of the first', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
-    useNameDisplayStore.getState().addDecorator('favorite');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
 
     const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
     expect(decoratorPlacements[decorators[0].id].offset).not.toEqual(decoratorPlacements[decorators[1].id].offset);
@@ -197,7 +304,7 @@ describe('decorator store', () => {
 
   it('takes the offset away with the ornament, so a later one cannot inherit it', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
     useNameDisplayStore.getState().removeDecorator(id);
@@ -207,21 +314,21 @@ describe('decorator store', () => {
 
   it('edits one ornament without touching the others', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
-    useNameDisplayStore.getState().addDecorator('favorite');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
     const [first, second] = useNameDisplayStore.getState().decorators;
 
     useNameDisplayStore.getState().updateDecorator(second.id, { widthMm: 60, iconName: 'pets' });
     const after = useNameDisplayStore.getState().decorators;
     expect(after[0]).toEqual(first);
     expect(after[1].widthMm).toBe(60);
-    expect(after[1].iconName).toBe('pets');
+    expect(iconNameOf(after[1])).toBe('pets');
   });
 
   it('turns one ornament without moving it, and without touching the others', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
-    useNameDisplayStore.getState().addDecorator('favorite');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
     const [first, second] = useNameDisplayStore.getState().decorators;
     const firstPlacement = useNameDisplayStore.getState().decoratorPlacements[first.id];
 
@@ -235,7 +342,7 @@ describe('decorator store', () => {
 
   it('keeps the angle when the ornament is dragged, and the position when it is turned', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
     useNameDisplayStore.getState().setDecoratorAngle(id, 60);
@@ -249,7 +356,7 @@ describe('decorator store', () => {
   it('never lets an ornament end up thinner than the pocket it drops into', () => {
     useNameDisplayStore.getState().reset();
     useNameDisplayStore.getState().setConfig({ pocketDepthMm: 4 });
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
     useNameDisplayStore.getState().updateDecorator(id, { depthMm: 1 });
@@ -258,7 +365,7 @@ describe('decorator store', () => {
 
   it('caps the pocket at the thinnest thing inlaid into it, ornaments included', () => {
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
     useNameDisplayStore.getState().updateDecorator(id, { depthMm: 3 });
 
@@ -270,11 +377,16 @@ describe('decorator store', () => {
   it('keeps ornaments out of the async build key, so dragging one never re-extrudes a font', async () => {
     const { selectNameDisplayBlocksConfig } = await import('./store');
     useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
     const before = JSON.stringify(selectNameDisplayBlocksConfig(useNameDisplayStore.getState()));
     useNameDisplayStore.getState().setDecoratorOffset(id, { x: 123, y: 45 });
+    expect(JSON.stringify(selectNameDisplayBlocksConfig(useNameDisplayStore.getState()))).toBe(before);
+
+    // Nor does recoloring one: a color is not a shape, and clicking a swatch
+    // should not re-extrude every glyph on the piece.
+    useNameDisplayStore.getState().setDecoratorColor(id, '#b7c4ac');
     expect(JSON.stringify(selectNameDisplayBlocksConfig(useNameDisplayStore.getState()))).toBe(before);
 
     // Changing what the ornament *is* must still rebuild it.

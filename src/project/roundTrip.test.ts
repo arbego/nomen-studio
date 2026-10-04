@@ -37,12 +37,15 @@ describe('name display round trip', () => {
     store.reset();
     store.setConfig({ initial: 'B', name: 'Johanna', nameAngleDeg: 12, initialHeightMm: 150 });
     store.setStandMode('rail');
-    store.addDecorator('favorite');
-    store.addDecorator('star');
-    const [first, second] = useNameDisplayStore.getState().decorators;
+    store.addDecorator({ kind: 'icon', iconName: 'favorite' });
+    store.addDecorator({ kind: 'icon', iconName: 'star' });
+    store.addDecorator({ kind: 'text' });
+    const [first, second, third] = useNameDisplayStore.getState().decorators;
     store.updateDecorator(second.id, { widthMm: 33 });
     store.setDecoratorAngle(second.id, -40);
     store.setDecoratorOffset(first.id, { x: -12, y: 70 });
+    store.updateDecorator(third.id, { text: 'est. 2019', fontId: 'pacifico' });
+    store.setDecoratorColor(third.id, '#b7c4ac');
     const before = selectNameDisplayConfig(useNameDisplayStore.getState());
 
     const file = parseProjectFile(serializeProject('name-display', before), known);
@@ -58,13 +61,13 @@ describe('name display round trip', () => {
     // placement.
     const store = useNameDisplayStore.getState();
     store.reset();
-    store.addDecorator('favorite');
-    store.addDecorator('star');
+    store.addDecorator({ kind: 'icon', iconName: 'favorite' });
+    store.addDecorator({ kind: 'icon', iconName: 'star' });
     const saved = selectNameDisplayConfig(useNameDisplayStore.getState());
 
     useNameDisplayStore.getState().reset();
     getProduct('name-display')!.project.load(saved);
-    useNameDisplayStore.getState().addDecorator('pets');
+    useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'pets' });
 
     const ids = useNameDisplayStore.getState().decorators.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -91,26 +94,46 @@ describe('reading a damaged or foreign design', () => {
     // quietly wrong beats nothing only if you notice.
     const parsed = parseNameDisplayConfig({
       decorators: [
-        { id: 'a', iconName: 'favorite', widthMm: 20, depthMm: 4 },
-        { id: 'b', iconName: 'not_a_real_icon', widthMm: 20, depthMm: 4 },
+        { kind: 'icon', id: 'a', iconName: 'favorite', widthMm: 20, depthMm: 4 },
+        { kind: 'icon', id: 'b', iconName: 'not_a_real_icon', widthMm: 20, depthMm: 4 },
       ],
     });
-    expect(parsed.decorators.map((d) => d.iconName)).toEqual(['favorite']);
+    expect(parsed.decorators.map((d) => (d.kind === 'icon' ? d.iconName : d.text))).toEqual(['favorite']);
   });
 
-  it('gives every ornament exactly one placement, and keeps no orphans', () => {
+  it('gives every ornament exactly one placement and one color, and keeps no orphans', () => {
     const parsed = parseNameDisplayConfig({
-      decorators: [{ id: 'a', iconName: 'star', widthMm: 20, depthMm: 4 }],
+      decorators: [{ kind: 'icon', id: 'a', iconName: 'star', widthMm: 20, depthMm: 4 }],
       decoratorPlacements: { ghost: { offset: { x: 5, y: 5 }, angleDeg: 90 } },
+      decoratorColors: { ghost: '#b7c4ac' },
     });
     expect(Object.keys(parsed.decoratorPlacements)).toEqual(['a']);
+    expect(Object.keys(parsed.decoratorColors)).toEqual(['a']);
+  });
+
+  it('reads an ornament written before they had kinds as the icon it was', () => {
+    const parsed = parseNameDisplayConfig({ nameColor: '#f0c6d0', decorators: [{ id: 'a', iconName: 'star', widthMm: 20, depthMm: 4 }] });
+    expect(parsed.decorators[0]).toMatchObject({ kind: 'icon', iconName: 'star' });
+    // And in the filament it was shown and exported in back then: the name's.
+    expect(parsed.decoratorColors.a).toBe('#f0c6d0');
+  });
+
+  it('drops a word ornament with nothing left to say', () => {
+    const parsed = parseNameDisplayConfig({
+      decorators: [
+        { kind: 'text', id: 'a', text: 'est. 2019', fontId: 'pacifico', widthMm: 60, depthMm: 5 },
+        { kind: 'text', id: 'b', text: '   ', fontId: 'pacifico', widthMm: 60, depthMm: 5 },
+      ],
+    });
+    expect(parsed.decorators.map((d) => d.id)).toEqual(['a']);
+    expect(parsed.decorators[0]).toMatchObject({ kind: 'text', text: 'est. 2019', fontId: 'pacifico' });
   });
 
   it('never loads a pocket deep enough to swallow what sits in it', () => {
     const parsed = parseNameDisplayConfig({
       nameDepthMm: 5,
       pocketDepthMm: 40,
-      decorators: [{ id: 'a', iconName: 'star', widthMm: 20, depthMm: 2 }],
+      decorators: [{ kind: 'icon', id: 'a', iconName: 'star', widthMm: 20, depthMm: 2 }],
     });
     expect(parsed.pocketDepthMm).toBeLessThanOrEqual(2);
   });

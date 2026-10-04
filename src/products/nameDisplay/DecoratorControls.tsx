@@ -1,75 +1,154 @@
 import { useState } from 'react';
 import { SliderField } from '../../ui/controls/SliderField';
+import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
+import { TextField } from '../../ui/controls/TextField';
+import { FontPicker } from '../../ui/controls/FontPicker';
 import { Icon, IconPicker } from '../../ui/controls/IconPicker';
-import type { DecoratorConfig, DecoratorPlacementConfig } from './config';
+import { getFontDefinition } from '../../fonts/registry';
+import { DECORATOR_TEXT_MAX_LENGTH, type DecoratorConfig, type DecoratorPlacementConfig } from './config';
+import type { DecoratorPatch, NewDecorator } from './store';
 
 interface DecoratorControlsProps {
   className?: string;
   decorators: DecoratorConfig[];
   /** Where each one sits and how far it is turned, keyed by id — the angle is editable here, the position by dragging. */
   placements: Record<string, DecoratorPlacementConfig>;
+  /** Each one's own color, keyed by id. */
+  colors: Record<string, string>;
+  /** What an ornament with no color of its own shows as — the name's, since that is the filament it would print in. */
+  fallbackColor: string;
   /** Nothing inlaid may be thinner than this, or it would sit entirely inside its own recess. */
   pocketDepthMm: number;
   /** Ids of ornaments currently dragged clear of the initial, so nothing holds them. */
   detachedIds: string[];
-  onAdd: (iconName: string) => void;
-  onUpdate: (id: string, patch: Partial<Omit<DecoratorConfig, 'id'>>) => void;
+  onAdd: (source: NewDecorator) => void;
+  onUpdate: (id: string, patch: DecoratorPatch) => void;
   onRemove: (id: string) => void;
   onChangeAngle: (id: string, angleDeg: number) => void;
+  onChangeColor: (id: string, color: string) => void;
 }
 
+/** A word ornament has to be wider than an icon to read at all, so it gets more room on the slider. */
+const MAX_WIDTH_MM = { icon: 120, text: 250 };
+
+const ADD_BUTTON_CLASS =
+  'flex-1 rounded-lg border border-dashed border-stone-300 dark:border-stone-600 px-4 py-2 text-sm text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100';
+
+/** Which editor is open on which ornament. Only one at a time: these are full-width grids and lists, and two open at once would bury the piece being edited. */
+type OpenEditor = { id: string; what: 'icon' | 'font' } | null;
+
 /**
- * The ornaments on the piece: add one, pick its icon, set how big, how thick and
- * how turned it is. Where it sits is set by dragging it in the preview, like the
- * name — there is no control for position here, because a number pair is a worse
- * way to place something than putting it where you want it. The angle is a
+ * The ornaments on the piece: add an icon or a word, say how big, how thick, how
+ * turned and what color it is. Where it sits is set by dragging it in the
+ * preview — there is no control for position here, because a number pair is a
+ * worse way to place something than putting it where you want it. The angle is a
  * control rather than a gesture for the opposite reason: there is no obvious
  * drag that means "turn", and a slider is exact.
  */
-export function DecoratorControls({ className = '', decorators, placements, pocketDepthMm, detachedIds, onAdd, onUpdate, onRemove, onChangeAngle }: DecoratorControlsProps) {
-  // Which icon grid is open: a decorator's id while changing its icon, 'new'
-  // while adding one, or null.
-  const [picking, setPicking] = useState<string | null>(null);
+export function DecoratorControls({
+  className = '',
+  decorators,
+  placements,
+  colors,
+  fallbackColor,
+  pocketDepthMm,
+  detachedIds,
+  onAdd,
+  onUpdate,
+  onRemove,
+  onChangeAngle,
+  onChangeColor,
+}: DecoratorControlsProps) {
+  const [editor, setEditor] = useState<OpenEditor>(null);
+  // Whether the grid for choosing a *new* icon is open, which belongs to no
+  // ornament yet. A word needs no such step — it is added and then typed into.
+  const [addingIcon, setAddingIcon] = useState(false);
+
+  function toggle(id: string, what: 'icon' | 'font') {
+    setEditor(editor?.id === id && editor.what === what ? null : { id, what });
+  }
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Decorators</span>
-      <p className="text-xs text-stone-400 dark:text-stone-500">Icons inlaid into the initial, each in its own pocket. Drag one in the preview to move it.</p>
+      <p className="text-xs text-stone-400 dark:text-stone-500">
+        Icons and words inlaid into the initial, each in its own pocket and its own filament. Drag one in the preview to move it.
+      </p>
 
       {decorators.map((decorator) => (
         <div key={decorator.id} className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-700 p-3">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPicking(picking === decorator.id ? null : decorator.id)}
-              title="Change icon"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500"
-            >
-              <Icon name={decorator.iconName} className="text-[22px]" />
-            </button>
-            <span className="min-w-0 flex-1 truncate text-sm text-stone-600 dark:text-stone-400">{decorator.iconName}</span>
+            {decorator.kind === 'icon' ? (
+              <button
+                type="button"
+                onClick={() => toggle(decorator.id, 'icon')}
+                title="Change icon"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500"
+              >
+                <Icon name={decorator.iconName} className="text-[22px]" />
+              </button>
+            ) : (
+              <Icon name="text_fields" className="h-10 shrink-0 text-[22px] leading-10 text-stone-400 dark:text-stone-500" />
+            )}
+            <span className="min-w-0 flex-1 truncate text-sm text-stone-600 dark:text-stone-400">
+              {decorator.kind === 'icon' ? decorator.iconName : decorator.text || 'Empty'}
+            </span>
             <button
               type="button"
               onClick={() => onRemove(decorator.id)}
-              aria-label={`Remove ${decorator.iconName}`}
+              aria-label={`Remove ${decorator.kind === 'icon' ? decorator.iconName : decorator.text}`}
               className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-red-700 dark:hover:text-red-400"
             >
               Remove
             </button>
           </div>
 
-          {picking === decorator.id && (
+          {decorator.kind === 'icon' && editor?.id === decorator.id && editor.what === 'icon' && (
             <IconPicker
               value={decorator.iconName}
               onChange={(iconName) => {
                 onUpdate(decorator.id, { iconName });
-                setPicking(null);
+                setEditor(null);
               }}
-              onClose={() => setPicking(null)}
+              onClose={() => setEditor(null)}
             />
           )}
 
-          <SliderField label="Width" value={decorator.widthMm} onChange={(widthMm) => onUpdate(decorator.id, { widthMm })} min={5} max={120} />
+          {decorator.kind === 'text' && (
+            <>
+              <TextField
+                label="Text"
+                value={decorator.text}
+                onChange={(text) => onUpdate(decorator.id, { text })}
+                maxLength={DECORATOR_TEXT_MAX_LENGTH}
+                placeholder="est. 2019"
+              />
+              {/* Behind a link rather than always open: the font list is a tall
+                  search panel, and several of them stacked down the sidebar
+                  would bury the ornaments themselves. */}
+              <div className="flex items-center justify-between gap-2 text-sm text-stone-600 dark:text-stone-400">
+                <span className="min-w-0 truncate">Font: {getFontDefinition(decorator.fontId).family}</span>
+                <button
+                  type="button"
+                  onClick={() => toggle(decorator.id, 'font')}
+                  className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200"
+                >
+                  {editor?.id === decorator.id && editor.what === 'font' ? 'Done' : 'Change'}
+                </button>
+              </div>
+              {editor?.id === decorator.id && editor.what === 'font' && (
+                <FontPicker
+                  label="Decorator font"
+                  value={decorator.fontId}
+                  onChange={(fontId) => onUpdate(decorator.id, { fontId })}
+                  previewText={decorator.text || 'Text'}
+                />
+              )}
+              {!decorator.text.trim() && <p className="text-xs text-amber-700 dark:text-amber-400">Nothing to print yet — type something and it appears on the initial.</p>}
+            </>
+          )}
+
+          <SliderField label="Width" value={decorator.widthMm} onChange={(widthMm) => onUpdate(decorator.id, { widthMm })} min={5} max={MAX_WIDTH_MM[decorator.kind]} />
           <SliderField
             label="Thickness"
             value={decorator.depthMm}
@@ -77,15 +156,15 @@ export function DecoratorControls({ className = '', decorators, placements, pock
             min={pocketDepthMm}
             max={15}
             step={0.5}
-            hint={`Can't go below the ${pocketDepthMm.toFixed(2)} mm pocket, or the icon would disappear into it.`}
+            hint={`Can't go below the ${pocketDepthMm.toFixed(2)} mm pocket, or it would disappear into it.`}
           />
-          <SliderField
-            label="Angle"
-            value={placements[decorator.id]?.angleDeg ?? 0}
-            onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)}
-            min={-180}
-            max={180}
-            unit="°"
+          <SliderField label="Angle" value={placements[decorator.id]?.angleDeg ?? 0} onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)} min={-180} max={180} unit="°" />
+          <ColorSwatchPicker
+            label="Color"
+            variant="field"
+            hint={null}
+            value={colors[decorator.id] ?? fallbackColor}
+            onChange={(color) => onChangeColor(decorator.id, color)}
           />
 
           {detachedIds.includes(decorator.id) && (
@@ -94,22 +173,23 @@ export function DecoratorControls({ className = '', decorators, placements, pock
         </div>
       ))}
 
-      {picking === 'new' ? (
+      {addingIcon ? (
         <IconPicker
           onChange={(iconName) => {
-            onAdd(iconName);
-            setPicking(null);
+            onAdd({ kind: 'icon', iconName });
+            setAddingIcon(false);
           }}
-          onClose={() => setPicking(null)}
+          onClose={() => setAddingIcon(false)}
         />
       ) : (
-        <button
-          type="button"
-          onClick={() => setPicking('new')}
-          className="rounded-lg border border-dashed border-stone-300 dark:border-stone-600 px-4 py-2 text-sm text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
-        >
-          Add decorator
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setAddingIcon(true)} className={ADD_BUTTON_CLASS}>
+            Add icon
+          </button>
+          <button type="button" onClick={() => onAdd({ kind: 'text' })} className={ADD_BUTTON_CLASS}>
+            Add text
+          </button>
+        </div>
       )}
     </div>
   );

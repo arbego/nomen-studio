@@ -6,7 +6,7 @@ import { rotateOffset } from '../../geometry/placement';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
-import type { NameDisplayConfig } from './config';
+import { decoratorColor, type NameDisplayConfig } from './config';
 
 interface NameDisplaySceneProps {
   blocks: NameDisplayBlocks;
@@ -68,19 +68,20 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
       </group>
 
       {/* Each ornament seats on the same pocket floor as the name, is anchored
-          and turned the same way, and drags the same way — a one-glyph block, so
-          TextBlockMesh's "drag the first letter to move the line" gesture is
-          exactly "drag the icon around". */}
+          and turned the same way, and drags the same way. dragMode="whole" is
+          what makes a word ornament grabbable anywhere along it: an ornament is
+          placed, not kerned, so it has no gaps of its own to retune. */}
       {blocks.decorators.map((decorator, i) => {
         const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.decorators[i].placement;
         return (
           <group key={decorator.id} position={[translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm]} rotation={[0, 0, rotationRad]}>
             <TextBlockMesh
               block={decorator.block}
-              color={config.nameColor}
+              color={decoratorColor(config, decorator.id)}
               position={[-pivot.x, -pivot.y, 0]}
               letterGapsMm={[[]]}
               onLetterGapCommit={() => {}}
+              dragMode="whole"
               lineOffsets={[{ x: 0, y: 0 }]}
               // Measured inside the turned group, so the delta is turned back
               // into the initial's frame before it moves the ornament — exactly
