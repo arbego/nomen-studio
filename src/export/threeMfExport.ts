@@ -58,12 +58,17 @@ function displayColor(color: string): string {
 /**
  * One object's `<mesh>`, with vertices welded by position.
  *
- * The geometries here are non-indexed — every triangle carries its own three
- * vertices — and 3MF indexes into a vertex list, so welding is what the format
- * wants anyway; it roughly halves the file.
+ * Geometry arriving from combine.ts is non-indexed — every triangle carrying
+ * its own three vertices — and 3MF indexes into a vertex list, so welding is
+ * what the format wants anyway; it roughly halves the file. An indexed geometry
+ * is read through its index rather than straight down the position buffer,
+ * which would otherwise silently emit a mesh of nonsense triangles.
  */
 function meshXml(geometry: THREE.BufferGeometry): string {
   const position = geometry.getAttribute('position');
+  const index = geometry.getIndex();
+  const cornerCount = index ? index.count : position.count;
+  const cornerAt = (i: number) => (index ? index.getX(i) : i);
   const seen = new Map<string, number>();
   const vertices: string[] = [];
   const triangles: string[] = [];
@@ -81,10 +86,10 @@ function meshXml(geometry: THREE.BufferGeometry): string {
     return index;
   }
 
-  for (let i = 0; i < position.count; i += 3) {
-    const v1 = vertexIndex(i);
-    const v2 = vertexIndex(i + 1);
-    const v3 = vertexIndex(i + 2);
+  for (let i = 0; i < cornerCount; i += 3) {
+    const v1 = vertexIndex(cornerAt(i));
+    const v2 = vertexIndex(cornerAt(i + 1));
+    const v3 = vertexIndex(cornerAt(i + 2));
     // A triangle whose corners collapsed onto each other encloses no volume and
     // is rejected outright by stricter readers, so it is dropped rather than
     // written out.

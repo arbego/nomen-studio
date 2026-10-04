@@ -23,7 +23,8 @@ npm run dev
 
 - **Cake Topper** — a name on picks, to stand in a cake. One to three lines of
   script lettering, individually draggable letters, optional sticks and an
-  optional solid backing card. Exports one STL.
+  optional solid backing card. Exports one 3MF, the lettering and its backing
+  card as two colored parts.
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
@@ -95,13 +96,19 @@ drags the camera's auto-fit away from the design.
   the initial alone, since the name is held by the pocket it drops into.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
-- **File formats** (`export/`): a one-piece design exports as an STL. A design
-  made of several pieces exports as a 3MF, because STL cannot describe one: it
-  has no objects and no colors, and splitting one in a slicer splits by
-  connected shell — on a pocketed name display that is the back slab, every
-  island the pocket cut the front slab into, and every letter, rather than the
-  two pieces anyone meant. A 3MF is an OPC package, so `export/zip.ts` writes
-  one with stored (undeflated) entries; that is the whole dependency.
+- **File format** (`export/`): every product exports 3MF, never STL. These
+  designs are printed in more than one filament, and STL has no notion of a part
+  or a color; splitting one in a slicer splits by connected shell, which on a
+  pocketed name display means the back slab, every island the pocket cut the
+  front slab into, and every letter — a dozen-odd pieces rather than the two
+  anyone meant. A 3MF names its parts, colors them, and keeps them fitted
+  together. A product supplies its pieces as `ThreeMfObject`s and the rest is
+  shared: `threeMfExport.ts` writes the package, with the pieces as components
+  of one object (separate top-level objects make a slicer ask whether they
+  belong together) plus `Metadata/model_settings.config`, where
+  PrusaSlicer-derived slicers read part names and filament assignments. A 3MF is
+  an OPC package, so `export/zip.ts` writes one with stored (undeflated)
+  entries; that is the whole dependency.
 - **Merging** (`geometry/combine.ts`): a plain buffer merge, not a CSG union —
   every part is already watertight with real volumetric overlap where parts meet,
   which slicers handle correctly.

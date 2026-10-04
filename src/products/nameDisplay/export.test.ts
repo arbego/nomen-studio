@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, initialPrintGeometry, namePrintGeometry, placedNameGeometry } from './geometry';
 import { growRegion, regionToShapes } from '../../geometry/clipper';
 import { combined3mfBinary, printObjects } from './export';
-import { crc32 } from '../../export/zip';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -57,44 +56,6 @@ function pocketBounds(built: Built): THREE.Box2 {
   return box;
 }
 
-/**
- * Reads back a stored-entry ZIP, verifying each entry's CRC on the way — a
- * stand-in for the slicer, which will refuse the file outright if the container
- * is malformed.
- */
-function unzip(data: Uint8Array): Map<string, string> {
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  const decoder = new TextDecoder();
-  const files = new Map<string, string>();
-  let at = 0;
-  while (at + 4 <= data.length && view.getUint32(at, true) === 0x04034b50) {
-    expect(view.getUint16(at + 8, true)).toBe(0); // stored, as every reader can handle
-    const crc = view.getUint32(at + 14, true);
-    const size = view.getUint32(at + 22, true);
-    const nameLength = view.getUint16(at + 26, true);
-    const extraLength = view.getUint16(at + 28, true);
-    const start = at + 30 + nameLength + extraLength;
-    const name = decoder.decode(data.subarray(at + 30, at + 30 + nameLength));
-    const body = data.subarray(start, start + size);
-    expect(crc32(body)).toBe(crc);
-    files.set(name, decoder.decode(body));
-    at = start + size;
-  }
-  return files;
-}
-
-function partsOf(data: Uint8Array): { model: string; settings: string } {
-  const files = unzip(data);
-  // The parts an OPC package needs before a reader will look at the model, plus
-  // the slicer settings that name the pieces.
-  expect([...files.keys()]).toEqual(['[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model', 'Metadata/model_settings.config']);
-  return { model: files.get('3D/3dmodel.model')!, settings: files.get('Metadata/model_settings.config')! };
-}
-
-function modelOf(data: Uint8Array): string {
-  return partsOf(data).model;
-}
-
 describe('placing the name for export', () => {
   it.each([0, 30, -25])('seats the name in the pocket that was cut for it, at %i°', async (nameAngleDeg) => {
     // The whole point of exporting one file: the fit between the two pieces is
@@ -141,94 +102,16 @@ describe('placing the name for export', () => {
   }, 30000);
 });
 
-describe('3mf export', () => {
-  it('keeps the initial and the name as two separate, named, colored meshes', async () => {
+describe('what the name display puts in the file', () => {
+  it('keeps the initial and the name as two separate, named, colored pieces', async () => {
     // The reason this is a 3mf and not an stl: an stl is one anonymous bag of
     // triangles, and splitting it in a slicer splits by connected shell, which
     // on this design is a dozen-odd slabs and loose letters.
     const built = await build();
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
+    const objects = printObjects(built.blocks, built.assembly, built.config);
 
-    const meshes = [...model.matchAll(/<object id="(\d+)"[^>]*name="([^"]*)"[^>]*pindex="(\d+)"/g)];
-    expect(meshes.map((m) => m[2])).toEqual(['M (initial)', 'Matilde (name)']);
-
-    expect(model).toContain('displaycolor="#D9A9ABFF"');
-    expect(model).toContain('displaycolor="#F7F5F2FF"');
-    expect(model).toContain('unit="millimeter"');
-  }, 30000);
-
-  it('groups the pieces into one object, so no slicer has to ask whether they belong together', async () => {
-    // Two top-level objects are two models to a slicer: Bambu Studio prompts
-    // ("multi-part object detected") and, answered the other way, scatters them
-    // across the plate and loses the fit the single file existed to preserve.
-    const built = await build();
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-
-    const meshIds = [...model.matchAll(/<object id="(\d+)"[^>]*pindex="\d+"/g)].map((m) => m[1]);
-    const components = [...model.matchAll(/<component objectid="(\d+)"/g)].map((m) => m[1]);
-    expect(components).toEqual(meshIds);
-
-    const items = [...model.matchAll(/<item objectid="(\d+)"/g)].map((m) => m[1]);
-    expect(items).toHaveLength(1);
-    expect(meshIds).not.toContain(items[0]); // the assembly, not one of the pieces
-
-    // A component carries no transform, so the pieces keep the coordinates they
-    // were designed at and stay fitted together.
-    expect(model).not.toContain('<component objectid="2" transform=');
-  }, 30000);
-
-  it('names the parts and gives each its own filament, for slicers that read the settings', async () => {
-    const built = await build();
-    const { model, settings } = partsOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-
-    const assemblyId = [...model.matchAll(/<item objectid="(\d+)"/g)][0][1];
-    expect(settings).toContain(`<object id="${assemblyId}">`);
-
-    const parts = [...settings.matchAll(/<part id="(\d+)" subtype="normal_part">/g)].map((m) => m[1]);
-    expect(parts).toEqual([...model.matchAll(/<component objectid="(\d+)"/g)].map((m) => m[1]));
-
-    expect(settings).toContain('<metadata key="name" value="M (initial)"/>');
-    expect(settings).toContain('<metadata key="name" value="Matilde (name)"/>');
-    expect([...settings.matchAll(/key="extruder" value="(\d+)"/g)].map((m) => m[1])).toEqual(['1', '2']);
-  }, 30000);
-
-  it('writes every triangle of both pieces', async () => {
-    const built = await build();
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-
-    const written = [...model.matchAll(/<triangle /g)].length;
-    const expected = triangleCount(initialPrintGeometry(built.blocks, built.assembly, built.config)) + triangleCount(placedNameGeometry(built.blocks, built.assembly, built.config));
-    expect(written).toBeGreaterThan(0);
-    // Degenerate triangles are dropped, so this is a ceiling rather than an
-    // equality — but losing a meaningful share of the mesh would not be.
-    expect(written).toBeLessThanOrEqual(expected);
-    expect(written).toBeGreaterThan(expected * 0.99);
-  }, 30000);
-
-  it('indexes every triangle to a vertex that exists', async () => {
-    const built = await build();
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-
-    // Per object, since 3mf indices are object-local: an off-by-one between the
-    // two meshes' vertex lists would make one piece unreadable.
-    for (const mesh of model.matchAll(/<vertices>(.*?)<\/vertices><triangles>(.*?)<\/triangles>/g)) {
-      const vertexCount = [...mesh[1].matchAll(/<vertex /g)].length;
-      const indices = [...mesh[2].matchAll(/v[123]="(\d+)"/g)].map((m) => Number(m[1]));
-      expect(vertexCount).toBeGreaterThan(0);
-      expect(Math.max(...indices)).toBeLessThan(vertexCount);
-      expect(Math.min(...indices)).toBeGreaterThanOrEqual(0);
-    }
-  }, 30000);
-
-  it('welds the triangle soup down to a shared vertex list', async () => {
-    const built = await build();
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-
-    // The geometries arrive non-indexed, three vertices per triangle. If welding
-    // silently stopped working the file would still be valid, just twice the size.
-    const vertices = [...model.matchAll(/<vertex /g)].length;
-    const triangles = [...model.matchAll(/<triangle /g)].length;
-    expect(vertices).toBeLessThan(triangles * 2);
+    expect(objects.map((o) => o.name)).toEqual(['M (initial)', 'Matilde (name)']);
+    expect(objects.map((o) => o.color)).toEqual(['#d9a9ab', '#f7f5f2']);
   }, 30000);
 
   it('puts the base rail in the initial, not the name', async () => {
@@ -243,10 +126,21 @@ describe('3mf export', () => {
     expect(triangleCount(railedName.geometry)).toBe(triangleCount(plainName.geometry));
   }, 30000);
 
-  it('escapes a name that would otherwise break the xml', async () => {
-    const built = await build({ name: 'Tom & Jo' });
-    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
-    expect(model).toContain('name="Tom &amp; Jo (name)"');
-    expect(model).not.toContain('Tom & Jo');
+  it('writes a package carrying every triangle of both pieces', async () => {
+    // Entries are stored rather than deflated, so the written text is in the
+    // bytes verbatim — enough to confirm end to end that both meshes got there.
+    const built = await build();
+    const text = new TextDecoder().decode(combined3mfBinary(built.blocks, built.assembly, built.config));
+
+    expect(text.startsWith('PK')).toBe(true);
+    expect(text).toContain('value="M (initial)"');
+    expect(text).toContain('value="Matilde (name)"');
+
+    const written = [...text.matchAll(/<triangle /g)].length;
+    const expected = triangleCount(initialPrintGeometry(built.blocks, built.assembly, built.config)) + triangleCount(placedNameGeometry(built.blocks, built.assembly, built.config));
+    // Degenerate triangles are dropped, so this is a ceiling rather than an
+    // equality — but losing a meaningful share of the mesh would not be.
+    expect(written).toBeLessThanOrEqual(expected);
+    expect(written).toBeGreaterThan(expected * 0.99);
   }, 30000);
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { saveAs } from 'file-saver';
-import { slugifyFilename } from '../../export/stlExport';
+import { slugifyFilename } from '../../export/filename';
 import { threeMfBlob } from '../../export/threeMfExport';
 import { combined3mfBinary } from './export';
 import type { NameDisplayAssembly, NameDisplayBlocks } from './geometry';

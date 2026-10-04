@@ -1,15 +1,9 @@
 import type * as THREE from 'three';
 import type { TextBlock } from '../../geometry/types';
 import { buildOutlineGeometry } from '../../geometry/outline';
-import { combineGeometries } from '../../geometry/combine';
-import { geometryToStlBinary } from '../../export/stlExport';
+import { threeMfBinary, type ThreeMfObject } from '../../export/threeMfExport';
 import { mergedBlockGeometry } from './geometry';
 import type { CakeTopperConfig } from './config';
-
-/** Binary STL bytes for a single block — every letter (at its current gap-adjusted position) merged with all its sticks, the printable solid. */
-export function blockToStlBinary(block: TextBlock, config: CakeTopperConfig): DataView {
-  return geometryToStlBinary(mergedBlockGeometry(block, config));
-}
 
 /** The outline card's own geometry under a block's current letters, or null when there's nothing to add (disabled, or not grown at all). */
 function outlineGeometryFor(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry | null {
@@ -20,25 +14,31 @@ function outlineGeometryFor(block: TextBlock, config: CakeTopperConfig): THREE.B
   return outline?.mainGeometry ?? null;
 }
 
-/** Binary STL bytes for the outline card under a block's current letters, or null when there's nothing to export (disabled, or not grown at all). */
-export function outlineToStlBinary(block: TextBlock, config: CakeTopperConfig): DataView | null {
-  const geometry = outlineGeometryFor(block, config);
-  if (!geometry) {
-    return null;
+/**
+ * The topper's printable pieces, in the colors the preview shows them in.
+ *
+ * The lettering is one piece: its sticks are merged into it, since they print in
+ * the same filament and are embedded in the letters rather than sitting beside
+ * them. The backing card is the second, and only when there is one — without it
+ * this is a one-piece design, and the file says so.
+ */
+export function printObjects(block: TextBlock, config: CakeTopperConfig): ThreeMfObject[] {
+  const objects: ThreeMfObject[] = [{ name: 'Lettering', color: config.previewColor, geometry: mergedBlockGeometry(block, config) }];
+  const outline = outlineGeometryFor(block, config);
+  if (outline) {
+    objects.push({ name: 'Backing card', color: config.outlineColor, geometry: outline });
   }
-  return geometryToStlBinary(geometry);
+  return objects;
 }
 
 /**
- * Binary STL bytes for one block's entire printable solid — letters, sticks,
- * and (when enabled) the outline card, all merged into a single file. STL has
- * no per-face color of its own here (color is cosmetic-only, from the printer
- * filament — see previewColor/outlineColor), so merging loses nothing a
- * separate file would have kept; it's the same plain, non-boolean buffer
- * merge already used for letters+sticks (see combine.ts).
+ * The whole topper as one .3mf: the lettering and, when enabled, the backing
+ * card behind it, as two named parts in their own colors.
+ *
+ * STL would flatten that back into one anonymous mesh — it has no notion of a
+ * part and none of a color — leaving the card and the letters to be told apart
+ * by hand in the slicer, which is exactly the work the design already did.
  */
-export function combinedStlBinary(block: TextBlock, config: CakeTopperConfig): DataView {
-  const outlineGeometry = outlineGeometryFor(block, config);
-  const geometry = outlineGeometry ? combineGeometries([mergedBlockGeometry(block, config), outlineGeometry]) : mergedBlockGeometry(block, config);
-  return geometryToStlBinary(geometry);
+export function combined3mfBinary(block: TextBlock, config: CakeTopperConfig, designName: string): Uint8Array {
+  return threeMfBinary(printObjects(block, config), designName);
 }

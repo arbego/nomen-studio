@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type * as THREE from 'three';
 import { buildCakeTopperBlocks, mergedBlockGeometry } from './geometry';
 import type { CakeTopperConfig } from './config';
-import { blockToStlBinary, outlineToStlBinary, combinedStlBinary } from './export';
-import { slugifyFilename } from '../../export/stlExport';
+import { combined3mfBinary, printObjects } from './export';
+import { slugifyFilename } from '../../export/filename';
 
 const config: CakeTopperConfig = {
   lines: ['Emma'],
@@ -23,81 +24,67 @@ const config: CakeTopperConfig = {
   closedOutlineHoles: [],
 };
 
-describe('STL export', () => {
-  it('produces a valid binary STL per block with a triangle count matching the merged (letters + sticks) geometry', async () => {
-    const blocks = await buildCakeTopperBlocks(config);
-    for (const block of blocks) {
-      const dv = blockToStlBinary(block, config);
-      // binary STL: 80-byte header, uint32 triangle count, then 50 bytes/triangle
-      const triangleCount = dv.getUint32(80, true);
-      expect(triangleCount).toBeGreaterThan(0);
-      expect(dv.byteLength).toBe(84 + triangleCount * 50);
+function triangleCount(geometry: THREE.BufferGeometry): number {
+  return geometry.getAttribute('position').count / 3;
+}
 
-      const vertexCount = mergedBlockGeometry(block, config).getAttribute('position').count;
-      expect(triangleCount).toBe(vertexCount / 3);
-    }
+async function block(overrides: Partial<CakeTopperConfig> = {}) {
+  const merged = { ...config, ...overrides };
+  const blocks = await buildCakeTopperBlocks(merged);
+  return { block: blocks[0], config: merged };
+}
+
+describe('what the cake topper puts in the file', () => {
+  it('exports the lettering as one piece, its sticks merged into it', async () => {
+    // The sticks print in the same filament and are embedded in the letters
+    // rather than sitting beside them, so they are not a part of their own.
+    const { block: word, config: used } = await block();
+    const objects = printObjects(word, used);
+
+    expect(objects.map((o) => o.name)).toEqual(['Lettering']);
+    expect(objects[0].color).toBe('#f0c6d0');
+    expect(triangleCount(objects[0].geometry)).toBe(triangleCount(mergedBlockGeometry(word, used)));
   }, 30000);
 
-  it('exports a block with multiple sticks as one merged, valid STL', async () => {
-    const multiStickConfig: CakeTopperConfig = {
-      ...config,
-      stickOffsets: { ...config.stickOffsets, word: [{ x: -20, y: 0 }, { x: 20, y: 0 }] },
-    };
-    const blocks = await buildCakeTopperBlocks(multiStickConfig);
-    const wordBlock = blocks.find((p) => p.id === 'word')!;
+  it('adds the backing card as a second piece, in its own color', async () => {
+    const { block: word, config: used } = await block({ outlineEnabled: true });
+    const objects = printObjects(word, used);
 
-    const dv = blockToStlBinary(wordBlock, multiStickConfig);
-    const triangleCount = dv.getUint32(80, true);
-    const vertexCount = mergedBlockGeometry(wordBlock, multiStickConfig).getAttribute('position').count;
-    expect(triangleCount).toBe(vertexCount / 3);
-    expect(dv.byteLength).toBe(84 + triangleCount * 50);
+    expect(objects.map((o) => o.name)).toEqual(['Lettering', 'Backing card']);
+    expect(objects[1].color).toBe('#f7f5f2');
+    // The card is grown out from under the letters, so it is wider than they are.
+    objects.forEach((o) => o.geometry.computeBoundingBox());
+    expect(objects[1].geometry.boundingBox!.min.x).toBeLessThan(objects[0].geometry.boundingBox!.min.x);
   }, 30000);
 
-  it('exports letter-gap overrides — the STL reflects the tightened layout, not the natural one', async () => {
-    const blocks = await buildCakeTopperBlocks(config);
-    const wordBlock = blocks.find((p) => p.id === 'word')!;
-    const tightened: CakeTopperConfig = { ...config, letterGapsMm: [[-5, 0, 0]] };
-
-    const naturalDv = blockToStlBinary(wordBlock, config);
-    const tightenedDv = blockToStlBinary(wordBlock, tightened);
-    // Same letters and stick, just moved — same triangle count, different bytes.
-    expect(tightenedDv.getUint32(80, true)).toBe(naturalDv.getUint32(80, true));
-    expect(tightenedDv.byteLength).toBe(naturalDv.byteLength);
-    expect(new Uint8Array(tightenedDv.buffer)).not.toEqual(new Uint8Array(naturalDv.buffer));
+  it('leaves the card out entirely when it is switched off, rather than exporting an empty part', async () => {
+    const { block: word, config: used } = await block();
+    expect(printObjects(word, used)).toHaveLength(1);
   }, 30000);
 
-  it('returns null for the outline when it is disabled', async () => {
-    const blocks = await buildCakeTopperBlocks(config);
-    expect(outlineToStlBinary(blocks[0], config)).toBeNull();
+  it('exports the letter-gap overrides, not the natural layout', async () => {
+    const { block: word, config: used } = await block();
+    const tightened = { ...used, letterGapsMm: [[-5, 0, 0]] };
+
+    const natural = combined3mfBinary(word, used, 'Emma');
+    const moved = combined3mfBinary(word, tightened, 'Emma');
+    // Same letters and stick, just moved: the same mesh, written differently.
+    expect(moved.length).not.toBe(0);
+    expect(moved).not.toEqual(natural);
+    expect(triangleCount(printObjects(word, tightened)[0].geometry)).toBe(triangleCount(printObjects(word, used)[0].geometry));
   }, 30000);
 
-  it('produces a valid binary STL for the outline when enabled', async () => {
-    const withOutline: CakeTopperConfig = { ...config, outlineEnabled: true };
-    const blocks = await buildCakeTopperBlocks(withOutline);
-    const dv = outlineToStlBinary(blocks[0], withOutline);
-    expect(dv).not.toBeNull();
-    const triangleCount = dv!.getUint32(80, true);
-    expect(triangleCount).toBeGreaterThan(0);
-    expect(dv!.byteLength).toBe(84 + triangleCount * 50);
-  }, 30000);
+  it('writes a package carrying both part names', async () => {
+    // Entries are stored rather than deflated, so the text is in the bytes
+    // verbatim — enough to confirm end to end that the pieces reached the file.
+    const { block: word, config: used } = await block({ outlineEnabled: true });
+    const text = new TextDecoder().decode(combined3mfBinary(word, used, 'Emma'));
 
-  it('combines letters, sticks, and (when enabled) the outline into one STL — a single downloadable file, not a zip', async () => {
-    const blocks = await buildCakeTopperBlocks(config);
-    const wordBlock = blocks[0];
-
-    const withoutOutlineDv = combinedStlBinary(wordBlock, config);
-    const withoutOutlineTriangles = withoutOutlineDv.getUint32(80, true);
-    const wordTriangles = blockToStlBinary(wordBlock, config).getUint32(80, true);
-    expect(withoutOutlineTriangles).toBe(wordTriangles);
-
-    const withOutline: CakeTopperConfig = { ...config, outlineEnabled: true };
-    const combinedDv = combinedStlBinary(wordBlock, withOutline);
-    const combinedTriangles = combinedDv.getUint32(80, true);
-    const outlineTriangles = outlineToStlBinary(wordBlock, withOutline)!.getUint32(80, true);
-    // Same plain buffer merge already used for letters+sticks — the combined
-    // file's triangle count is just the sum of its parts.
-    expect(combinedTriangles).toBe(wordTriangles + outlineTriangles);
-    expect(combinedDv.byteLength).toBe(84 + combinedTriangles * 50);
+    expect(text.startsWith('PK')).toBe(true);
+    expect(text).toContain('3D/3dmodel.model');
+    expect(text).toContain('value="Lettering"');
+    expect(text).toContain('value="Backing card"');
+    expect(text).toContain('value="Emma"');
   }, 30000);
 });
 
