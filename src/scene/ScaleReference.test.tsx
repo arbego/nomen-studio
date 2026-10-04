@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import ReactThreeTestRenderer from '@react-three/test-renderer';
@@ -12,12 +12,12 @@ function Design({ widthMm = 80 }: { widthMm?: number }) {
 }
 
 /** Mirrors StudioCanvas: the coin sits beside the content group, never inside it. */
-function Scene({ children, onFirstPlaced }: { children?: ReactNode; onFirstPlaced?: () => void }) {
+function Scene({ children }: { children?: ReactNode }) {
   const contentRef = useRef<THREE.Group>(null);
   return (
     <group>
       <group ref={contentRef}>{children}</group>
-      <ScaleReference contentRef={contentRef} onFirstPlaced={onFirstPlaced} />
+      <ScaleReference contentRef={contentRef} />
     </group>
   );
 }
@@ -141,17 +141,4 @@ describe('ScaleReference', () => {
     expect(coinGroup(renderer).visible).toBe(true);
   });
 
-  it('reports its first placement once, so the view can be framed to include it', async () => {
-    const onFirstPlaced = vi.fn();
-    const renderer = await render(<Scene onFirstPlaced={onFirstPlaced} />);
-    expect(onFirstPlaced).not.toHaveBeenCalled(); // nothing to stand beside yet
-
-    await renderer.update(
-      <Scene onFirstPlaced={onFirstPlaced}>
-        <Design />
-      </Scene>,
-    );
-    await renderer.advanceFrames(4, 16);
-    expect(onFirstPlaced).toHaveBeenCalledTimes(1);
-  });
 });

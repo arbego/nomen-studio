@@ -23,8 +23,6 @@ export const CORE_COLOR = '#e3bb58';
 interface ScaleReferenceProps {
   /** The group holding the design itself. The coin is placed beside whatever is in it. */
   contentRef: RefObject<THREE.Object3D | null>;
-  /** Called once the coin has first been placed beside real content — the moment it is worth framing in view. */
-  onFirstPlaced?: () => void;
 }
 
 /**
@@ -33,11 +31,15 @@ interface ScaleReferenceProps {
  * Millimeters on a slider do not tell you how big a thing will come out of the
  * printer; a coin you have held does. It follows the design's bounds every
  * frame, so it stays beside it as sizes, fonts and letter spacing change.
+ *
+ * Showing it deliberately leaves the camera alone. Comparing sizes is something
+ * you do while looking at the design from wherever you had turned it to, and
+ * having the view jump back to the front to fit the coin in costs more than it
+ * gives.
  */
-export function ScaleReference({ contentRef, onFirstPlaced }: ScaleReferenceProps) {
+export function ScaleReference({ contentRef }: ScaleReferenceProps) {
   const group = useRef<THREE.Group>(null);
   const box = useMemo(() => new THREE.Box3(), []);
-  const placed = useRef(false);
   const ringRadius = COIN_DIAMETER_MM / 2;
   const coreRadius = COIN_CORE_DIAMETER_MM / 2;
   const face = coinFaceTexture();
@@ -60,11 +62,6 @@ export function ScaleReference({ contentRef, onFirstPlaced }: ScaleReferenceProp
     // Beside the design's right edge, centered on its depth so neither one
     // stands in front of the other.
     coin.position.set(box.max.x + GAP_MM + ringRadius, 0, (box.min.z + box.max.z) / 2);
-
-    if (!placed.current) {
-      placed.current = true;
-      onFirstPlaced?.();
-    }
   });
 
   return (

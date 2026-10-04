@@ -84,7 +84,7 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
           <group ref={contentGroupRef}>
             <GroundCenter onFirstCenter={fitToContent}>{children}</GroundCenter>
           </group>
-          {showScaleReference && <ScaleReference contentRef={contentGroupRef} onFirstPlaced={fitToContent} />}
+          {showScaleReference && <ScaleReference contentRef={contentGroupRef} />}
         </group>
         <ContactShadows position={[0, -0.1, 0]} opacity={0.35} scale={300} blur={2} far={80} />
         <GroundGrid />
