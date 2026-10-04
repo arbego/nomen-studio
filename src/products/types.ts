@@ -47,6 +47,12 @@ export interface ProductDefinition {
   Controls: ComponentType;
   /** Rendered inside the shared StudioCanvas. Reads the product's own store directly. */
   SceneContent: ComponentType;
+  /**
+   * The export button, pinned over the preview. A component rather than a
+   * `() => Blob` because only the product's own hooks can reach its built
+   * geometry, and whether there is anything to export yet is part of that.
+   */
+  Export: ComponentType;
   /** Reading and writing this product's designs as project files. */
   project: ProductProject;
   /**

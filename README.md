@@ -91,8 +91,9 @@ src/
 ### Adding a product
 
 Create `src/products/<id>/` with its own `config.ts`, `store.ts`, `geometry.ts`,
-`Controls.tsx`, `SceneContent.tsx` and `project.ts` (how its design is read back
-out of a file) — the two existing products are the template — and add one entry
+`Controls.tsx`, `SceneContent.tsx`, `ExportAction.tsx` (which pieces go in the
+3MF) and `project.ts` (how its design is read back out of a file) — the two
+existing products are the template — and add one entry
 to `products/registry.ts`. Nothing else in the app
 changes. A `ProductDefinition` exposes only what the shell has to mount, so the
 shell never knows a product's shape. (Same pattern as `fonts/registry.ts`: add a
@@ -113,6 +114,15 @@ build. Under it, `GroundGrid` rules the floor in real millimeters (10mm cells,
 beside the design (`ScaleReference`), because millimeters on a slider don't tell
 you how big the print will be. Both are scenery, rendered so that the grid never
 drags the camera's auto-fit away from the design.
+
+Pinned over the preview's top-right corner is the one Export button
+(`ui/ExportButton.tsx`), the same control in every product. It lives here rather
+than in the sidebar because it is the thing you came to do and it applies to the
+whole design, not to any one section of the panel — and it is one button, not a
+format menu, because every product exports 3MF and nothing else. A product
+supplies only a thunk that builds the file (`ProductDefinition.Export`), since
+writing out every triangle for a file nobody has asked for would cost more than
+the preview itself.
 
 ### How the geometry works
 

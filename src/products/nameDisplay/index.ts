@@ -1,6 +1,7 @@
 import type { ProductDefinition } from '../types';
 import { NameDisplayControls } from './Controls';
 import { NameDisplaySceneContent } from './SceneContent';
+import { NameDisplayExport } from './ExportAction';
 import { NameDisplayProvider } from './Provider';
 import { NameDisplayThumbnail } from './Thumbnail';
 import { nameDisplayProjectIO } from './project';
@@ -12,6 +13,7 @@ export const nameDisplayProduct: ProductDefinition = {
   Thumbnail: NameDisplayThumbnail,
   Controls: NameDisplayControls,
   SceneContent: NameDisplaySceneContent,
+  Export: NameDisplayExport,
   Provider: NameDisplayProvider,
   project: nameDisplayProjectIO,
 };

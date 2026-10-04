@@ -12,6 +12,14 @@ import { useThemeStore } from '../ui/theme';
 interface StudioCanvasProps {
   /** The current product's scene content — see products/<id>/SceneContent.tsx. */
   children: ReactNode;
+  /**
+   * Pinned over the preview's top-right corner: the product's export button.
+   *
+   * Here rather than in the sidebar because exporting is what you came to do and
+   * it applies to the whole design, so it should be reachable without scrolling
+   * past the controls for one part of it.
+   */
+  actions?: ReactNode;
 }
 
 // Fallback camera pose, only ever used before any geometry has loaded (so
@@ -39,7 +47,7 @@ const OVERLAY_BUTTON_CLASS =
  * whatever is currently on screen. Product-agnostic — it only renders whatever
  * scene content it's given, centered on the ground plane.
  */
-export function StudioCanvas({ children }: StudioCanvasProps) {
+export function StudioCanvas({ children, actions }: StudioCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
@@ -105,6 +113,8 @@ export function StudioCanvas({ children }: StudioCanvasProps) {
         {/* maxDistance generous enough that fitting the largest possible design (multiple lines, max size, longest sticks) to the frontal view is never clamped closer than it needs to be. */}
         <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.1} minDistance={60} maxDistance={1000} makeDefault />
       </Canvas>
+
+      {actions && <div className="absolute right-4 top-4">{actions}</div>}
 
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
         <button

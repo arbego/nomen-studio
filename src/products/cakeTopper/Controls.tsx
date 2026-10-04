@@ -6,7 +6,6 @@ import { SizePicker } from '../../ui/controls/SizePicker';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StickControls } from './StickControls';
 import { OutlineControls } from '../../ui/controls/OutlineControls';
-import { ExportButtons } from './ExportButtons';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
 
@@ -86,11 +85,17 @@ export function CakeTopperControls() {
         />
       </div>
 
-      <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
-        {error && <p className="pb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-        {loading && !error && <p className="pb-2 text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>}
-        <ExportButtons blocks={blocks} config={config} designName={config.lines.join(' ')} disabled={loading || !!error} />
-      </div>
+      {/* Only ever present while there is something to say — exporting moved to
+          the preview, so an always-on footer would be an empty rule. */}
+      {(error || loading) && (
+        <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
+          {error ? (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          ) : (
+            <p className="text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

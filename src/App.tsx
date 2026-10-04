@@ -30,7 +30,7 @@ function App() {
         header={<ProductHeader product={product} onBack={clearProduct} onOpenProduct={selectProduct} />}
         sidebar={<product.Controls />}
         main={
-          <StudioCanvas>
+          <StudioCanvas actions={<product.Export />}>
             <product.SceneContent />
           </StudioCanvas>
         }
