@@ -1,20 +1,24 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { coinFaceTexture } from './coinFaceTexture';
 
 /** A 2 euro coin, to the millimeter: 25.75mm across and 2.20mm thick. */
 export const COIN_DIAMETER_MM = 25.75;
 export const COIN_THICKNESS_MM = 2.2;
 
-/** The silver core inside the gold ring — approximately, since it only has to read as bimetal. */
+/** The gold core inside the silver ring — approximately, since it only has to read as bimetal. */
 const COIN_CORE_DIAMETER_MM = 18.75;
 
 /** Clear air between the design and the coin, so they read as two separate objects. */
 const GAP_MM = 10;
 
-/** Nickel brass ring, cupronickel core — the way round a 2 euro coin has it. */
-const RING_COLOR = '#c8a84e';
-const CORE_COLOR = '#c9c9ce';
+/**
+ * Cupronickel ring, nickel brass core: silver outside, gold inside. That is the
+ * 2 euro piece — the 1 euro is the other way round.
+ */
+export const RING_COLOR = '#ccced4';
+export const CORE_COLOR = '#e3bb58';
 
 interface ScaleReferenceProps {
   /** The group holding the design itself. The coin is placed beside whatever is in it. */
@@ -36,6 +40,7 @@ export function ScaleReference({ contentRef, onFirstPlaced }: ScaleReferenceProp
   const placed = useRef(false);
   const ringRadius = COIN_DIAMETER_MM / 2;
   const coreRadius = COIN_CORE_DIAMETER_MM / 2;
+  const face = coinFaceTexture();
 
   useFrame(() => {
     const coin = group.current;
@@ -66,14 +71,23 @@ export function ScaleReference({ contentRef, onFirstPlaced }: ScaleReferenceProp
     // Hidden until measured, so it never flashes at the origin on top of the
     // design. This runs before every render, so the flag is always current.
     <group ref={group} visible={false}>
+      {/* Metalness is kept low on purpose: there is no environment map in this
+          scene, and a fully metallic surface with nothing to reflect renders
+          almost black. */}
       <mesh position={[0, COIN_THICKNESS_MM / 2, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[ringRadius, ringRadius, COIN_THICKNESS_MM, 64]} />
-        <meshStandardMaterial color={RING_COLOR} roughness={0.35} metalness={0.8} />
+        <meshStandardMaterial color={RING_COLOR} roughness={0.3} metalness={0.2} />
       </mesh>
-      {/* A hair thicker than the ring purely so the two faces aren't coplanar and don't z-fight. */}
+      {/* A hair thicker than the ring purely so the two faces aren't coplanar
+          and don't z-fight. The stamped face maps onto the cap; the side it
+          also lands on is enclosed by the ring, so the smear there is never
+          seen. */}
       <mesh position={[0, COIN_THICKNESS_MM / 2, 0]} castShadow>
         <cylinderGeometry args={[coreRadius, coreRadius, COIN_THICKNESS_MM + 0.06, 64]} />
-        <meshStandardMaterial color={CORE_COLOR} roughness={0.3} metalness={0.85} />
+        {/* The stamped face is already gold, and a tinted color would multiply
+            into it; the material only supplies the gold where there is no
+            texture to draw it. */}
+        <meshStandardMaterial color={face ? '#ffffff' : CORE_COLOR} map={face} roughness={0.35} metalness={0.2} />
       </mesh>
     </group>
   );

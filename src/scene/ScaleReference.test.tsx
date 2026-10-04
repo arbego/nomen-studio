@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import ReactThreeTestRenderer from '@react-three/test-renderer';
-import { COIN_DIAMETER_MM, COIN_THICKNESS_MM, ScaleReference } from './ScaleReference';
+import { COIN_DIAMETER_MM, COIN_THICKNESS_MM, CORE_COLOR, RING_COLOR, ScaleReference } from './ScaleReference';
 
 /** A design-shaped stand-in: 80mm wide, 120mm tall, 12mm deep, resting on the ground like a real part. */
 function Design({ widthMm = 80 }: { widthMm?: number }) {
@@ -56,6 +56,27 @@ describe('ScaleReference', () => {
     expect(box.max.z - box.min.z).toBeCloseTo(COIN_DIAMETER_MM, 1);
     expect(COIN_DIAMETER_MM).toBe(25.75);
     expect(COIN_THICKNESS_MM).toBe(2.2);
+  });
+
+  it('is silver outside and gold inside, the way round a 2 euro coin is', async () => {
+    // The 1 euro coin is gold outside and silver inside; the 2 euro is the
+    // reverse. Asserted by radius rather than by child order, so swapping the
+    // two materials back fails here.
+    const renderer = await render(
+      <Scene>
+        <Design />
+      </Scene>,
+    );
+
+    const discs = coinGroup(renderer).children as THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>[];
+    const byRadius = [...discs].sort((a, b) => b.geometry.parameters.radiusTop - a.geometry.parameters.radiusTop);
+    const [ring, core] = byRadius;
+
+    expect(ring.material.color.getHexString()).toBe(RING_COLOR.slice(1));
+    // In the browser the gold comes from the stamped face texture instead; with
+    // no canvas to draw one, the material supplies it.
+    expect(core.material.color.getHexString()).toBe(CORE_COLOR.slice(1));
+    expect(core.geometry.parameters.radiusTop).toBeLessThan(ring.geometry.parameters.radiusTop);
   });
 
   it('lies flat on the ground, not standing on edge or floating', async () => {
