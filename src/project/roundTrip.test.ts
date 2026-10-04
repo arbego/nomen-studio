@@ -31,10 +31,22 @@ describe('every product can be saved and opened', () => {
   });
 });
 
+/**
+ * A reset design with nothing on it. The studio opens on one that already
+ * carries an ornament (see nameDisplay/store.ts); this test builds its own set
+ * and counts on them being the only ones.
+ */
+function resetWithoutDecorators() {
+  useNameDisplayStore.getState().reset();
+  for (const decorator of useNameDisplayStore.getState().decorators) {
+    useNameDisplayStore.getState().removeDecorator(decorator.id);
+  }
+}
+
 describe('name display round trip', () => {
   it('brings back an edited design exactly, ornaments and all', () => {
     const store = useNameDisplayStore.getState();
-    store.reset();
+    resetWithoutDecorators();
     store.setConfig({ initial: 'B', name: 'Johanna', nameAngleDeg: 12, initialHeightMm: 150 });
     store.setStandMode('rail');
     store.addDecorator({ kind: 'icon', iconName: 'favorite' });

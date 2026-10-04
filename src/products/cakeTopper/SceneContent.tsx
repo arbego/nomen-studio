@@ -6,8 +6,10 @@ import { combinedBlockBounds } from '../../geometry/letterLayout';
 import type { StickParams } from '../../scene/TextBlockMesh';
 import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { OutlineMesh } from '../../scene/OutlineMesh';
+import { useFocusStore } from '../../ui/focusStore';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
+import { lineFocusKey, STICKS_FOCUS_KEY } from './focus';
 import { stickThicknessMm } from './geometry';
 
 const BLOCK_GAP_MM = 12;
@@ -28,6 +30,10 @@ interface SceneProps {
   outlineColor: string;
   outlineDepthMm: number;
   closedOutlineHoles: string[];
+  /** A letter was clicked rather than dragged — whichever letter, the line it belongs to is what the panel edits. */
+  onLineTap?: (lineIndex: number) => void;
+  /** A stick was clicked rather than dragged. */
+  onStickTap?: () => void;
 }
 
 /**
@@ -51,6 +57,8 @@ export function CakeTopperScene({
   outlineColor,
   outlineDepthMm,
   closedOutlineHoles,
+  onLineTap,
+  onStickTap,
 }: SceneProps) {
   const layout = useMemo(() => {
     let cursor = 0;
@@ -92,6 +100,8 @@ export function CakeTopperScene({
             lineOffsets={lineOffsets}
             onLineOffsetCommit={(lineIndex, offset) => onLineOffsetCommit(blockId, lineIndex, offset)}
             onLetterDragActiveChange={block.id === 'word' ? setWordLetterDragActive : undefined}
+            onLetterTap={onLineTap && ((lineIndex) => onLineTap(lineIndex))}
+            onStickTap={onStickTap && (() => onStickTap())}
           />
         );
       })}
@@ -123,6 +133,7 @@ export function CakeTopperSceneContent() {
   const setStickOffset = useCakeTopperStore((s) => s.setStickOffset);
   const setLetterGap = useCakeTopperStore((s) => s.setLetterGap);
   const setLineOffset = useCakeTopperStore((s) => s.setLineOffset);
+  const focus = useFocusStore((s) => s.focus);
   const { blocks } = useCakeTopperGeometry();
 
   // A stick is embedded into the outline card when there is one, so it reads
@@ -156,6 +167,8 @@ export function CakeTopperSceneContent() {
       outlineColor={config.outlineColor}
       outlineDepthMm={config.outlineDepthMm}
       closedOutlineHoles={config.closedOutlineHoles}
+      onLineTap={(lineIndex) => focus(lineFocusKey(lineIndex))}
+      onStickTap={() => focus(STICKS_FOCUS_KEY)}
     />
   );
 }

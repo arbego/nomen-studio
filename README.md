@@ -115,6 +115,18 @@ beside the design (`ScaleReference`), because millimeters on a slider don't tell
 you how big the print will be. Both are scenery, rendered so that the grid never
 drags the camera's auto-fit away from the design.
 
+Clicking a piece of the design — rather than dragging it — scrolls the panel to
+the control that shapes it and blinks that control (`ui/focusStore.ts`,
+`ui/FocusTarget.tsx`). A letter points at its line's text field, a stick at the
+sticks section, an ornament at its own card. The panel is long enough to scroll,
+and pointing at a thing is a more direct way of asking "what changes this?" than
+hunting for the section that owns it. Click and drag are told apart by how far
+the pointer travelled in screen pixels (`scene/tapGesture.ts`) — not in the
+model's millimeters, since the same wobble is a huge drag zoomed in and nothing
+at all zoomed out — and the blink waits for the scroll to settle, so a long one
+can't swallow it. Each product names its own targets in its `focus.ts`, which is
+the one module its panel and its scene both import.
+
 Pinned over the preview's top-right corner is the one Export button
 (`ui/ExportButton.tsx`), the same control in every product. It lives here rather
 than in the sidebar because it is the thing you came to do and it applies to the

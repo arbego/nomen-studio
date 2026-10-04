@@ -5,17 +5,36 @@ beforeEach(() => {
   useCakeTopperStore.getState().reset();
 });
 
+/**
+ * A reset design cut back to a single line.
+ *
+ * The studio opens on a three-line one (see store.ts), which is right for
+ * someone arriving at it and wrong for a test about what adding a line does —
+ * that design is already at the cap.
+ */
+function resetToOneLine() {
+  useCakeTopperStore.getState().reset();
+  while (useCakeTopperStore.getState().lines.length > 1) {
+    useCakeTopperStore.getState().removeLine(useCakeTopperStore.getState().lines.length - 1);
+  }
+}
+
 describe('topperStore', () => {
-  it('starts with one line and one zeroed gap per pair of adjacent letters in it', () => {
+  it('starts with one gap slot per pair of adjacent letters in every line', () => {
     const { lines, letterGapsMm } = useCakeTopperStore.getState();
-    expect(lines).toHaveLength(1);
-    expect(letterGapsMm).toEqual([new Array(lines[0].length - 1).fill(0)]);
+    expect(letterGapsMm).toHaveLength(lines.length);
+    lines.forEach((line, i) => {
+      expect(letterGapsMm[i], line).toHaveLength(Math.max(line.length - 1, 0));
+    });
   });
 
   it('setLetterGap updates only the targeted gap of the targeted line', () => {
+    // Read rather than assumed to be zero: the design the studio opens on has
+    // a letter pair already tightened.
+    const untouched = useCakeTopperStore.getState().letterGapsMm[0][0];
     useCakeTopperStore.getState().setLetterGap(0, 1, -4);
     expect(useCakeTopperStore.getState().letterGapsMm[0][1]).toBe(-4);
-    expect(useCakeTopperStore.getState().letterGapsMm[0][0]).toBe(0);
+    expect(useCakeTopperStore.getState().letterGapsMm[0][0]).toBe(untouched);
   });
 
   it('resetLetterGaps zeroes every line back out', () => {
@@ -58,6 +77,7 @@ describe('topperStore', () => {
   });
 
   it('addLine appends an empty line, up to a cap of 3, with matching gap/offset entries', () => {
+    resetToOneLine();
     useCakeTopperStore.getState().addLine();
     useCakeTopperStore.getState().addLine();
     let state = useCakeTopperStore.getState();
@@ -71,6 +91,7 @@ describe('topperStore', () => {
   });
 
   it('removeLine drops a line and its gap/offset entries, but never below 1 line', () => {
+    resetToOneLine();
     useCakeTopperStore.getState().addLine();
     useCakeTopperStore.getState().addLine();
     useCakeTopperStore.getState().setLineOffset(1, { x: 3, y: 4 });
@@ -88,10 +109,14 @@ describe('topperStore', () => {
   });
 
   it('setLineOffset updates only the targeted line', () => {
+    resetToOneLine();
+    // Read rather than assumed to be the origin: the design the studio opens
+    // on has every line dragged into place.
+    const untouched = useCakeTopperStore.getState().lineOffsets[0];
     useCakeTopperStore.getState().addLine();
     useCakeTopperStore.getState().setLineOffset(1, { x: 5, y: -10 });
     const state = useCakeTopperStore.getState();
     expect(state.lineOffsets[1]).toEqual({ x: 5, y: -10 });
-    expect(state.lineOffsets[0]).toEqual({ x: 0, y: 0 });
+    expect(state.lineOffsets[0]).toEqual(untouched);
   });
 });

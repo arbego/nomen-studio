@@ -1,4 +1,6 @@
+import { FocusTarget } from '../../ui/FocusTarget';
 import type { CakeTopperBlockId } from './config';
+import { STICKS_FOCUS_KEY } from './focus';
 
 interface StickControlsProps {
   enabled: boolean;
@@ -34,7 +36,9 @@ export function StickControls({
   const pickIds: CakeTopperBlockId[] = ['word'];
 
   return (
-    <div className={`flex flex-col gap-3 ${className}`}>
+    // Clicking a stick in the preview lands here: a stick's own position is set
+    // by dragging it, but everything else about it is in this section.
+    <FocusTarget focusKey={STICKS_FOCUS_KEY} className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
         <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Sticks</span>
         <input
@@ -112,6 +116,6 @@ export function StickControls({
           </label>
         </>
       )}
-    </div>
+    </FocusTarget>
   );
 }

@@ -1,3 +1,4 @@
+import { FocusTarget } from '../FocusTarget';
 import { TextField } from './TextField';
 
 interface LinesControlsProps {
@@ -5,18 +6,21 @@ interface LinesControlsProps {
   onChangeLine: (index: number, text: string) => void;
   onAddLine: () => void;
   onRemoveLine: (index: number) => void;
+  /** What clicking this line in the preview asks for, so it can be revealed here. A product that doesn't wire the preview up simply omits it. */
+  focusKeyForLine?: (index: number) => string;
 }
 
 /** One base line plus up to 2 more — matches MAX_LINES in topperStore.ts. */
 const MAX_LINES = 3;
 
-export function LinesControls({ lines, onChangeLine, onAddLine, onRemoveLine }: LinesControlsProps) {
+export function LinesControls({ lines, onChangeLine, onAddLine, onRemoveLine, focusKeyForLine }: LinesControlsProps) {
   return (
     <div className="flex flex-col gap-3">
       <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">Text</span>
       <div className="flex flex-col gap-2">
         {lines.map((line, index) => (
-          <div key={index} className="flex items-end gap-2">
+          // Padded so the wash has a little room around the field, and pulled back in margin so nothing moves when it isn't lit.
+          <FocusTarget key={index} focusKey={focusKeyForLine?.(index)} className="-mx-2 -my-1 flex items-end gap-2 px-2 py-1">
             <div className="flex-1">
               <TextField label={`Line ${index + 1}`} value={line} onChange={(text) => onChangeLine(index, text)} maxLength={16} placeholder="Emma" />
             </div>
@@ -29,7 +33,7 @@ export function LinesControls({ lines, onChangeLine, onAddLine, onRemoveLine }: 
             >
               −
             </button>
-          </div>
+          </FocusTarget>
         ))}
       </div>
       <button

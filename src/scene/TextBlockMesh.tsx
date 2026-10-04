@@ -12,6 +12,7 @@ import {
   letterPositionsMm,
 } from '../geometry/letterLayout';
 import { localDragPoint } from './dragUtils';
+import { useTapGesture } from './tapGesture';
 import { StickMesh } from './StickMesh';
 import { LetterMesh } from './LetterMesh';
 
@@ -64,6 +65,15 @@ interface TextBlockMeshProps {
    * instead of letting it visibly lag behind the letters being dragged.
    */
   onLetterDragActiveChange?: (active: boolean) => void;
+  /**
+   * A letter was clicked rather than dragged. Products answer by revealing the
+   * control that edits this block — clicking a thing in the preview is the most
+   * direct way of asking "what changes this?", and a panel long enough to
+   * scroll is one where that question is worth answering.
+   */
+  onLetterTap?: (lineIndex: number, letterIndex: number) => void;
+  /** A stick was clicked rather than dragged, by index within `stickOffsets`. */
+  onStickTap?: (index: number) => void;
 }
 
 interface DraggingGap {
@@ -100,10 +110,15 @@ export function TextBlockMesh({
   lineOffsets,
   onLineOffsetCommit,
   onLetterDragActiveChange,
+  onLetterTap,
+  onStickTap,
   dragMode = 'letters',
 }: TextBlockMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
+  // One for the whole block: only one letter can be held at a time, and a press
+  // on another ends any press already in hand.
+  const tap = useTapGesture();
   const [draggingGap, setDraggingGap] = useState<DraggingGap | null>(null);
   const [draggingLine, setDraggingLine] = useState<DraggingLine | null>(null);
   // Which stick (if any) is currently dragging — a stick otherwise owns its
@@ -193,6 +208,7 @@ export function TextBlockMesh({
 
   function handlePointerDown(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
     event.stopPropagation();
+    tap.press(event);
     (event.target as Element).setPointerCapture(event.pointerId);
     // eslint-disable-next-line react/immutability -- controls is a live Three.js object from useThree, not React state
     if (controls) controls.enabled = false;
@@ -215,12 +231,19 @@ export function TextBlockMesh({
     }
   }
 
-  function handlePointerUp(event: ThreeEvent<PointerEvent>) {
+  function handlePointerUp(lineIndex: number, letterIndex: number, event: ThreeEvent<PointerEvent>) {
+    // Before the guard below: a click is a click whether or not a drag ever got
+    // as far as registering, and `release` is false unless the press landed on
+    // this block in the first place.
+    if (tap.release(event)) onLetterTap?.(lineIndex, letterIndex);
     if (!draggingGap && !draggingLine) return;
     event.stopPropagation();
     (event.target as Element).releasePointerCapture(event.pointerId);
     // eslint-disable-next-line react/immutability -- see handlePointerDown
     if (controls) controls.enabled = true;
+    // Both commits run for a tap too, writing back the position the press
+    // started from: the grab delta makes the first drag frame reproduce it
+    // exactly, so a click can't nudge what it was only asking about.
     if (draggingLine) {
       onLineOffsetCommit(draggingLine.lineIndex, draggingLine.offset);
       setDraggingLine(null);
@@ -248,7 +271,7 @@ export function TextBlockMesh({
               anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}
               onPointerMove={(e) => handlePointerMove(lineIndex, i, e)}
-              onPointerUp={handlePointerUp}
+              onPointerUp={(e) => handlePointerUp(lineIndex, i, e)}
             />
           );
         }),
@@ -265,6 +288,7 @@ export function TextBlockMesh({
             onOffsetCommit={(newOffset) => onStickOffsetCommit?.(index, newOffset)}
             anyDragActive={anyDragActive}
             onDraggingChange={(dragging) => setDraggingStickIndex(dragging ? index : null)}
+            onTap={onStickTap && (() => onStickTap(index))}
           />
         ))}
     </group>

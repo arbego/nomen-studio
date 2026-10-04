@@ -4,7 +4,9 @@ import { FontPicker } from '../../ui/controls/FontPicker';
 import { SliderField } from '../../ui/controls/SliderField';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StandControls } from '../../ui/controls/StandControls';
+import { FocusTarget } from '../../ui/FocusTarget';
 import { DecoratorControls } from './DecoratorControls';
+import { INITIAL_FOCUS_KEY, NAME_FOCUS_KEY } from './focus';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
@@ -35,7 +37,13 @@ export function NameDisplayControls() {
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4">
-          <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="L" />
+          {/* The field alone, not the section: clicking the letter asks what
+              that letter is, and washing over everything down to its color
+              would say less, not more. Centering the field brings the rest of
+              the section with it anyway. */}
+          <FocusTarget focusKey={INITIAL_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
+            <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="L" />
+          </FocusTarget>
           <FontPicker label="Initial font" value={config.initialFontId} onChange={(initialFontId) => onChange({ initialFontId })} previewText={config.initial || 'L'} />
           <SliderField label="Height" value={config.initialHeightMm} onChange={(initialHeightMm) => onChange({ initialHeightMm })} min={60} max={250} />
           <SliderField
@@ -51,7 +59,9 @@ export function NameDisplayControls() {
         </div>
 
         <div className={`flex flex-col gap-4 ${SECTION}`}>
-          <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
+          <FocusTarget focusKey={NAME_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
+            <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
+          </FocusTarget>
           <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Liam'} />
           <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
           <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />

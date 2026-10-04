@@ -245,9 +245,24 @@ describe('decorator colors', () => {
   }, 30000);
 });
 
+/**
+ * A reset design with nothing on it.
+ *
+ * The studio opens on a design that already carries an ornament (see store.ts),
+ * which is right for someone arriving at it and wrong for these: they are about
+ * what adding, editing and removing *do*, so they start from none and count
+ * from zero.
+ */
+function resetWithoutDecorators() {
+  useNameDisplayStore.getState().reset();
+  for (const decorator of useNameDisplayStore.getState().decorators) {
+    useNameDisplayStore.getState().removeDecorator(decorator.id);
+  }
+}
+
 describe('decorator store', () => {
   it('adds one with an icon, a size and a place to stand', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     const id = useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
 
     const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
@@ -262,7 +277,7 @@ describe('decorator store', () => {
   });
 
   it('adds a word in the name\'s own face, so it looks like it belongs to the piece', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().setConfig({ nameFontId: 'pacifico' });
     useNameDisplayStore.getState().addDecorator({ kind: 'text' });
 
@@ -275,7 +290,7 @@ describe('decorator store', () => {
   });
 
   it('gives a new ornament the inlay filament, and takes it away again with it', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
     expect(useNameDisplayStore.getState().decoratorColors[id]).toBe(useNameDisplayStore.getState().nameColor);
@@ -285,7 +300,7 @@ describe('decorator store', () => {
   });
 
   it('recolors one ornament without touching the others, or what they are', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
     const [first, second] = useNameDisplayStore.getState().decorators;
@@ -298,7 +313,7 @@ describe('decorator store', () => {
   });
 
   it('puts a second one somewhere other than exactly on top of the first', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
 
@@ -307,7 +322,7 @@ describe('decorator store', () => {
   });
 
   it('takes the offset away with the ornament, so a later one cannot inherit it', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
@@ -317,7 +332,7 @@ describe('decorator store', () => {
   });
 
   it('edits one ornament without touching the others', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
     const [first, second] = useNameDisplayStore.getState().decorators;
@@ -330,7 +345,7 @@ describe('decorator store', () => {
   });
 
   it('turns one ornament without moving it, and without touching the others', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'favorite' });
     const [first, second] = useNameDisplayStore.getState().decorators;
@@ -345,7 +360,7 @@ describe('decorator store', () => {
   });
 
   it('keeps the angle when the ornament is dragged, and the position when it is turned', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
@@ -358,8 +373,11 @@ describe('decorator store', () => {
   });
 
   it('never lets an ornament end up thinner than the pocket it drops into', () => {
-    useNameDisplayStore.getState().reset();
-    useNameDisplayStore.getState().setConfig({ pocketDepthMm: 4 });
+    resetWithoutDecorators();
+    // The name is set thick enough in the same breath: a pocket is capped at
+    // the thinnest thing inlaid into it, so asking for 4mm against the default
+    // 3mm name would quietly get a 3mm pocket and test nothing.
+    useNameDisplayStore.getState().setConfig({ nameDepthMm: 6, pocketDepthMm: 4 });
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 
@@ -368,7 +386,7 @@ describe('decorator store', () => {
   });
 
   it('caps the pocket at the thinnest thing inlaid into it, ornaments included', () => {
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
     useNameDisplayStore.getState().updateDecorator(id, { depthMm: 3 });
@@ -380,7 +398,7 @@ describe('decorator store', () => {
 
   it('keeps ornaments out of the async build key, so dragging one never re-extrudes a font', async () => {
     const { selectNameDisplayBlocksConfig } = await import('./store');
-    useNameDisplayStore.getState().reset();
+    resetWithoutDecorators();
     useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });
     const [{ id }] = useNameDisplayStore.getState().decorators;
 

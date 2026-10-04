@@ -49,6 +49,7 @@ function renderScene(
   outline: { outlineEnabled: boolean; outlineGrowMm: number; outlineColor: string; outlineDepthMm: number; closedOutlineHoles?: string[] } = config,
   lineOffsets: Offset2D[] = config.lineOffsets,
   onLineOffsetCommit: (blockId: CakeTopperBlockId, lineIndex: number, offset: Offset2D) => void = () => {},
+  taps: { onLineTap?: (lineIndex: number) => void; onStickTap?: () => void } = {},
 ) {
   return buildCakeTopperBlocks(config).then((blocks) =>
     ReactThreeTestRenderer.create(
@@ -68,6 +69,8 @@ function renderScene(
         outlineColor={outline.outlineColor}
         outlineDepthMm={outline.outlineDepthMm}
         closedOutlineHoles={outline.closedOutlineHoles ?? []}
+        onLineTap={taps.onLineTap}
+        onStickTap={taps.onStickTap}
       />,
     ).then((renderer) => ({ renderer, blocks })),
   );
@@ -75,13 +78,17 @@ function renderScene(
 
 // Fake a pointer event whose picking ray, in the given group's local space,
 // passes through (localX, localY, 0) — mirrors what dragUtils.localDragPoint expects.
-function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY: number): ThreeEvent<PointerEvent> {
+function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY: number, screen?: { x: number; y: number }): ThreeEvent<PointerEvent> {
   referenceObject.updateMatrixWorld(true);
   const worldPoint = referenceObject.localToWorld(new THREE.Vector3(localX, localY, 0));
   const ray = new THREE.Ray(worldPoint.clone().add(new THREE.Vector3(0, 0, 50)), new THREE.Vector3(0, 0, -1));
   return {
     ray,
     pointerId: 1,
+    // Where the pointer was on screen, which is what tells a click from a drag
+    // (see scene/tapGesture.ts). Left off by every test that is only about
+    // dragging, so none of them accidentally also clicks.
+    ...(screen ? { clientX: screen.x, clientY: screen.y } : {}),
     stopPropagation: () => {},
     target: { setPointerCapture: () => {}, releasePointerCapture: () => {} },
   } as unknown as ThreeEvent<PointerEvent>;
@@ -487,5 +494,59 @@ describe('CakeTopperScene (React Three Fiber wiring)', () => {
 
     act(() => (stick().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(groupObject, 0, 0)));
     expect(findTopLevelMeshes()).toHaveLength(1); // outline still visible — a stick drag doesn't move any letter
+  }, 30000);
+});
+
+describe('clicking a piece of the topper rather than dragging it', () => {
+  type Handler = (e: ThreeEvent<PointerEvent>) => void;
+
+  it('points at the line a clicked letter belongs to, whichever letter it was', async () => {
+    const onLineTap = vi.fn();
+    const onLetterGapCommit = vi.fn();
+    const { renderer, blocks } = await renderScene(undefined, undefined, undefined, onLetterGapCommit, undefined, undefined, undefined, { onLineTap });
+    const letterCount = allLetters(blocks[0]).length;
+    const group = findPickGroups(renderer)[0];
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    // Not the first letter: that one drags the whole line, and the point is
+    // that any letter answers with the same line.
+    const letter = findLetterMeshes(group, letterCount)[2];
+
+    await act(async () => (letter.props.onPointerDown as Handler)(pointerEventAt(groupObject, 10, 0, { x: 400, y: 300 })));
+    // Two pixels of wobble, as a real click off a real hand has.
+    await act(async () => (letter.props.onPointerUp as Handler)(pointerEventAt(groupObject, 10, 0, { x: 402, y: 301 })));
+
+    expect(onLineTap).toHaveBeenCalledWith(0);
+    // The gap it was already at is written back — a click asks a question, it
+    // does not nudge the letter it asks about.
+    expect(onLetterGapCommit).toHaveBeenCalledWith('word', 0, 1, config.letterGapsMm[0][1]);
+  }, 30000);
+
+  it('does not treat a drag as a click, however it ends', async () => {
+    const onLineTap = vi.fn();
+    const { renderer, blocks } = await renderScene(undefined, undefined, undefined, undefined, undefined, undefined, undefined, { onLineTap });
+    const letterCount = allLetters(blocks[0]).length;
+    const group = findPickGroups(renderer)[0];
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    const letter = findLetterMeshes(group, letterCount)[2];
+
+    await act(async () => (letter.props.onPointerDown as Handler)(pointerEventAt(groupObject, 10, 0, { x: 400, y: 300 })));
+    await act(async () => (letter.props.onPointerMove as Handler)(pointerEventAt(groupObject, 30, 0, { x: 460, y: 300 })));
+    await act(async () => (letter.props.onPointerUp as Handler)(pointerEventAt(groupObject, 30, 0, { x: 460, y: 300 })));
+
+    expect(onLineTap).not.toHaveBeenCalled();
+  }, 30000);
+
+  it('points at the sticks when a stick is clicked', async () => {
+    const onStickTap = vi.fn();
+    const { renderer, blocks } = await renderScene(undefined, undefined, undefined, undefined, undefined, undefined, undefined, { onStickTap });
+    const letterCount = allLetters(blocks[0]).length;
+    const group = findPickGroups(renderer)[0];
+    const groupObject = group.instance as unknown as THREE.Object3D;
+    const stick = findStickMeshes(group, letterCount)[0];
+
+    await act(async () => (stick.props.onPointerDown as Handler)(pointerEventAt(groupObject, 0, 0, { x: 400, y: 500 })));
+    await act(async () => (stick.props.onPointerUp as Handler)(pointerEventAt(groupObject, 0, 0, { x: 401, y: 500 })));
+
+    expect(onStickTap).toHaveBeenCalledTimes(1);
   }, 30000);
 });

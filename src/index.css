@@ -69,6 +69,45 @@
   font-family: 'Noto Emoji';
 }
 
+/*
+ * The answer to clicking a piece of the design in the preview: the control that
+ * shapes it washes over, blinks twice more, holds, and then fades back out.
+ *
+ * Twice rather than once because a single flash in a panel full of controls is
+ * easy to arrive too late for, and slowly rather than abruptly at the end
+ * because by then you are reading the control rather than watching it. The
+ * stops below are that sequence in per cent of the whole: lit, dip, lit, dip,
+ * lit, hold to 76% (two seconds), then the long fade.
+ *
+ * In CSS rather than in Tailwind classes because it is a replayable animation,
+ * not a state — ui/focusStore.ts restarts it by hand, so clicking the same
+ * thing twice blinks twice. Its length is FLASH_MS there; the two have to agree.
+ */
+@keyframes focus-flash {
+  0%,
+  8.8%,
+  17.6%,
+  76.5% {
+    background-color: var(--focus-flash-color);
+  }
+
+  4.4%,
+  13.2%,
+  100% {
+    background-color: transparent;
+  }
+}
+
+.focus-flash {
+  /* A step lighter than the panel it sits on, in either theme. */
+  --focus-flash-color: var(--color-stone-200);
+  animation: focus-flash 3400ms ease-in-out;
+}
+
+.dark .focus-flash {
+  --focus-flash-color: var(--color-stone-700);
+}
+
 html,
 body,
 #root {

@@ -42,12 +42,13 @@ async function renderScene(
   onNameOffsetCommit: (offset: { x: number; y: number }) => void = () => {},
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void = () => {},
+  taps: { onInitialTap?: () => void; onNameTap?: () => void; onDecoratorTap?: (id: string) => void } = {},
 ) {
   const merged = { ...config, ...overrides };
   const blocks = await buildNameDisplayBlocks(merged);
   const assembly = assembleNameDisplay(blocks, merged);
   const renderer = await ReactThreeTestRenderer.create(
-    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} />,
+    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} {...taps} />,
   );
   return { renderer, blocks, assembly, config: merged };
 }
@@ -81,13 +82,17 @@ function nameGroup(node: TestInstance) {
 
 // Fake a pointer event whose picking ray, in the given group's local space,
 // passes through (localX, localY, 0) — mirrors what dragUtils.localDragPoint expects.
-function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY: number): ThreeEvent<PointerEvent> {
+function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY: number, screen?: { x: number; y: number }): ThreeEvent<PointerEvent> {
   referenceObject.updateMatrixWorld(true);
   const worldPoint = referenceObject.localToWorld(new THREE.Vector3(localX, localY, 0));
   const ray = new THREE.Ray(worldPoint.clone().add(new THREE.Vector3(0, 0, 50)), new THREE.Vector3(0, 0, -1));
   return {
     ray,
     pointerId: 1,
+    // Where the pointer was on screen, which is what tells a click from a drag
+    // (see scene/tapGesture.ts). Left off by every test that is only about
+    // dragging, so none of them accidentally also clicks.
+    ...(screen ? { clientX: screen.x, clientY: screen.y } : {}),
     stopPropagation: () => {},
     target: { setPointerCapture: () => {}, releasePointerCapture: () => {} },
   } as unknown as ThreeEvent<PointerEvent>;
@@ -353,5 +358,65 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     const [gapIndex, gapMm] = onNameLetterGapCommit.mock.calls[0];
     expect(gapIndex).toBe(0); // the gap before the second letter
     expect(gapMm).toBeCloseTo(-5, 1);
+  }, 30000);
+});
+
+describe('clicking a piece of the display rather than dragging it', () => {
+  type Handler = (e: ThreeEvent<PointerEvent>) => void;
+  const decorated = {
+    decorators: [{ kind: 'icon' as const, id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
+    decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 0 } },
+  };
+
+  it('points at the initial when the big letter is clicked', async () => {
+    const onInitialTap = vi.fn();
+    const { renderer } = await renderScene({}, undefined, undefined, undefined, { onInitialTap });
+    const initial = directMeshes(root(renderer))[0];
+    const object = initial.instance as unknown as THREE.Object3D;
+
+    await act(async () => (initial.props.onPointerDown as Handler)(pointerEventAt(object, 0, 0, { x: 500, y: 400 })));
+    await act(async () => (initial.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 502, y: 401 })));
+
+    expect(onInitialTap).toHaveBeenCalledTimes(1);
+  }, 30000);
+
+  it('does not mistake orbiting the view off the initial for a click on it', async () => {
+    const onInitialTap = vi.fn();
+    const { renderer } = await renderScene({}, undefined, undefined, undefined, { onInitialTap });
+    const initial = directMeshes(root(renderer))[0];
+    const object = initial.instance as unknown as THREE.Object3D;
+
+    // The initial never captures the pointer or suspends the controls, so a
+    // drag that starts on it is a camera orbit — and must stay one.
+    await act(async () => (initial.props.onPointerDown as Handler)(pointerEventAt(object, 0, 0, { x: 500, y: 400 })));
+    await act(async () => (initial.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 560, y: 420 })));
+
+    expect(onInitialTap).not.toHaveBeenCalled();
+  }, 30000);
+
+  it('points at the name when a letter of it is clicked', async () => {
+    const onNameTap = vi.fn();
+    const { renderer } = await renderScene({}, undefined, undefined, undefined, { onNameTap });
+    const group = nameGroup(root(renderer));
+    const object = group.instance as unknown as THREE.Object3D;
+    const letter = group.children.filter((c) => c.type === 'Mesh')[1];
+
+    await act(async () => (letter.props.onPointerDown as Handler)(pointerEventAt(object, 0, 0, { x: 480, y: 360 })));
+    await act(async () => (letter.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 481, y: 360 })));
+
+    expect(onNameTap).toHaveBeenCalledTimes(1);
+  }, 30000);
+
+  it('points at the one ornament that was clicked, by its own id', async () => {
+    const onDecoratorTap = vi.fn();
+    const { renderer } = await renderScene(decorated, undefined, undefined, undefined, { onDecoratorTap });
+    const group = decoratorGroup(root(renderer));
+    const object = group.instance as unknown as THREE.Object3D;
+    const icon = group.children.filter((c) => c.type === 'Mesh')[0];
+
+    await act(async () => (icon.props.onPointerDown as Handler)(pointerEventAt(object, 0, 0, { x: 300, y: 200 })));
+    await act(async () => (icon.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 300, y: 203 })));
+
+    expect(onDecoratorTap).toHaveBeenCalledWith('d1');
   }, 30000);
 });

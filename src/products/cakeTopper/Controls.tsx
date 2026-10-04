@@ -8,6 +8,7 @@ import { StickControls } from './StickControls';
 import { OutlineControls } from '../../ui/controls/OutlineControls';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
+import { lineFocusKey } from './focus';
 
 export function CakeTopperControls() {
   const config = useCakeTopperStore(useShallow(selectCakeTopperConfig));
@@ -31,7 +32,7 @@ export function CakeTopperControls() {
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4">
-          <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} />
+          <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} focusKeyForLine={lineFocusKey} />
           <FontPicker
             label="Font"
             value={config.wordFontId}

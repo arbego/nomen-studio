@@ -2,7 +2,10 @@ import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { StandMesh } from '../../scene/StandMesh';
+import { useTapGesture } from '../../scene/tapGesture';
 import { rotateOffset } from '../../geometry/placement';
+import { useFocusStore } from '../../ui/focusStore';
+import { decoratorFocusKey, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY } from './focus';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
@@ -15,6 +18,10 @@ interface NameDisplaySceneProps {
   onNameOffsetCommit: (offset: { x: number; y: number }) => void;
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void;
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void;
+  /** A piece was clicked rather than dragged — the product points at the controls that shape it. */
+  onInitialTap?: () => void;
+  onNameTap?: () => void;
+  onDecoratorTap?: (id: string) => void;
 }
 
 /**
@@ -24,7 +31,21 @@ interface NameDisplaySceneProps {
  * since the recess makes it a single boolean result and not a row of glyphs; it
  * is also not draggable — the name moves *onto* it, not the other way round.
  */
-export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit, onNameLetterGapCommit, onDecoratorOffsetCommit }: NameDisplaySceneProps) {
+export function NameDisplayScene({
+  blocks,
+  assembly,
+  config,
+  onNameOffsetCommit,
+  onNameLetterGapCommit,
+  onDecoratorOffsetCommit,
+  onInitialTap,
+  onNameTap,
+  onDecoratorTap,
+}: NameDisplaySceneProps) {
+  // The initial is the one piece here that isn't draggable, so its tap is all
+  // its pointer handlers do — and because it never captures the pointer or
+  // suspends the controls, orbiting the view from the letter still works.
+  const initialTap = useTapGesture();
   // Memoized because it allocates: React Three Fiber never disposes a geometry
   // handed to it via the `geometry` prop, so rebuilding it on every render
   // (a slider drag is dozens per second) would leak GPU buffers. Only the
@@ -40,7 +61,18 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
 
   return (
     <group>
-      <mesh geometry={assembly.initialGeometry} castShadow receiveShadow>
+      <mesh
+        geometry={assembly.initialGeometry}
+        castShadow
+        receiveShadow
+        onPointerDown={onInitialTap && ((event) => initialTap.press(event))}
+        onPointerUp={
+          onInitialTap &&
+          ((event) => {
+            if (initialTap.release(event)) onInitialTap();
+          })
+        }
+      >
         <meshStandardMaterial color={config.initialColor} roughness={0.55} metalness={0.05} />
       </mesh>
       {initialRail && <StandMesh geometry={initialRail} color={config.standColor} />}
@@ -64,6 +96,7 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
             const delta = rotateOffset(offset, rotationRad);
             onNameOffsetCommit({ x: config.nameOffset.x + delta.x, y: config.nameOffset.y + delta.y });
           }}
+          onLetterTap={onNameTap && (() => onNameTap())}
         />
       </group>
 
@@ -90,6 +123,7 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
                 const delta = rotateOffset(dragged, rotationRad);
                 onDecoratorOffsetCommit(decorator.id, { x: translate.x + delta.x, y: translate.y + delta.y });
               }}
+              onLetterTap={onDecoratorTap && (() => onDecoratorTap(decorator.id))}
             />
           </group>
         );
@@ -104,6 +138,7 @@ export function NameDisplaySceneContent() {
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
   const setDecoratorOffset = useNameDisplayStore((s) => s.setDecoratorOffset);
+  const focus = useFocusStore((s) => s.focus);
   const { blocks, assembly } = useNameDisplayGeometry();
 
   if (!blocks || !assembly) {
@@ -118,6 +153,9 @@ export function NameDisplaySceneContent() {
       onNameOffsetCommit={setNameOffset}
       onNameLetterGapCommit={setNameLetterGap}
       onDecoratorOffsetCommit={setDecoratorOffset}
+      onInitialTap={() => focus(INITIAL_FOCUS_KEY)}
+      onNameTap={() => focus(NAME_FOCUS_KEY)}
+      onDecoratorTap={(id) => focus(decoratorFocusKey(id))}
     />
   );
 }

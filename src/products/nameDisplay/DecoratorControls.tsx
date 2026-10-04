@@ -5,6 +5,8 @@ import { TextField } from '../../ui/controls/TextField';
 import { FontPicker } from '../../ui/controls/FontPicker';
 import { Icon, IconPicker } from '../../ui/controls/IconPicker';
 import { NEW_ICON_BROWSE, type IconBrowse } from '../../ui/controls/iconBrowse';
+import { FocusTarget } from '../../ui/FocusTarget';
+import { decoratorFocusKey } from './focus';
 import { getFontDefinition } from '../../fonts/registry';
 import { getIcon, getIconSet } from '../../icons/catalog';
 import { DECORATOR_TEXT_MAX_LENGTH, type DecoratorConfig, type DecoratorPlacementConfig } from './config';
@@ -119,7 +121,7 @@ export function DecoratorControls({
       </p>
 
       {decorators.map((decorator) => (
-        <div key={decorator.id} className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-700 p-3">
+        <FocusTarget key={decorator.id} focusKey={decoratorFocusKey(decorator.id)} className="flex flex-col gap-3 rounded-lg border border-stone-200 dark:border-stone-700 p-3">
           <div className="flex items-center gap-2">
             {decorator.kind === 'icon' ? (
               <button
@@ -217,7 +219,7 @@ export function DecoratorControls({
           {detachedIds.includes(decorator.id) && (
             <p className="text-xs text-amber-700 dark:text-amber-400">This one doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>
           )}
-        </div>
+        </FocusTarget>
       ))}
 
       {adding ? (

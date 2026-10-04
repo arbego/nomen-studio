@@ -5,6 +5,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { Offset2D } from '../geometry/types';
 import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from '../geometry/stickGeometry';
 import { localDragPoint } from './dragUtils';
+import { useTapGesture } from './tapGesture';
 import type { StickParams } from './TextBlockMesh';
 
 // OrbitControls listens to native pointer events directly on the canvas, so a
@@ -41,13 +42,16 @@ interface StickMeshProps {
   anyDragActive: boolean;
   /** Reports this stick's own drag start/end, so a sibling can tell "something is being dragged" even though each stick otherwise owns its drag state independently. */
   onDraggingChange: (dragging: boolean) => void;
+  /** Clicked rather than dragged — the product points at the controls for sticks. */
+  onTap?: () => void;
 }
 
 /** One draggable stick. A block with multiple sticks renders one of these per stick, each independently grabbable. */
-export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit, anyDragActive, onDraggingChange }: StickMeshProps) {
+export function StickMesh({ bounds, color, stick, offset, referenceObject, onOffsetCommit, anyDragActive, onDraggingChange, onTap }: StickMeshProps) {
   const [hovered, setHovered] = useState(false);
   const [liveOffset, setLiveOffset] = useState<Offset2D | null>(null);
   const controls = useThree((s) => s.controls) as ToggleableControls | null;
+  const tap = useTapGesture();
   // The (x, y) delta between where the pointer first landed and the stick's
   // offset at that moment — captured once on pointer down and held constant
   // for the rest of the drag, so the stick keeps whatever relationship it had
@@ -72,6 +76,7 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
 
   function handlePointerDown(event: ThreeEvent<PointerEvent>) {
     event.stopPropagation();
+    tap.press(event);
     (event.target as Element).setPointerCapture(event.pointerId);
     // controls is the live OrbitControls instance (an imperative Three.js
     // object from useThree), not React state — toggling .enabled directly is
@@ -93,6 +98,10 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
   }
 
   function handlePointerUp(event: ThreeEvent<PointerEvent>) {
+    // Before the guard below: a click is a click whether or not a drag ever got
+    // as far as registering, and `release` is false unless the press landed on
+    // this stick in the first place.
+    if (tap.release(event)) onTap?.();
     if (liveOffset === null) return;
     event.stopPropagation();
     (event.target as Element).releasePointerCapture(event.pointerId);
@@ -100,6 +109,8 @@ export function StickMesh({ bounds, color, stick, offset, referenceObject, onOff
     if (controls) controls.enabled = true;
     setCursor(hovered ? 'grab' : 'auto');
     onDraggingChange(false);
+    // Committed even for a tap: the offset is the one the drag started from, so
+    // it writes back what was already there rather than nudging the stick.
     const clamped = clampStickOffsetToBounds(bounds, liveOffset, stick.widthMm, stick.embedMm);
     onOffsetCommit(clamped);
     setLiveOffset(null);
