@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { TextField } from '../../ui/controls/TextField';
-import { FontPicker } from '../../ui/controls/FontPicker';
+import { FontField } from '../../ui/controls/FontField';
 import { SliderField } from '../../ui/controls/SliderField';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StandControls } from '../../ui/controls/StandControls';
@@ -14,6 +15,9 @@ import { effectivePocketDepthMm } from './geometry';
 const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
 
 export function NameDisplayControls() {
+  // One picker open at a time: two tall search panels at once is exactly what
+  // keeping them behind a link avoids.
+  const [openFont, setOpenFont] = useState<'initial' | 'name' | null>(null);
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
   const onChange = useNameDisplayStore((s) => s.setConfig);
   const setStandMode = useNameDisplayStore((s) => s.setStandMode);
@@ -44,7 +48,14 @@ export function NameDisplayControls() {
           <FocusTarget focusKey={INITIAL_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
             <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="L" />
           </FocusTarget>
-          <FontPicker label="Initial font" value={config.initialFontId} onChange={(initialFontId) => onChange({ initialFontId })} previewText={config.initial || 'L'} />
+          <FontField
+            label="Initial font"
+            value={config.initialFontId}
+            onChange={(initialFontId) => onChange({ initialFontId })}
+            previewText={config.initial || 'L'}
+            open={openFont === 'initial'}
+            onOpenChange={(open) => setOpenFont(open ? 'initial' : null)}
+          />
           <SliderField label="Height" value={config.initialHeightMm} onChange={(initialHeightMm) => onChange({ initialHeightMm })} min={60} max={250} />
           <SliderField
             label="Thickness"
@@ -62,7 +73,14 @@ export function NameDisplayControls() {
           <FocusTarget focusKey={NAME_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
             <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
           </FocusTarget>
-          <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Liam'} />
+          <FontField
+            label="Name font"
+            value={config.nameFontId}
+            onChange={(nameFontId) => onChange({ nameFontId })}
+            previewText={config.name || 'Liam'}
+            open={openFont === 'name'}
+            onOpenChange={(open) => setOpenFont(open ? 'name' : null)}
+          />
           <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
           <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
           <SliderField

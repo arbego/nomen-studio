@@ -9,6 +9,8 @@ interface FontPickerProps {
   onChange: (fontId: string) => void;
   /** Rendered inside each search result, in that font — the name currently being designed, so "preview" shows the user's own text, not just the family name. */
   previewText: string;
+  /** Given when the picker is opened on demand (see FontField), which puts a way of closing it again in its own heading. */
+  onDone?: () => void;
 }
 
 const CATEGORY_OPTIONS: { value: FontCategory | ''; label: string }[] = [
@@ -83,7 +85,7 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
   );
 }
 
-export function FontPicker({ label, value, onChange, previewText }: FontPickerProps) {
+export function FontPicker({ label, value, onChange, previewText, onDone }: FontPickerProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<FontCategory | ''>('');
 
@@ -93,7 +95,18 @@ export function FontPicker({ label, value, onChange, previewText }: FontPickerPr
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>
+        {onDone && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="shrink-0 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+          >
+            Done
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
         {FONT_REGISTRY.map((font) => (
           <button

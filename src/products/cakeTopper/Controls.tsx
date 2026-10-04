@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import { LinesControls } from '../../ui/controls/LinesControls';
-import { FontPicker } from '../../ui/controls/FontPicker';
+import { FontField } from '../../ui/controls/FontField';
 import { SizePicker } from '../../ui/controls/SizePicker';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StickControls } from './StickControls';
@@ -11,6 +12,7 @@ import { useCakeTopperGeometry } from './geometryContext';
 import { lineFocusKey } from './focus';
 
 export function CakeTopperControls() {
+  const [fontOpen, setFontOpen] = useState(false);
   const config = useCakeTopperStore(useShallow(selectCakeTopperConfig));
   const onChange = useCakeTopperStore((s) => s.setConfig);
   const onAddStick = useCakeTopperStore((s) => s.addStick);
@@ -33,11 +35,13 @@ export function CakeTopperControls() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4">
           <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} focusKeyForLine={lineFocusKey} />
-          <FontPicker
+          <FontField
             label="Font"
             value={config.wordFontId}
             onChange={(wordFontId) => onChange({ wordFontId })}
             previewText={config.lines[0] || 'Emma'}
+            open={fontOpen}
+            onOpenChange={setFontOpen}
           />
           <p className="-mt-2 flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
             <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
