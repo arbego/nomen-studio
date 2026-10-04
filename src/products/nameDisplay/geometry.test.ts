@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { assembleNameDisplay, buildNameDisplayBlocks, effectivePocketDepthMm, initialPrintGeometry, namePrintGeometry } from './geometry';
+import { assembleNameDisplay, buildNameDisplayBlocks, effectivePocketDepthMm, initialRailGeometry, namePrintGeometry } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
@@ -127,18 +127,34 @@ describe('effectivePocketDepthMm', () => {
 });
 
 describe('print geometry', () => {
-  it('exports the initial with its pocket', async () => {
+  it('builds no rail at all unless the design stands on one', async () => {
     const built = await buildNameDisplay(config);
-    expect(vertexCount(initialPrintGeometry(built.blocks, built, config))).toBe(vertexCount(built.initialGeometry));
+    expect(initialRailGeometry(built.blocks, config)).toBeNull();
   }, 30000);
 
-  it('adds a base rail under the initial in rail mode', async () => {
+  it('hangs the rail below the letter, deeper than it, without touching the letter itself', async () => {
+    const railed = { ...config, standMode: 'rail' as const };
+    const built = await buildNameDisplay(railed);
+    const plain = await buildNameDisplay(config);
+
+    const rail = bounds(initialRailGeometry(built.blocks, railed)!);
+    expect(rail.min.y).toBeLessThan(0); // below the letter's own baseline-anchored bottom
+    expect(rail.max.z - rail.min.z).toBeCloseTo(25, 1); // the deeper rail sets the footprint
+
+    // The letter is the same solid either way: the rail is a piece beside it,
+    // not a change to it.
+    expect(vertexCount(built.initialGeometry)).toBe(vertexCount(plain.initialGeometry));
+  }, 30000);
+
+  it('reaches up into the letter, so a slicer unions them into one printed piece', async () => {
     const railed = { ...config, standMode: 'rail' as const };
     const built = await buildNameDisplay(railed);
 
-    const initialBb = bounds(initialPrintGeometry(built.blocks, built, railed));
-    expect(initialBb.min.y).toBeLessThan(0); // rail hangs below the letter's own baseline-anchored bottom
-    expect(initialBb.max.z - initialBb.min.z).toBeCloseTo(25, 1); // the deeper rail sets the footprint
+    const rail = bounds(initialRailGeometry(built.blocks, railed)!);
+    const letter = bounds(built.initialGeometry);
+    // Overlapping, not merely touching — two solids meeting on an exact plane
+    // share a face with opposing normals and leave a seam inside the print.
+    expect(rail.max.y).toBeGreaterThan(letter.min.y);
   }, 30000);
 
   it('leaves the name without a foot — the pocket holds it, so it never stands on its own', async () => {

@@ -166,7 +166,12 @@ drags the camera's auto-fit away from the design.
 - **Standing** (`geometry/baseGeometry.ts`): three ways to make a piece stand —
   nothing, a base rail, or a flat cut at the typographic baseline. A product
   applies it only to the pieces that actually stand: on a name display that is
-  the initial alone, since the name is held by the pocket it drops into.
+  the initial alone, since the name is held by the pocket it drops into. A rail
+  is exported as its own part rather than merged into the letter: it prints as
+  the first layers of the same piece, which is where a filament swap is easy,
+  and a part is what a slicer lets you assign one to. It reaches up into the
+  letter by `RAIL_EMBED_MM`, so the slicer unions the two back into one solid
+  instead of leaving a seam where they merely touched.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
 - **File format** (`export/`): every product exports 3MF, never STL. These

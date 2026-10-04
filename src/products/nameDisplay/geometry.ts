@@ -271,6 +271,12 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
  * The initial's base rail, in the initial's own local frame — null unless the
  * design stands on one. Only the initial gets one: it is the piece that stands,
  * and the name is suspended partway up it by the pocket.
+ *
+ * Kept apart from the initial's own solid rather than merged into it, in the
+ * preview and in the exported file alike: it is the piece a filament swap most
+ * obviously applies to, so it is worth being able to point at. The two
+ * interpenetrate by RAIL_EMBED_MM, which is what lets a slicer union them back
+ * into one printed piece.
  */
 export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDisplayConfig): THREE.BufferGeometry | null {
   if (config.standMode !== 'rail') {
@@ -284,12 +290,6 @@ export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDispl
     marginMm: config.railMarginMm,
     blockDepthMm: config.initialDepthMm,
   });
-}
-
-/** The initial's complete printable solid — the pocketed letter plus its base rail, if any. */
-export function initialPrintGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
-  const rail = initialRailGeometry(blocks, config);
-  return rail ? combineGeometries([assembly.initialGeometry, rail]) : assembly.initialGeometry;
 }
 
 /**

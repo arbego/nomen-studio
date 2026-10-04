@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, initialPrintGeometry, namePrintGeometry, placedNameGeometry } from './geometry';
+import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, namePrintGeometry, placedNameGeometry } from './geometry';
 import { growRegion, regionToShapes } from '../../geometry/clipper';
 import { combined3mfBinary, printObjects } from './export';
 import type { NameDisplayConfig } from './config';
@@ -117,16 +117,49 @@ describe('what the name display puts in the file', () => {
     expect(objects.map((o) => o.color)).toEqual(['#d9a9ab', '#f7f5f2']);
   }, 30000);
 
-  it('puts the base rail in the initial, not the name', async () => {
+  it('writes the base rail as its own part, in its own color', async () => {
+    // Separate because it is the piece a filament swap most obviously applies
+    // to: these print standing up, so the rail is the first layers, and a part
+    // is what a slicer lets you point at.
+    const railed = await build({ standMode: 'rail' });
+    const objects = printObjects(railed.blocks, railed.assembly, railed.config);
+
+    expect(objects.map((o) => o.name)).toEqual(['M (initial)', 'Base rail', 'Matilde (name)']);
+    expect(objects[1].color).toBe(railed.config.standColor);
+    expect(objects[1].color).not.toBe(objects[0].color);
+  }, 30000);
+
+  it('leaves the letter and the name untouched by the rail', async () => {
     const railed = await build({ standMode: 'rail' });
     const plain = await build();
 
-    const [railedInitial, railedName] = printObjects(railed.blocks, railed.assembly, railed.config);
+    const [railedInitial, rail, railedName] = printObjects(railed.blocks, railed.assembly, railed.config);
     const [plainInitial, plainName] = printObjects(plain.blocks, plain.assembly, plain.config);
 
-    expect(triangleCount(railedInitial.geometry)).toBeGreaterThan(triangleCount(plainInitial.geometry));
-    expect(bounds(railedInitial.geometry).min.y).toBeLessThan(bounds(plainInitial.geometry).min.y);
+    // The rail is a piece beside the letter now, not merged into it — so the
+    // letter is the same solid it was without one.
+    expect(triangleCount(railedInitial.geometry)).toBe(triangleCount(plainInitial.geometry));
     expect(triangleCount(railedName.geometry)).toBe(triangleCount(plainName.geometry));
+    // And it is the rail that reaches below the letter and stands on the bed.
+    expect(bounds(rail.geometry).min.y).toBeLessThan(bounds(railedInitial.geometry).min.y);
+  }, 30000);
+
+  it('overlaps the rail with the letter, so the two print as one solid', async () => {
+    // Parts of one object are unioned when sliced, but only where they really
+    // intersect: left merely touching, they would share a face with opposing
+    // normals and leave a seam inside the print.
+    const railed = await build({ standMode: 'rail' });
+    const [initial, rail] = printObjects(railed.blocks, railed.assembly, railed.config);
+
+    expect(bounds(rail.geometry).max.y).toBeGreaterThan(bounds(initial.geometry).min.y);
+    expect(bounds(rail.geometry).min.x).toBeLessThan(bounds(initial.geometry).min.x);
+  }, 30000);
+
+  it('writes no rail part for a design that stands on nothing', async () => {
+    for (const standMode of ['none', 'trim'] as const) {
+      const built = await build({ standMode });
+      expect(printObjects(built.blocks, built.assembly, built.config).map((o) => o.name)).not.toContain('Base rail');
+    }
   }, 30000);
 
   it('writes a package carrying every triangle of both pieces', async () => {
@@ -140,7 +173,7 @@ describe('what the name display puts in the file', () => {
     expect(text).toContain('value="Matilde (name)"');
 
     const written = [...text.matchAll(/<triangle /g)].length;
-    const expected = triangleCount(initialPrintGeometry(built.blocks, built.assembly, built.config)) + triangleCount(placedNameGeometry(built.blocks, built.assembly, built.config));
+    const expected = printObjects(built.blocks, built.assembly, built.config).reduce((total, object) => total + triangleCount(object.geometry), 0);
     // Degenerate triangles are dropped, so this is a ceiling rather than an
     // equality — but losing a meaningful share of the mesh would not be.
     expect(written).toBeLessThanOrEqual(expected);

@@ -1,15 +1,23 @@
 import { threeMfBinary, type ThreeMfObject } from '../../export/threeMfExport';
-import { initialPrintGeometry, placedDecoratorGeometry, placedNameGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
+import { initialRailGeometry, placedDecoratorGeometry, placedNameGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import { decoratorColor, type NameDisplayConfig } from './config';
 
 /**
- * The design's two pieces, each in its own color, positioned as they are
- * assembled — the initial with its pocket and rail, and the name seated in the
- * recess cut for it.
+ * Every piece of the design, each in its own color, positioned as they are
+ * assembled — the pocketed initial, the base rail under it, and the name seated
+ * in the recess cut for it.
  */
 export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): ThreeMfObject[] {
+  const rail = initialRailGeometry(blocks, config);
   return [
-    { name: `${config.initial} (initial)`, color: config.initialColor, geometry: initialPrintGeometry(blocks, assembly, config) },
+    { name: `${config.initial} (initial)`, color: config.initialColor, geometry: assembly.initialGeometry },
+    // A part of its own rather than merged into the initial. It prints as the
+    // first layers of the same piece — which is exactly where a filament swap is
+    // easy, and which is why it has its own color in the first place — and a
+    // part is the thing a slicer lets you assign a filament to. It still comes
+    // off the bed as one solid: it reaches up into the letter by RAIL_EMBED_MM,
+    // and the parts of one object are unioned when sliced.
+    ...(rail ? [{ name: 'Base rail', color: config.standColor, geometry: rail }] : []),
     { name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) },
     // Each ornament prints as its own piece, dropping into its own recess, so
     // each is its own part rather than being merged into the name — and each
@@ -24,8 +32,8 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
 }
 
 /**
- * The whole design as one .3mf: two named objects, two colors, already fitted
- * together.
+ * The whole design as one .3mf: every piece a named object in its own color,
+ * already fitted together.
  *
  * Not an STL, because an STL cannot say any of that. It has no objects and no
  * colors, and splitting one in a slicer splits by connected shell — which here
