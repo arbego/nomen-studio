@@ -8,24 +8,46 @@ function defaultLetterGaps(line: string): number[] {
   return new Array(Math.max(line.length - 1, 0)).fill(0);
 }
 
-const DEFAULT_LINE = 'Emma';
 /** One base line plus up to 2 more — matches the "+" button's disabled state in LinesControls. */
 const MAX_LINES = 3;
 
-/** Also the shape a loaded project file is read against — see project.ts. */
+/**
+ * The design the studio opens on: a finished three-line birthday topper rather
+ * than a bare word, so that what the controls can do — several lines, each
+ * dragged where it reads best, a tightened letter pair, two picks placed under
+ * the heavy parts, the outline card behind it all — is on screen before anyone
+ * has touched a slider.
+ *
+ * Laid out in the studio and saved back out of it, which is why the positions
+ * are the awkward numbers they are (rounded to 0.01mm, far below anything a
+ * nozzle can resolve). Every array already holds to the invariants the store
+ * maintains: one gap slot per pair of adjacent letters in its own line, and one
+ * offset per line.
+ *
+ * Also the shape a loaded project file is read against — see project.ts.
+ */
 export const DEFAULT_CAKE_TOPPER_CONFIG: CakeTopperConfig = {
-  lines: [DEFAULT_LINE],
+  lines: ['Happy', '3', 'Lara'],
   wordFontId: 'dancing-script',
-  sizeMm: 100,
+  sizeMm: 150,
   extrudeDepthMm: 3,
-  stickLengthMm: 70,
-  stickWidthMm: 4,
+  stickLengthMm: 40,
+  stickWidthMm: 3,
   stickEmbedMm: 15,
-  stickOffsets: { word: [{ x: 0, y: 0 }] },
-  letterGapsMm: [defaultLetterGaps(DEFAULT_LINE)],
-  lineOffsets: [{ x: 0, y: 0 }],
-  previewColor: presetColor('rosa'),
-  outlineEnabled: false,
+  stickOffsets: {
+    word: [
+      { x: -74.74, y: 92.63 },
+      { x: 28.59, y: 107.98 },
+    ],
+  },
+  letterGapsMm: [[-2.71, 0, 0, 0], [], [0, 0, 0]],
+  lineOffsets: [
+    { x: -10.65, y: -47.29 },
+    { x: 19.64, y: -18.22 },
+    { x: -19.17, y: 30.37 },
+  ],
+  previewColor: presetColor('lilac'),
+  outlineEnabled: true,
   outlineGrowMm: 3,
   outlineColor: presetColor('white'),
   outlineDepthMm: 1.5,
