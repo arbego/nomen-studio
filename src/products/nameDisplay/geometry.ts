@@ -224,3 +224,41 @@ export function namePrintGeometry(blocks: NameDisplayBlocks, config: NameDisplay
   }
   return combineGeometries(parts);
 }
+
+/**
+ * The name moved from its own frame into the initial's: turned by its angle
+ * about its own pivot, shifted to its offset, and dropped to the pocket floor.
+ *
+ * This is the same placement the pocket was cut from, read straight off the
+ * assembly rather than recomposed from the config, so the piece lands in the
+ * recess that was made for it.
+ */
+export function placedNameGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
+  const { pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 }, rotationRad = 0 } = assembly.namePlacement;
+  // Reads, right to left, as placePoint does: to the pivot, turn, then back out
+  // to the pivot plus the offset — with the pocket floor folded into that last
+  // step, since a turn about Z leaves z alone.
+  const matrix = new THREE.Matrix4()
+    .makeTranslation(pivot.x + translate.x, pivot.y + translate.y, assembly.nameZMm)
+    .multiply(new THREE.Matrix4().makeRotationZ(rotationRad))
+    .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, 0));
+  return namePrintGeometry(blocks, config).applyMatrix4(matrix);
+}
+
+/**
+ * The whole design as one solid: the pocketed initial with the name sitting in
+ * its recess, exactly where the preview shows it.
+ *
+ * The two pieces still print in two filaments, and they stay two separate
+ * shells here — the pocket clearance means they never touch. Keeping them in
+ * one file keeps the fit between them, which is the part that matters and the
+ * part nobody wants to re-establish by hand after loading two files into a
+ * slicer. Printed in one material they fuse; printed in two, a slicer splits
+ * the file into its parts and takes a filament per part.
+ */
+export function assembledPrintGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
+  // No guard for a nameless design: a name with no lettering in it never gets
+  // this far, since extrusion refuses it and the build fails before an assembly
+  // exists at all.
+  return combineGeometries([initialPrintGeometry(blocks, assembly, config), placedNameGeometry(blocks, assembly, config)]);
+}

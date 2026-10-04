@@ -1,17 +1,16 @@
 import { geometryToStlBinary } from '../../export/stlExport';
-import { initialPrintGeometry, namePrintGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
+import { assembledPrintGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 /**
- * The two pieces export as two files, not one: they print in different
- * filaments and, because the name drops into the initial's pocket, they are
- * genuinely separate solids rather than one model that happens to be two
- * colors.
+ * Binary STL bytes for the whole design in one file: the pocketed initial with
+ * the name seated in its recess.
+ *
+ * STL carries no color, so one file loses nothing a pair of them would have
+ * kept — and it keeps what a pair loses, which is how the two pieces sit
+ * together. See assembledPrintGeometry for how a two-filament print gets its
+ * two parts back out of it.
  */
-export function initialStlBinary(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): DataView {
-  return geometryToStlBinary(initialPrintGeometry(blocks, assembly, config));
-}
-
-export function nameStlBinary(blocks: NameDisplayBlocks, config: NameDisplayConfig): DataView {
-  return geometryToStlBinary(namePrintGeometry(blocks, config));
+export function combinedStlBinary(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): DataView {
+  return geometryToStlBinary(assembledPrintGeometry(blocks, assembly, config));
 }

@@ -27,8 +27,9 @@ npm run dev
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
-  move it or tilt it to an angle, and the pocket follows. Exports two STLs, one
-  per filament color.
+  move it or tilt it to an angle, and the pocket follows. Exports one STL with
+  the name already seated in the recess, so the fit between the two pieces
+  survives the trip to the slicer.
 
 ## Architecture
 
