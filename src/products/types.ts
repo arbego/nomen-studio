@@ -10,6 +10,32 @@ import type { ComponentType, ReactNode } from 'react';
  * registry rather than touching the shell at all. This mirrors how fonts are
  * registered (see fonts/registry.ts).
  */
+/** What a product hands over to be written to a project file. */
+export interface ProjectSnapshot {
+  /** The design's own name, used for the download's filename. */
+  name: string;
+  /** The product's config, as plain JSON-safe data. */
+  design: unknown;
+}
+
+/**
+ * Saving and loading a product's design, as plain functions rather than hooks.
+ *
+ * A product's store is a zustand store, which is readable and writable outside
+ * React, so the shell can save or load any product's design from a button that
+ * knows nothing about it — including a product that isn't currently open, which
+ * is what lets opening a file switch you to the studio it belongs to.
+ */
+export interface ProductProject {
+  snapshot: () => ProjectSnapshot;
+  /**
+   * Replaces the design with one read from a file. The raw value is whatever
+   * was in the file, so an implementation coerces every field rather than
+   * trusting it — see project/coerce.ts.
+   */
+  load: (raw: unknown) => void;
+}
+
 export interface ProductDefinition {
   id: string;
   label: string;
@@ -21,6 +47,8 @@ export interface ProductDefinition {
   Controls: ComponentType;
   /** Rendered inside the shared StudioCanvas. Reads the product's own store directly. */
   SceneContent: ComponentType;
+  /** Reading and writing this product's designs as project files. */
+  project: ProductProject;
   /**
    * Optional wrapper placed around *both* Controls and SceneContent. They are
    * mounted in separate subtrees (sidebar and canvas), so anything they must

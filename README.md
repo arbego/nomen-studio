@@ -38,6 +38,19 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   one 3MF holding every piece as a separate, named, colored object, already
   fitted together — see below for why not an STL.
 
+## Saving your work
+
+Every studio has **Save project** and **Open project** in its header. A project
+file is plain JSON — an envelope naming the format, its version and the product,
+wrapping that product's config exactly as its store holds it — so it is readable,
+diffable, and editable by hand if you want to.
+
+Opening a file for a product you are not currently in switches you to its studio.
+Every field is read back through a coercion against the defaults
+(`project/coerce.ts`), which is what makes a file written by an older release
+keep working: a field added since it was saved simply loads as its default, and
+one that has been damaged falls back instead of reaching the geometry as a NaN.
+
 ## Architecture
 
 Everything outside `src/products/` is shared, product-agnostic core. A product
@@ -47,6 +60,7 @@ owns only its own config, store, geometry, controls panel and scene content.
 src/
   fonts/      font registry + the generated Google Fonts catalogue
   icons/      the Material Icons catalogue, and an icon as a buildable solid
+  project/    saving and opening designs as .json project files
   geometry/   framework-agnostic, millimeter-accurate solid generation
   scene/      the shared 3D preview, its draggable meshes and its ground
   export/     3MF bytes (and the minimal zip writer a 3MF needs)
@@ -60,8 +74,9 @@ src/
 ### Adding a product
 
 Create `src/products/<id>/` with its own `config.ts`, `store.ts`, `geometry.ts`,
-`Controls.tsx` and `SceneContent.tsx` — the two existing products are the
-template — and add one entry to `products/registry.ts`. Nothing else in the app
+`Controls.tsx`, `SceneContent.tsx` and `project.ts` (how its design is read back
+out of a file) — the two existing products are the template — and add one entry
+to `products/registry.ts`. Nothing else in the app
 changes. A `ProductDefinition` exposes only what the shell has to mount, so the
 shell never knows a product's shape. (Same pattern as `fonts/registry.ts`: add a
 font by dropping its `.ttf` + `OFL.txt` under `src/assets/fonts/<id>/` and adding

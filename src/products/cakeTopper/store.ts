@@ -12,7 +12,8 @@ const DEFAULT_LINE = 'Emma';
 /** One base line plus up to 2 more — matches the "+" button's disabled state in LinesControls. */
 const MAX_LINES = 3;
 
-const DEFAULT_CONFIG: CakeTopperConfig = {
+/** Also the shape a loaded project file is read against — see project.ts. */
+export const DEFAULT_CAKE_TOPPER_CONFIG: CakeTopperConfig = {
   lines: [DEFAULT_LINE],
   wordFontId: 'dancing-script',
   sizeMm: 100,
@@ -49,11 +50,13 @@ interface CakeTopperStore extends CakeTopperConfig {
   setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
+  /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
+  loadConfig: (config: CakeTopperConfig) => void;
   reset: () => void;
 }
 
 export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
-  ...DEFAULT_CONFIG,
+  ...DEFAULT_CAKE_TOPPER_CONFIG,
   setConfig: (partial) =>
     set((state) => {
       // Per-letter gap tweaks and manually-closed outline holes are both a
@@ -155,7 +158,8 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
         ? state.closedOutlineHoles.filter((existing) => existing !== key)
         : [...state.closedOutlineHoles, key],
     })),
-  reset: () => set(DEFAULT_CONFIG),
+  loadConfig: (config) => set(config),
+  reset: () => set(DEFAULT_CAKE_TOPPER_CONFIG),
 }));
 
 /** The subset that drives the expensive async geometry build — excludes stick and letter-gap/line-offset fields on purpose. */

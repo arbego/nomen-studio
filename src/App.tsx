@@ -27,7 +27,7 @@ function App() {
   return (
     <Provider>
       <AppShell
-        header={<ProductHeader product={product} onBack={clearProduct} />}
+        header={<ProductHeader product={product} onBack={clearProduct} onOpenProduct={selectProduct} />}
         sidebar={<product.Controls />}
         main={
           <StudioCanvas>

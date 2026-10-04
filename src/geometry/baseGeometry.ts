@@ -14,7 +14,9 @@ import { extrudeMmShapes } from './extrudeToMm';
  * - `trim`  — cut the piece off flat along a line. Adds no material, but a
  *             script's thin strokes make for a narrow, tippy footprint.
  */
-export type StandMode = 'none' | 'rail' | 'trim';
+export const STAND_MODES = ['none', 'rail', 'trim'] as const;
+
+export type StandMode = (typeof STAND_MODES)[number];
 
 /** How far the rail reaches up into the piece above it, so the plain buffer merge in combine.ts has real volumetric overlap to bond rather than a bare tangent touch — the same trick stickGeometry.ts uses with embedMm. */
 const RAIL_EMBED_MM = 1;

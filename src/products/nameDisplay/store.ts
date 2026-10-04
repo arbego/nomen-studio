@@ -32,7 +32,8 @@ function newDecoratorId(): string {
   return `decorator-${nextDecoratorId}`;
 }
 
-const DEFAULT_CONFIG: NameDisplayConfig = {
+/** Also the shape a loaded project file is read against — see project.ts. */
+export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   initial: 'M',
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,
@@ -75,11 +76,13 @@ interface NameDisplayStore extends NameDisplayConfig {
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
   setDecoratorAngle: (id: string, angleDeg: number) => void;
+  /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
+  loadConfig: (config: NameDisplayConfig) => void;
   reset: () => void;
 }
 
 export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
-  ...DEFAULT_CONFIG,
+  ...DEFAULT_NAME_DISPLAY_CONFIG,
   setConfig: (partial) =>
     set((state) => {
       // Both corrections below have to compose, not pick one: a single call can
@@ -151,7 +154,20 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
     }),
   setDecoratorOffset: (id, offset) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
   setDecoratorAngle: (id, angleDeg) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
-  reset: () => set(DEFAULT_CONFIG),
+  loadConfig: (config) => {
+    // Ids from the file share a namespace with the ones this session hands out,
+    // so the counter is moved past them — otherwise the next ornament added
+    // could be given an id a loaded one is already using, and the two would
+    // share a placement.
+    for (const decorator of config.decorators) {
+      const loaded = /^decorator-(\d+)$/.exec(decorator.id);
+      if (loaded) {
+        nextDecoratorId = Math.max(nextDecoratorId, Number(loaded[1]));
+      }
+    }
+    set(config);
+  },
+  reset: () => set(DEFAULT_NAME_DISPLAY_CONFIG),
 }));
 
 /** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */
