@@ -39,7 +39,7 @@ owns only its own config, store, geometry, controls panel and scene content.
 src/
   fonts/      font registry + the generated Google Fonts catalogue
   geometry/   framework-agnostic, millimeter-accurate solid generation
-  scene/      the shared 3D preview and its draggable meshes
+  scene/      the shared 3D preview, its draggable meshes and its ground
   export/     STL bytes
   ui/         the shell, the product picker, and the generic controls
   products/
@@ -61,6 +61,17 @@ one registry entry.)
 Because a product's controls and its scene are mounted in separate subtrees
 (sidebar and canvas), anything they share — above all the one async geometry
 build that feeds both — goes in the definition's optional `Provider`.
+
+### The preview
+
+Every product is designed in the same canvas (`scene/StudioCanvas.tsx`). The
+design is centered and stood on the ground by `GroundCenter` — not drei's
+`Center`, which measures once and so loses the race against the asynchronous font
+build. Under it, `GroundGrid` rules the floor in real millimeters (10mm cells,
+50mm sections), and the coin button in the corner lays a true-to-size 2 € coin
+beside the design (`ScaleReference`), because millimeters on a slider don't tell
+you how big the print will be. Both are scenery, rendered so that the grid never
+drags the camera's auto-fit away from the design.
 
 ### How the geometry works
 
