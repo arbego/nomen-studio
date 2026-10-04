@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildIconBlock } from './iconBlock';
-import { getIcon, iconChar, iconCount, iconFontId, ICON_SETS, searchIcons, SUGGESTED_ICONS } from './catalog';
+import { getIcon, iconChar, iconCount, iconFontId, ICON_SETS, loadIconKeywords, searchIcons, SUGGESTED_ICONS } from './catalog';
 
 function bounds(block: Awaited<ReturnType<typeof buildIconBlock>>): THREE.Box3 {
   const box = new THREE.Box3();
@@ -92,6 +92,42 @@ describe('icon sets', () => {
     const results = searchIcons('cat', undefined, Number.POSITIVE_INFINITY);
     expect(results[0].id).toBe('phosphor:cat');
     expect(results.findIndex((icon) => icon.id === 'emoji:cat')).toBeLessThan(results.findIndex((icon) => icon.id === 'material:category'));
+  });
+
+  it('finds icons by what they are, not only by what they are called', async () => {
+    // Nothing in any set is *named* "zodiac" — it is what Unicode files the
+    // star signs under, which is exactly the kind of word someone types.
+    expect(searchIcons('zodiac', undefined, Number.POSITIVE_INFINITY)).toHaveLength(0);
+
+    await loadIconKeywords();
+    const signs = searchIcons('zodiac', 'emoji', Number.POSITIVE_INFINITY).map((icon) => icon.name);
+    for (const sign of ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces']) {
+      expect(signs, sign).toContain(sign);
+    }
+
+    // The same applies across the sets: a word people use, for a thing named
+    // something else.
+    expect(searchIcons('kitten', undefined, Number.POSITIVE_INFINITY).map((icon) => icon.id)).toContain('phosphor:cat');
+    expect(searchIcons('horoscope', 'emoji', Number.POSITIVE_INFINITY).map((icon) => icon.name)).toContain('aries');
+  });
+
+  it('ranks a keyword match below every kind of name match', async () => {
+    await loadIconKeywords();
+    const results = searchIcons('star', undefined, Number.POSITIVE_INFINITY);
+    const lastNamed = results.map((icon) => icon.name.includes('star')).lastIndexOf(true);
+    const firstKeyword = results.findIndex((icon) => !icon.name.includes('star'));
+    // Everything called "star" comes before everything merely tagged with it.
+    expect(firstKeyword).toBeGreaterThan(lastNamed);
+  });
+
+  it('matches whole keywords, so a word that merely contains the query is not a match', async () => {
+    await loadIconKeywords();
+    const results = searchIcons('cat', undefined, Number.POSITIVE_INFINITY).map((icon) => icon.id);
+    expect(results).toContain('phosphor:cat');
+    // Hundreds of icons are tagged "communication", "education" or
+    // "notification". Matching those on "cat" would bury every actual cat.
+    expect(results).not.toContain('phosphor:address_book');
+    expect(results).not.toContain('emoji:backpack');
   });
 
   it('has the vocabulary a birth-stat letter is actually made of', () => {

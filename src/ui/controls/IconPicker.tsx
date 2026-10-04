@@ -1,31 +1,25 @@
-import { useMemo } from 'react';
-import { DEFAULT_RESULT_LIMIT, getIcon, getIconSet, iconChar, iconCount, ICON_SETS, searchIcons, SUGGESTED_ICONS, type IconSetId } from '../../icons/catalog';
-
-/** How the grid is currently being browsed: what has been typed, which set's tab is on, and whether the result cap has been lifted. */
-export interface IconBrowse {
-  query: string;
-  /** undefined is the "All" tab. */
-  set?: IconSetId;
-  showAll: boolean;
-}
-
-/** A fresh browse — what a picker opens on. */
-export const NEW_ICON_BROWSE: IconBrowse = { query: '', showAll: false };
+import { useEffect, useMemo, useState } from 'react';
+import {
+  DEFAULT_RESULT_LIMIT,
+  getIcon,
+  getIconSet,
+  iconChar,
+  iconCount,
+  iconKeywordsLoaded,
+  ICON_SETS,
+  loadIconKeywords,
+  searchIcons,
+  SUGGESTED_ICONS,
+  type IconSetId,
+} from '../../icons/catalog';
+import type { IconBrowse } from './iconBrowse';
 
 interface IconPickerProps {
   /** The icon currently chosen, highlighted in the grid. Omitted when picking one for the first time. */
   value?: string;
   onChange: (iconName: string) => void;
   onClose: () => void;
-  /**
-   * Where the browsing is up to, and how to update it.
-   *
-   * Held by the caller rather than in here because a picker can move in the
-   * middle of being used: picking the first icon for a new ornament turns the
-   * grid into that ornament's own, which is a different place in the tree and so
-   * a different React instance. Held in here, the search and the chosen tab
-   * would be thrown away at exactly the moment someone is browsing with them.
-   */
+  /** Where the browsing is up to, and how to update it — held by the caller; see IconBrowse. */
   browse: IconBrowse;
   onBrowse: (browse: IconBrowse) => void;
 }
@@ -65,6 +59,23 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
   const setShowAll = (next: boolean) => onBrowse({ ...browse, showAll: next });
   const setSet = (next: IconSetId | undefined) => onBrowse({ ...browse, set: next });
 
+  // The keywords are a separate download, started the moment the grid opens so
+  // they are almost always here by the time anything has been typed. Searching
+  // works without them; it just can't match on what an icon is *also* called
+  // until they land, so the search re-runs when they do.
+  const [keywords, setKeywords] = useState(iconKeywordsLoaded());
+  useEffect(() => {
+    let watching = true;
+    void loadIconKeywords().then(() => {
+      if (watching) {
+        setKeywords(true);
+      }
+    });
+    return () => {
+      watching = false;
+    };
+  }, []);
+
   const results = useMemo(() => {
     const limit = showAll ? Number.POSITIVE_INFINITY : undefined;
     if (query.trim() || set) {
@@ -74,7 +85,8 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
     // piece instead of whatever happens to sort first alphabetically (which is
     // "10k"), and which between them show that there is more than one style.
     return showAll ? searchIcons('', undefined, limit) : SUGGESTED_ICONS.map(getIcon);
-  }, [query, set, showAll]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `keywords` is here to re-run the search when they arrive, not because the body reads it: searchIcons takes them off the module.
+  }, [query, set, showAll, keywords]);
 
   const total = iconCount(set);
   // Whether anything is being held back — the only case where offering to show

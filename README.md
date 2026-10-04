@@ -151,6 +151,18 @@ drags the camera's auto-fit away from the design.
   drops every entry whose glyph is missing or blank in the font actually in the
   repo. An emoji ornament starts out wider than the others (`IconSet.defaultWidthMm`):
   it is drawn rather than filled, and a stroke has to be wide enough to print.
+
+  All three publishers also say what their icons are *about*, in three different
+  shapes: Google ships categories and synonyms with the Material metadata,
+  Phosphor keeps them in the source of its core package, and for emoji they come
+  from the groups Unicode files each one under plus CLDR's own search keywords.
+  The generator folds all of that into one `iconKeywords.json`, which is why
+  searching "zodiac" finds the star signs and "kitten" finds the cat. It is
+  bigger than all three catalogues together, so the picker imports it
+  dynamically when it first opens and re-runs the search when it lands —
+  nothing is in the startup bundle, exactly like the icon fonts. Keywords rank
+  below every kind of name match, and match whole words only: hundreds of icons
+  are tagged "communication", and matching those on "cat" would bury the cats.
 - **Standing** (`geometry/baseGeometry.ts`): three ways to make a piece stand —
   nothing, a base rail, or a flat cut at the typographic baseline. A product
   applies it only to the pieces that actually stand: on a name display that is

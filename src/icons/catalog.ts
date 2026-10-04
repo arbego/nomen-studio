@@ -140,19 +140,63 @@ export function iconDefaultWidthMm(id: string): number {
   return getIconSet(getIcon(id).set).defaultWidthMm;
 }
 
+/**
+ * What else each icon is called, by id — the publishers' own categories and
+ * synonyms, so "zodiac" finds the star signs and "kitten" finds the cat. Space
+ * joined, since a search only ever reads them word by word.
+ *
+ * Loaded on demand rather than bundled: it is bigger than all three catalogues
+ * put together, and nobody who never opens the icon grid should pay for it. The
+ * icon fonts themselves already arrive the same way.
+ */
+let KEYWORDS: Map<string, string> | null = null;
+let loading: Promise<void> | null = null;
+
+/** Fetches the keywords if they aren't here yet. Safe to call repeatedly — there is only ever one load. */
+export function loadIconKeywords(): Promise<void> {
+  loading ??= import('./iconKeywords.json').then((module) => {
+    const bySet = module.default as Record<string, Record<string, string>>;
+    const loaded = new Map<string, string>();
+    for (const [set, byName] of Object.entries(bySet)) {
+      for (const [name, words] of Object.entries(byName)) {
+        loaded.set(`${set}:${name}`, words);
+      }
+    }
+    KEYWORDS = loaded;
+  });
+  return loading;
+}
+
+/** Whether a search can match on keywords yet. A picker watches this to re-run its search once they land. */
+export function iconKeywordsLoaded(): boolean {
+  return KEYWORDS !== null;
+}
+
+/** Whether any of an icon's keywords starts with the query — whole words, so "cat" finds the "cats" keyword but not "scatter". */
+function matchesKeyword(id: string, query: string): boolean {
+  const words = KEYWORDS?.get(id);
+  return words !== undefined && words.split(' ').some((word) => word.startsWith(query));
+}
+
 /** How many results a picker shows before it offers to show the lot. */
 export const DEFAULT_RESULT_LIMIT = 90;
 
 /**
  * Searches one set, or all of them, by name.
  *
- * Matches are ranked exact, then prefix, then merely containing, and only
- * within a rank by set and then alphabetically. Ranking has to come first
- * because the sets are so differently sized: grouping by set instead would bury
- * Phosphor's `cat` under every Material name that merely contains "cat", and
- * the thing you typed exactly would be nowhere near the top. Within a rank,
- * keeping a set's icons together matters because a shared prefix means a shared
- * family — `favorite` beside `favorite_border`.
+ * Matches are ranked by how they match — the name exactly, the name's start,
+ * anywhere in the name, and last the icon's keywords — and only within a rank
+ * by set and then alphabetically. Ranking has to come first because the sets
+ * are so differently sized: grouping by set instead would bury Phosphor's `cat`
+ * under every Material name that merely contains "cat", and the thing you typed
+ * exactly would be nowhere near the top. Within a rank, keeping a set's icons
+ * together matters because a shared prefix means a shared family — `favorite`
+ * beside `favorite_border`.
+ *
+ * Keywords rank last because they are the publishers' associations rather than
+ * what the icon is called: someone typing `star` wants the stars first and the
+ * things merely tagged "star" after. They only count once they have been
+ * loaded; see loadIconKeywords.
  *
  * With nothing typed there is nothing to rank, so the sets simply follow one
  * another in order, which is what makes browsing read as one style at a time.
@@ -172,6 +216,7 @@ export function searchIcons(query: string, set?: IconSetId, limit: number = DEFA
   const exact: IconEntry[] = [];
   const prefix: IconEntry[] = [];
   const substring: IconEntry[] = [];
+  const keyword: IconEntry[] = [];
   for (const setId of sets) {
     for (const icon of CATALOGS[setId]) {
       if (icon.name === normalized) {
@@ -180,10 +225,12 @@ export function searchIcons(query: string, set?: IconSetId, limit: number = DEFA
         prefix.push(icon);
       } else if (icon.name.includes(normalized)) {
         substring.push(icon);
+      } else if (matchesKeyword(icon.id, normalized)) {
+        keyword.push(icon);
       }
     }
   }
-  return [...exact, ...prefix, ...substring].slice(0, limit);
+  return [...exact, ...prefix, ...substring, ...keyword].slice(0, limit);
 }
 
 /**

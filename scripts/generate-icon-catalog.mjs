@@ -21,12 +21,30 @@ import opentype from 'opentype.js';
 const asset = (path) => fileURLToPath(new URL(`../src/assets/icons/${path}`, import.meta.url));
 const output = (name) => fileURLToPath(new URL(`../src/icons/${name}`, import.meta.url));
 
+// Memoized because the emoji set reads the same file twice — once for names,
+// once for the groups those names are filed under.
+const fetched = new Map();
 async function fetchText(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+  if (!fetched.has(url)) {
+    fetched.set(
+      url,
+      fetch(url).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+        }
+        return response.text();
+      }),
+    );
   }
-  return response.text();
+  return fetched.get(url);
+}
+
+/** Lower case, words joined by underscores — the shape every icon name and keyword is stored in, so a search can compare them directly. */
+function slug(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 /** Google publishes the Material names as a two-column "<name> <hex>" file. */
@@ -83,11 +101,81 @@ async function emojiNames() {
   return entries;
 }
 
+/**
+ * What else each icon is called, so a search can find a thing by what it is
+ * rather than by the word its publisher happened to file it under.
+ *
+ * Each returns a function from one catalogue entry to its words. All three
+ * publish this; none of them publishes it in the same shape, and none of it is
+ * in the font.
+ */
+
+/** Google ships both with the names: one category and a handful of synonyms per icon. */
+async function materialKeywords() {
+  // The metadata is JSONP-flavoured — a `)]}'` guard line before the JSON.
+  const raw = await fetchText('https://fonts.google.com/metadata/icons');
+  const metadata = JSON.parse(raw.replace(/^\)]\}'\n?/, ''));
+  const byName = new Map(metadata.icons.map((icon) => [icon.name, [...(icon.categories ?? []), ...(icon.tags ?? [])]]));
+  return (entry) => byName.get(entry.name) ?? [];
+}
+
+/** Phosphor keeps its categories and tags in the source of its core package, as a TypeScript literal. */
+async function phosphorKeywords() {
+  const source = await fetchText('https://raw.githubusercontent.com/phosphor-icons/core/main/src/icons.ts');
+  const byName = new Map(
+    [...source.matchAll(/name:\s*"([^"]+)",[\s\S]*?categories:\s*\[([^\]]*)\][\s\S]*?tags:\s*\[([^\]]*)\]/g)].map((match) => [
+      match[1].replace(/-/g, '_'),
+      [
+        ...[...match[2].matchAll(/IconCategory\.([A-Z_]+)/g)].map((category) => category[1].toLowerCase()),
+        // "*new*" marks a recent addition rather than describing the icon.
+        ...[...match[3].matchAll(/"([^"]+)"/g)].map((tag) => tag[1]).filter((tag) => tag !== '*new*'),
+      ],
+    ]),
+  );
+  return (entry) => byName.get(entry.name) ?? [];
+}
+
+/**
+ * Emoji get both halves of what Unicode knows: the group and subgroup each is
+ * filed under (which is where "zodiac" comes from), and CLDR's own search
+ * keywords, which are what people actually call the thing — "horoscope" and
+ * "ram" for Aries.
+ */
+async function emojiKeywords() {
+  const groups = new Map();
+  let group = '';
+  let subgroup = '';
+  for (const line of (await fetchText('https://unicode.org/Public/emoji/latest/emoji-test.txt')).split('\n')) {
+    const groupLine = /^# group: (.+)$/.exec(line);
+    const subgroupLine = /^# subgroup: (.+)$/.exec(line);
+    const entryLine = /^([0-9A-F ]+?)\s*;\s*fully-qualified\s*#\s*\S+\s+E[\d.]+\s+(.+)$/.exec(line.trim());
+    if (groupLine) {
+      group = groupLine[1];
+    } else if (subgroupLine) {
+      subgroup = subgroupLine[1];
+    } else if (entryLine) {
+      groups.set(slug(entryLine[2]), [...subgroup.split('-'), ...group.toLowerCase().split(/[^a-z]+/)].filter(Boolean));
+    }
+  }
+
+  const annotations = new Map();
+  const cldr = await fetchText('https://raw.githubusercontent.com/unicode-org/cldr/main/common/annotations/en.xml');
+  // The `type="tts"` annotations are the spoken name, which is the name already.
+  for (const match of cldr.matchAll(/<annotation cp="([^"]+)"(?! type)[^>]*>([^<]+)<\/annotation>/g)) {
+    annotations.set(match[1].codePointAt(0), match[2].split('|').map((word) => word.trim()));
+  }
+
+  return (entry) => [...(groups.get(entry.name) ?? []), ...(annotations.get(entry.codepoint) ?? [])];
+}
+
 const SETS = [
-  { id: 'material', font: asset('material-icons/MaterialIcons-Regular.ttf'), out: output('materialIconsCatalog.json'), names: materialNames },
-  { id: 'phosphor', font: asset('phosphor-fill/Phosphor-Fill.ttf'), out: output('phosphorCatalog.json'), names: phosphorNames },
-  { id: 'emoji', font: asset('noto-emoji/NotoEmoji-Regular.ttf'), out: output('notoEmojiCatalog.json'), names: emojiNames },
+  { id: 'material', font: asset('material-icons/MaterialIcons-Regular.ttf'), out: output('materialIconsCatalog.json'), names: materialNames, keywords: materialKeywords },
+  { id: 'phosphor', font: asset('phosphor-fill/Phosphor-Fill.ttf'), out: output('phosphorCatalog.json'), names: phosphorNames, keywords: phosphorKeywords },
+  { id: 'emoji', font: asset('noto-emoji/NotoEmoji-Regular.ttf'), out: output('notoEmojiCatalog.json'), names: emojiNames, keywords: emojiKeywords },
 ];
+
+/** Keywords for every set, written as one file the app loads only when someone opens the picker — see icons/catalog.ts. */
+const keywordsOut = {};
 
 for (const set of SETS) {
   const font = opentype.parse((await readFile(set.font)).buffer);
@@ -109,5 +197,28 @@ for (const set of SETS) {
 
   drawable.sort((a, b) => a.name.localeCompare(b.name));
   await writeFile(set.out, `${JSON.stringify(drawable)}\n`);
-  console.log(`${set.id}: ${drawable.length} icons written to ${set.out} (${declared.length - drawable.length} dropped as blank, missing or duplicate)`);
+
+  const keywordsFor = await set.keywords();
+  const words = {};
+  let described = 0;
+  for (const entry of drawable) {
+    // A keyword the name already contains costs bytes and finds nothing new:
+    // the name is searched first and more cheaply. Stored space-joined rather
+    // than as an array, which is a third of the punctuation for the same words.
+    const parts = new Set(entry.name.split('_'));
+    const extra = [...new Set(keywordsFor(entry).map(slug).filter((word) => word && !parts.has(word) && !entry.name.includes(word)))];
+    if (extra.length > 0) {
+      words[entry.name] = extra.join(' ');
+      described += 1;
+    }
+  }
+  keywordsOut[set.id] = words;
+
+  console.log(
+    `${set.id}: ${drawable.length} icons written to ${set.out} (${declared.length - drawable.length} dropped as blank, missing or duplicate), ${described} with keywords`,
+  );
 }
+
+const keywordsPath = output('iconKeywords.json');
+await writeFile(keywordsPath, `${JSON.stringify(keywordsOut)}\n`);
+console.log(`keywords written to ${keywordsPath}`);
