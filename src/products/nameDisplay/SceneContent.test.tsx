@@ -4,7 +4,8 @@ import ReactThreeTestRenderer from '@react-three/test-renderer';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { NameDisplayScene } from './SceneContent';
-import { assembleNameDisplay, buildNameDisplayBlocks } from './geometry';
+import { GroundCenter } from '../../scene/GroundCenter';
+import { assembleNameDisplay, buildNameDisplayBlocks, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import { placePoint } from '../../geometry/placement';
 import type { NameDisplayConfig } from './config';
 
@@ -138,6 +139,36 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     // the name is suspended partway up the initial by the pocket, not standing.
     expect(directMeshes(root(renderer))).toHaveLength(2);
     expect(root(renderer).children.filter((c) => c.type === 'Group')).toHaveLength(1);
+  }, 30000);
+
+  it('stands on the ground once a base rail is added, not above it', async () => {
+    // The rail hangs below the initial's baseline, which is where the piece used
+    // to be resting — so a design grounded before the rail existed kept the
+    // letter on the floor and left the rail dangling through it.
+    const grounded = (config: NameDisplayConfig, blocks: NameDisplayBlocks, assembly: NameDisplayAssembly) => (
+      <GroundCenter>
+        <NameDisplayScene blocks={blocks} assembly={assembly} config={config} onNameOffsetCommit={() => {}} onNameLetterGapCommit={() => {}} onDecoratorOffsetCommit={() => {}} />
+      </GroundCenter>
+    );
+
+    // Standing on nothing first, then given a rail — the order a person does it
+    // in, and the only order in which the bug appears.
+    const plainBlocks = await buildNameDisplayBlocks(config);
+    const renderer = await ReactThreeTestRenderer.create(grounded(config, plainBlocks, assembleNameDisplay(plainBlocks, config)));
+    await renderer.advanceFrames(2, 16);
+
+    const merged = { ...config, standMode: 'rail' as const };
+    const blocks = await buildNameDisplayBlocks(merged);
+    const assembly = assembleNameDisplay(blocks, merged);
+    await renderer.update(grounded(merged, blocks, assembly));
+    await renderer.advanceFrames(2, 16);
+
+    const root = renderer.scene.children[0].instance as unknown as THREE.Object3D;
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root, true);
+    expect(box.min.y).toBeCloseTo(0, 3);
+    // And it is the rail doing the standing: its underside is what touches.
+    expect(box.max.y - box.min.y).toBeGreaterThan(config.initialHeightMm);
   }, 30000);
 
   it("puts the rail under the initial's own depth, not the name's", async () => {
