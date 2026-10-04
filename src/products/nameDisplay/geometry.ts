@@ -96,8 +96,8 @@ export function blockRegion(block: TextBlock, letterGapsMm: number[][], placemen
   return paths;
 }
 
-/** Where the name turns when it's tilted: the center of its own silhouette, so the angle tilts it in place rather than swinging it off the initial. */
-export function namePivot(block: TextBlock, letterGapsMm: number[]): Offset2D {
+/** Where a piece turns when it's tilted: the center of its own silhouette, so the angle turns it in place rather than swinging it off the initial. */
+export function blockPivot(block: TextBlock, letterGapsMm: number[]): Offset2D {
   const bounds = combinedBlockBounds(block, [letterGapsMm], [{ x: 0, y: 0 }]);
   return { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 };
 }
@@ -107,13 +107,22 @@ export function namePlacement(blocks: NameDisplayBlocks, config: NameDisplayConf
   return {
     translate: config.nameOffset,
     rotationRad: degToRad(config.nameAngleDeg),
-    pivot: namePivot(blocks.name, config.nameLetterGapsMm),
+    pivot: blockPivot(blocks.name, config.nameLetterGapsMm),
   };
 }
 
-/** Where an ornament sits. A plain shift: a decorator is moved, not turned. */
-export function decoratorPlacement(id: string, config: NameDisplayAssemblyConfig): Placement2D {
-  return { translate: config.decoratorOffsets[id] ?? ORIGIN };
+/**
+ * Where an ornament sits and how it is turned — the same one description the
+ * preview and the pocket boolean both follow, so a turned icon always lands in
+ * the recess cut for it.
+ */
+export function decoratorPlacement(decorator: DecoratorBlock, config: NameDisplayAssemblyConfig): Placement2D {
+  const { offset = ORIGIN, angleDeg = 0 } = config.decoratorPlacements[decorator.id] ?? {};
+  return {
+    translate: offset,
+    rotationRad: degToRad(angleDeg),
+    pivot: blockPivot(decorator.block, []),
+  };
 }
 
 /**
@@ -191,7 +200,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
 
   // Every inlaid piece cuts the same recess, at the same depth: they all seat on
   // the one pocket floor, so one subtraction covers the lot.
-  const decoratorRegions = blocks.decorators.map((decorator) => blockRegion(decorator.block, [], decoratorPlacement(decorator.id, config)));
+  const decoratorRegions = blocks.decorators.map((decorator) => blockRegion(decorator.block, [], decoratorPlacement(decorator, config)));
   const inlayRegion: Region = [...nameRegion, ...decoratorRegions.flat()];
 
   const parts: THREE.BufferGeometry[] = [];
@@ -219,7 +228,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     namePlacement: placement,
     decorators: blocks.decorators.map((decorator, i) => ({
       id: decorator.id,
-      placement: decoratorPlacement(decorator.id, config),
+      placement: decoratorPlacement(decorator, config),
       overlapsInitial: !regionIsEmpty(intersectRegions(face, decoratorRegions[i])),
     })),
   };

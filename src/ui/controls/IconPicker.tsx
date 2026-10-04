@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { iconChar, searchIcons, SUGGESTED_ICONS } from '../../icons/catalog';
+import { DEFAULT_RESULT_LIMIT, getIcon, ICON_COUNT, iconChar, searchIcons, SUGGESTED_ICONS } from '../../icons/catalog';
 
 interface IconPickerProps {
   /** The icon currently chosen, highlighted in the grid. Omitted when picking one for the first time. */
@@ -18,17 +18,29 @@ export function Icon({ name, className = '' }: { name: string; className?: strin
 }
 
 /**
- * A searchable grid of every icon in the set.
+ * A searchable grid of the icon set.
  *
- * Results are capped by the catalogue rather than paged: two thousand tiles is
- * not a thing anyone scrolls, and typing two letters narrows it far faster than
- * scrolling ever would.
+ * Results are capped rather than paged — typing two letters narrows them far
+ * faster than scrolling would — but the cap is only a default: "Show all" lifts
+ * it for anyone who would rather browse, whether they have typed something or
+ * not.
  */
 export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
   const [query, setQuery] = useState('');
-  // With nothing typed, show a few that suit this kind of piece instead of
-  // whatever happens to sort first alphabetically (which is "10k").
-  const results = useMemo(() => (query.trim() ? searchIcons(query) : SUGGESTED_ICONS.map((name) => ({ name, codepoint: 0 }))), [query]);
+  const [showAll, setShowAll] = useState(false);
+
+  const results = useMemo(() => {
+    if (query.trim()) {
+      return searchIcons(query, showAll ? Number.POSITIVE_INFINITY : undefined);
+    }
+    // With nothing typed, show a few that suit this kind of piece instead of
+    // whatever happens to sort first alphabetically (which is "10k").
+    return showAll ? searchIcons('', Number.POSITIVE_INFINITY) : SUGGESTED_ICONS.map(getIcon);
+  }, [query, showAll]);
+
+  // Whether anything is being held back — the only case where offering to show
+  // everything says something the grid does not already show.
+  const capped = !showAll && (query.trim() ? results.length >= DEFAULT_RESULT_LIMIT : true);
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-3">
@@ -45,6 +57,23 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
         <button type="button" onClick={onClose} className="shrink-0 text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
           Cancel
         </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-xs text-stone-400">
+        <span>
+          {showAll && !query.trim() ? `All ${ICON_COUNT} icons` : `${results.length} ${results.length === 1 ? 'icon' : 'icons'}`}
+        </span>
+        {capped ? (
+          <button type="button" onClick={() => setShowAll(true)} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+            Show all {ICON_COUNT}
+          </button>
+        ) : (
+          showAll && (
+            <button type="button" onClick={() => setShowAll(false)} className="shrink-0 text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800">
+              Show fewer
+            </button>
+          )
+        )}
       </div>
 
       {results.length === 0 ? (

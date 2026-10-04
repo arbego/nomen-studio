@@ -21,7 +21,7 @@ const base: NameDisplayConfig = {
   nameLetterGapsMm: [],
   nameAngleDeg: 0,
   decorators: [],
-  decoratorOffsets: {},
+  decoratorPlacements: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
@@ -45,8 +45,8 @@ async function build(overrides: Partial<NameDisplayConfig> = {}) {
   return { blocks, assembly: assembleNameDisplay(blocks, config), config };
 }
 
-function withHeart(offset = ON_THE_LETTER, decorator: DecoratorConfig = heart) {
-  return build({ decorators: [decorator], decoratorOffsets: { [decorator.id]: offset } });
+function withHeart(offset = ON_THE_LETTER, decorator: DecoratorConfig = heart, angleDeg = 0) {
+  return build({ decorators: [decorator], decoratorPlacements: { [decorator.id]: { offset, angleDeg } } });
 }
 
 function bounds(geometry: THREE.BufferGeometry): THREE.Box3 {
@@ -117,6 +117,36 @@ describe('decorator geometry', () => {
     expect(a.min.y - b.min.y).toBeCloseTo(20, 4);
   }, 30000);
 
+  it('turns about its own center, so an angle spins it in place', async () => {
+    const straight = await withHeart(ON_THE_LETTER);
+    const turned = await withHeart(ON_THE_LETTER, heart, 90);
+
+    const a = bounds(placedDecoratorGeometry(straight.blocks.decorators[0], straight.assembly));
+    const b = bounds(placedDecoratorGeometry(turned.blocks.decorators[0], turned.assembly));
+
+    // Same centre, turned footprint: a heart is taller than it is wide, so at
+    // 90° those swap. Swinging about the origin instead would move the centre.
+    expect((b.min.x + b.max.x) / 2).toBeCloseTo((a.min.x + a.max.x) / 2, 3);
+    expect((b.min.y + b.max.y) / 2).toBeCloseTo((a.min.y + a.max.y) / 2, 3);
+    expect(b.max.x - b.min.x).toBeCloseTo(a.max.y - a.min.y, 2);
+    expect(b.max.y - b.min.y).toBeCloseTo(a.max.x - a.min.x, 2);
+  }, 30000);
+
+  it('cuts its pocket from the turned silhouette, so a turned icon still drops in', async () => {
+    const turned = await withHeart(ON_THE_LETTER, heart, 40);
+    const placed = bounds(placedDecoratorGeometry(turned.blocks.decorators[0], turned.assembly));
+
+    const pocket = new THREE.Box2();
+    const region = growRegion(blockRegion(turned.blocks.decorators[0].block, [], turned.assembly.decorators[0].placement), turned.config.pocketClearanceMm);
+    for (const shape of regionToShapes(region)) for (const point of shape.getPoints()) pocket.expandByPoint(point);
+
+    const slack = turned.config.pocketClearanceMm + 0.01;
+    expect(placed.min.x).toBeGreaterThan(pocket.min.x);
+    expect(placed.max.x).toBeLessThan(pocket.max.x);
+    expect(placed.min.x - pocket.min.x).toBeLessThan(slack);
+    expect(pocket.max.y - placed.max.y).toBeLessThan(slack);
+  }, 30000);
+
   it('is built at the width and thickness it was given', async () => {
     const built = await withHeart(ON_THE_LETTER, { ...heart, widthMm: 40, depthMm: 8 });
     const placed = bounds(placedDecoratorGeometry(built.blocks.decorators[0], built.assembly));
@@ -127,7 +157,7 @@ describe('decorator geometry', () => {
   it('carries several ornaments at once, each cutting its own pocket', async () => {
     const two: DecoratorConfig[] = [heart, { id: 'd2', iconName: 'star', widthMm: 20, depthMm: 5 }];
     const one = await withHeart();
-    const both = await build({ decorators: two, decoratorOffsets: { d1: { x: -30, y: 90 }, d2: { x: 30, y: 90 } } });
+    const both = await build({ decorators: two, decoratorPlacements: { d1: { offset: { x: -30, y: 90 }, angleDeg: 0 }, d2: { offset: { x: 30, y: 90 }, angleDeg: 0 } } });
 
     expect(both.blocks.decorators.map((d) => d.id)).toEqual(['d1', 'd2']);
     expect(both.assembly.decorators).toHaveLength(2);
@@ -148,11 +178,12 @@ describe('decorator store', () => {
     useNameDisplayStore.getState().reset();
     useNameDisplayStore.getState().addDecorator('star');
 
-    const { decorators, decoratorOffsets } = useNameDisplayStore.getState();
+    const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
     expect(decorators).toHaveLength(1);
     expect(decorators[0].iconName).toBe('star');
     expect(decorators[0].widthMm).toBeGreaterThan(0);
-    expect(decoratorOffsets[decorators[0].id]).toBeDefined();
+    expect(decoratorPlacements[decorators[0].id].offset).toBeDefined();
+    expect(decoratorPlacements[decorators[0].id].angleDeg).toBe(0);
   });
 
   it('puts a second one somewhere other than exactly on top of the first', () => {
@@ -160,8 +191,8 @@ describe('decorator store', () => {
     useNameDisplayStore.getState().addDecorator('star');
     useNameDisplayStore.getState().addDecorator('favorite');
 
-    const { decorators, decoratorOffsets } = useNameDisplayStore.getState();
-    expect(decoratorOffsets[decorators[0].id]).not.toEqual(decoratorOffsets[decorators[1].id]);
+    const { decorators, decoratorPlacements } = useNameDisplayStore.getState();
+    expect(decoratorPlacements[decorators[0].id].offset).not.toEqual(decoratorPlacements[decorators[1].id].offset);
   });
 
   it('takes the offset away with the ornament, so a later one cannot inherit it', () => {
@@ -171,7 +202,7 @@ describe('decorator store', () => {
 
     useNameDisplayStore.getState().removeDecorator(id);
     expect(useNameDisplayStore.getState().decorators).toHaveLength(0);
-    expect(useNameDisplayStore.getState().decoratorOffsets[id]).toBeUndefined();
+    expect(useNameDisplayStore.getState().decoratorPlacements[id]).toBeUndefined();
   });
 
   it('edits one ornament without touching the others', () => {
@@ -185,6 +216,34 @@ describe('decorator store', () => {
     expect(after[0]).toEqual(first);
     expect(after[1].widthMm).toBe(60);
     expect(after[1].iconName).toBe('pets');
+  });
+
+  it('turns one ornament without moving it, and without touching the others', () => {
+    useNameDisplayStore.getState().reset();
+    useNameDisplayStore.getState().addDecorator('star');
+    useNameDisplayStore.getState().addDecorator('favorite');
+    const [first, second] = useNameDisplayStore.getState().decorators;
+    const firstPlacement = useNameDisplayStore.getState().decoratorPlacements[first.id];
+
+    useNameDisplayStore.getState().setDecoratorAngle(second.id, 35);
+
+    const placements = useNameDisplayStore.getState().decoratorPlacements;
+    expect(placements[second.id].angleDeg).toBe(35);
+    expect(placements[second.id].offset).toEqual(useNameDisplayStore.getState().decoratorPlacements[second.id].offset);
+    expect(placements[first.id]).toEqual(firstPlacement);
+  });
+
+  it('keeps the angle when the ornament is dragged, and the position when it is turned', () => {
+    useNameDisplayStore.getState().reset();
+    useNameDisplayStore.getState().addDecorator('star');
+    const [{ id }] = useNameDisplayStore.getState().decorators;
+
+    useNameDisplayStore.getState().setDecoratorAngle(id, 60);
+    useNameDisplayStore.getState().setDecoratorOffset(id, { x: 10, y: 20 });
+    expect(useNameDisplayStore.getState().decoratorPlacements[id]).toEqual({ offset: { x: 10, y: 20 }, angleDeg: 60 });
+
+    useNameDisplayStore.getState().setDecoratorAngle(id, -15);
+    expect(useNameDisplayStore.getState().decoratorPlacements[id]).toEqual({ offset: { x: 10, y: 20 }, angleDeg: -15 });
   });
 
   it('never lets an ornament end up thinner than the pocket it drops into', () => {

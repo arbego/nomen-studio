@@ -23,7 +23,7 @@ const config: NameDisplayConfig = {
   nameLetterGapsMm: [0, 0],
   nameAngleDeg: 0,
   decorators: [],
-  decoratorOffsets: {},
+  decoratorPlacements: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
@@ -63,6 +63,12 @@ function directMeshes(node: TestInstance) {
 /** The group carrying the name's placement: turned by the angle, anchored so the turn happens about the name's own pivot. */
 function nameAnchorGroup(node: TestInstance) {
   return node.children.filter((c) => c.type === 'Group')[0];
+}
+
+/** The group holding one ornament's icon: its anchor group's inner TextBlockMesh group. */
+function decoratorGroup(node: TestInstance, index = 0) {
+  const anchors = node.children.filter((c) => c.type === 'Group');
+  return anchors[1 + index].children.filter((c) => c.type === 'Group')[0];
 }
 
 /** TextBlockMesh's own group inside it — what holds the letters, and the frame drags are measured in. */
@@ -182,31 +188,40 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     expect(committed.y).toBeCloseTo(config.nameOffset.y + 10, 1);
   }, 30000);
 
-  it('renders a decorator and commits its drag as an absolute offset', async () => {
+  it.each([0, 45, -120])('renders a decorator seated in its own pocket, at %i°', async (angleDeg) => {
+    const { renderer, assembly } = await renderScene({
+      decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
+      decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg } },
+    });
+
+    // The name's anchor group plus the decorator's own.
+    const groups = root(renderer).children.filter((c) => c.type === 'Group');
+    expect(groups).toHaveLength(2);
+
+    const object = decoratorGroup(root(renderer)).instance as unknown as THREE.Object3D;
+    object.updateMatrixWorld(true);
+    const world = object.getWorldPosition(new THREE.Vector3());
+
+    // The scene's composed transform has to reproduce the placement the pocket
+    // was cut from, or the ornament sits beside its own recess.
+    const expected = placePoint(0, 0, assembly.decorators[0].placement);
+    expect(world.x).toBeCloseTo(expected.x, 4);
+    expect(world.y).toBeCloseTo(expected.y, 4);
+    expect(world.z).toBeCloseTo(12 - 2.5, 4); // the pocket floor, like the name
+  }, 30000);
+
+  it('commits a decorator drag as an absolute offset', async () => {
     const onDecoratorOffsetCommit = vi.fn();
     const { renderer } = await renderScene(
-      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorOffsets: { d1: { x: 20, y: 90 } } },
+      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 0 } } },
       () => {},
       () => {},
       onDecoratorOffsetCommit,
     );
 
-    // The name's anchor group plus the decorator's own TextBlockMesh group.
-    const groups = root(renderer).children.filter((c) => c.type === 'Group');
-    expect(groups).toHaveLength(2);
-
-    // Unlike the name, a decorator needs no anchor group around it — it is
-    // shifted, never turned — so this is TextBlockMesh's own group.
-    const decoratorGroup = groups[1];
-    const object = decoratorGroup.instance as unknown as THREE.Object3D;
-    object.updateMatrixWorld(true);
-    // Seated on the pocket floor, like the name, and at the offset it was given.
-    const world = object.getWorldPosition(new THREE.Vector3());
-    expect(world.x).toBeCloseTo(20, 4);
-    expect(world.y).toBeCloseTo(90, 4);
-    expect(world.z).toBeCloseTo(12 - 2.5, 4);
-
-    const icon = () => decoratorGroup.children.filter((c) => c.type === 'Mesh')[0];
+    const group = decoratorGroup(root(renderer));
+    const object = group.instance as unknown as THREE.Object3D;
+    const icon = () => group.children.filter((c) => c.type === 'Mesh')[0];
     await act(async () => (icon().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 0, 0)));
     await act(async () => (icon().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, -15, 5)));
     await act(async () => (icon().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, -15, 5)));
@@ -217,6 +232,29 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     // Added to where it already was, not measured from the origin.
     expect(offset.x).toBeCloseTo(5, 1);
     expect(offset.y).toBeCloseTo(95, 1);
+  }, 30000);
+
+  it("turns a turned decorator's drag back into the initial's frame", async () => {
+    const onDecoratorOffsetCommit = vi.fn();
+    const { renderer } = await renderScene(
+      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 90 } } },
+      () => {},
+      () => {},
+      onDecoratorOffsetCommit,
+    );
+
+    const group = decoratorGroup(root(renderer));
+    const object = group.instance as unknown as THREE.Object3D;
+    const icon = () => group.children.filter((c) => c.type === 'Mesh')[0];
+    // 10mm along the ornament's own x, which at 90° points straight up on the
+    // initial. Committed unturned, it would slide sideways instead.
+    await act(async () => (icon().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 0, 0)));
+    await act(async () => (icon().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 10, 0)));
+    await act(async () => (icon().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 10, 0)));
+
+    const [, offset] = onDecoratorOffsetCommit.mock.calls[0];
+    expect(offset.x).toBeCloseTo(20, 1);
+    expect(offset.y).toBeCloseTo(100, 1);
   }, 30000);
 
   it('commits a letter drag as a gap on the name', async () => {

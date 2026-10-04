@@ -14,6 +14,9 @@ const CATALOG: IconEntry[] = (rawCatalog as IconEntry[]).slice().sort((a, b) => 
 
 const BY_NAME = new Map(CATALOG.map((icon) => [icon.name, icon]));
 
+/** How many icons there are, for a picker offering to show them all. */
+export const ICON_COUNT = CATALOG.length;
+
 export function getIcon(name: string): IconEntry {
   const icon = BY_NAME.get(name);
   if (!icon) {
@@ -27,16 +30,20 @@ export function iconChar(name: string): string {
   return String.fromCodePoint(getIcon(name).codepoint);
 }
 
-const DEFAULT_RESULT_LIMIT = 90;
+/** How many results a picker shows before it offers to show the lot. */
+export const DEFAULT_RESULT_LIMIT = 90;
 
 /**
  * Searches the icon set by name. Prefix matches rank above substring matches,
  * and within each group the order is alphabetical, which for icon names — where
  * a shared prefix means a shared family, like `favorite` and `favorite_border` —
- * keeps related icons next to each other. Capped at `limit`, since no one
- * browses two thousand icons at once.
+ * keeps related icons next to each other.
+ *
+ * Capped at `limit` by default, since no one browses two thousand icons at
+ * once — but the cap is only a default, and a picker that offers to show
+ * everything passes `Infinity` to lift it.
  */
-export function searchIcons(query: string, limit = DEFAULT_RESULT_LIMIT): IconEntry[] {
+export function searchIcons(query: string, limit: number = DEFAULT_RESULT_LIMIT): IconEntry[] {
   const normalized = query.trim().toLowerCase().replace(/\s+/g, '_');
   if (!normalized) {
     return CATALOG.slice(0, limit);

@@ -67,22 +67,30 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
         />
       </group>
 
-      {/* Each ornament seats on the same pocket floor as the name, and drags the
-          same way — a one-glyph block, so TextBlockMesh's "drag the first letter
-          to move the line" gesture is exactly "drag the icon around". */}
-      {blocks.decorators.map((decorator) => {
-        const offset = config.decoratorOffsets[decorator.id] ?? { x: 0, y: 0 };
+      {/* Each ornament seats on the same pocket floor as the name, is anchored
+          and turned the same way, and drags the same way — a one-glyph block, so
+          TextBlockMesh's "drag the first letter to move the line" gesture is
+          exactly "drag the icon around". */}
+      {blocks.decorators.map((decorator, i) => {
+        const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.decorators[i].placement;
         return (
-          <TextBlockMesh
-            key={decorator.id}
-            block={decorator.block}
-            color={config.nameColor}
-            position={[offset.x, offset.y, assembly.nameZMm]}
-            letterGapsMm={[[]]}
-            onLetterGapCommit={() => {}}
-            lineOffsets={[{ x: 0, y: 0 }]}
-            onLineOffsetCommit={(_lineIndex, dragged) => onDecoratorOffsetCommit(decorator.id, { x: offset.x + dragged.x, y: offset.y + dragged.y })}
-          />
+          <group key={decorator.id} position={[translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm]} rotation={[0, 0, rotationRad]}>
+            <TextBlockMesh
+              block={decorator.block}
+              color={config.nameColor}
+              position={[-pivot.x, -pivot.y, 0]}
+              letterGapsMm={[[]]}
+              onLetterGapCommit={() => {}}
+              lineOffsets={[{ x: 0, y: 0 }]}
+              // Measured inside the turned group, so the delta is turned back
+              // into the initial's frame before it moves the ornament — exactly
+              // as a tilted name's drag is.
+              onLineOffsetCommit={(_lineIndex, dragged) => {
+                const delta = rotateOffset(dragged, rotationRad);
+                onDecoratorOffsetCommit(decorator.id, { x: translate.x + delta.x, y: translate.y + delta.y });
+              }}
+            />
+          </group>
         );
       })}
     </group>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { COLOR_PRESETS } from '../../ui/presets';
-import type { DecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig } from './config';
+import type { DecoratorConfig, DecoratorPlacementConfig, NameDisplayBlocksConfig, NameDisplayConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(name: string): number[] {
@@ -18,10 +18,10 @@ export const DEFAULT_DECORATOR_DEPTH_MM = 5;
  * Where a newly added ornament lands: the initial's upper middle, clear of where
  * the name sits by default, and stepped diagonally per ornament already on the
  * piece so a second one is visibly a second one rather than hidden under the
- * first.
+ * first. Untouched by default — an ornament is added straight, and turned after.
  */
-function defaultDecoratorOffset(existingCount: number) {
-  return { x: 30 + existingCount * 12, y: 85 - existingCount * 12 };
+function defaultDecoratorPlacement(existingCount: number): DecoratorPlacementConfig {
+  return { offset: { x: 30 + existingCount * 12, y: 85 - existingCount * 12 }, angleDeg: 0 };
 }
 
 // Ids only have to be unique within a session — nothing is persisted, and they
@@ -51,7 +51,7 @@ const DEFAULT_CONFIG: NameDisplayConfig = {
   nameAngleDeg: 0,
 
   decorators: [],
-  decoratorOffsets: {},
+  decoratorPlacements: {},
 
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
@@ -74,6 +74,7 @@ interface NameDisplayStore extends NameDisplayConfig {
   updateDecorator: (id: string, patch: Partial<Omit<DecoratorConfig, 'id'>>) => void;
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
+  setDecoratorAngle: (id: string, angleDeg: number) => void;
   reset: () => void;
 }
 
@@ -127,7 +128,7 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
           // sit entirely inside its own pocket and show nothing.
           { id, iconName, widthMm: DEFAULT_DECORATOR_WIDTH_MM, depthMm: Math.max(DEFAULT_DECORATOR_DEPTH_MM, state.pocketDepthMm) },
         ],
-        decoratorOffsets: { ...state.decoratorOffsets, [id]: defaultDecoratorOffset(state.decorators.length) },
+        decoratorPlacements: { ...state.decoratorPlacements, [id]: defaultDecoratorPlacement(state.decorators.length) },
       };
     }),
   updateDecorator: (id, patch) =>
@@ -143,12 +144,13 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
     })),
   removeDecorator: (id) =>
     set((state) => {
-      // The offset goes with it, so a later ornament can never inherit a
+      // The placement goes with it, so a later ornament can never inherit a
       // position that was meant for a removed one.
-      const { [id]: _removed, ...decoratorOffsets } = state.decoratorOffsets;
-      return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorOffsets };
+      const { [id]: _removed, ...decoratorPlacements } = state.decoratorPlacements;
+      return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorPlacements };
     }),
-  setDecoratorOffset: (id, offset) => set((state) => ({ decoratorOffsets: { ...state.decoratorOffsets, [id]: offset } })),
+  setDecoratorOffset: (id, offset) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
+  setDecoratorAngle: (id, angleDeg) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
   reset: () => set(DEFAULT_CONFIG),
 }));
 
@@ -164,7 +166,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     nameOffset,
     nameLetterGapsMm,
     nameAngleDeg,
-    decoratorOffsets,
+    decoratorPlacements,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,
@@ -179,7 +181,7 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     nameOffset,
     nameLetterGapsMm,
     nameAngleDeg,
-    decoratorOffsets,
+    decoratorPlacements,
     pocketDepthMm,
     pocketClearanceMm,
     railHeightMm,

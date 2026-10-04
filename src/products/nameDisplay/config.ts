@@ -9,8 +9,9 @@ export type NameDisplayBlockId = 'initial' | 'name';
  * exactly the way the name is, with its own pocket and its own place on the
  * letter.
  *
- * Its position lives apart from this, in `decoratorOffsets`, for the same reason
- * the name's does: moving one must not re-run the font build.
+ * Where it sits and how it is turned live apart from this, in
+ * `decoratorPlacements`, for the same reason the name's position does: moving
+ * one must not re-run the font build.
  */
 export interface DecoratorConfig {
   /** Stable across edits and reorderings, so an offset can be kept against it. */
@@ -21,6 +22,21 @@ export interface DecoratorConfig {
   widthMm: number;
   /** Must stay at least the pocket depth, or the icon would sit entirely inside its own recess. */
   depthMm: number;
+}
+
+/** Where one ornament ended up on the initial — the cheap half of a decorator, re-applied on every drag without touching a font. */
+export interface DecoratorPlacementConfig {
+  /** In the initial's own local mm space. */
+  offset: Offset2D;
+  /**
+   * How far the ornament is turned, in degrees. Turns about its own center, so
+   * changing it spins the icon in place rather than swinging it off the letter —
+   * and the pocket is cut from the turned silhouette, so the recess follows.
+   *
+   * Unlike the name's angle this is unrestricted: a tilted word stops being
+   * readable, an upside-down star is just a star.
+   */
+  angleDeg: number;
 }
 
 /**
@@ -68,13 +84,15 @@ export interface NameDisplayAssemblyConfig {
   nameAngleDeg: number;
 
   /**
-   * Where each decorator sits on the initial, keyed by decorator id — draggable
-   * in the preview, exactly like the name.
+   * Where each decorator sits and how far it is turned, keyed by decorator id —
+   * dragged into place in the preview, exactly like the name.
    *
    * Keyed rather than positional so removing one ornament can't silently shift
-   * every later one's position onto the wrong icon.
+   * every later one's placement onto the wrong icon. Position and angle are one
+   * record rather than two, so there is only ever one thing to keep in step with
+   * the ornaments themselves.
    */
-  decoratorOffsets: Record<string, Offset2D>;
+  decoratorPlacements: Record<string, DecoratorPlacementConfig>;
 
   /**
    * How deep the name is recessed into the initial's front face. The name

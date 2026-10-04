@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { SliderField } from '../../ui/controls/SliderField';
 import { Icon, IconPicker } from '../../ui/controls/IconPicker';
-import type { DecoratorConfig } from './config';
+import type { DecoratorConfig, DecoratorPlacementConfig } from './config';
 
 interface DecoratorControlsProps {
   className?: string;
   decorators: DecoratorConfig[];
+  /** Where each one sits and how far it is turned, keyed by id — the angle is editable here, the position by dragging. */
+  placements: Record<string, DecoratorPlacementConfig>;
   /** Nothing inlaid may be thinner than this, or it would sit entirely inside its own recess. */
   pocketDepthMm: number;
   /** Ids of ornaments currently dragged clear of the initial, so nothing holds them. */
@@ -13,15 +15,18 @@ interface DecoratorControlsProps {
   onAdd: (iconName: string) => void;
   onUpdate: (id: string, patch: Partial<Omit<DecoratorConfig, 'id'>>) => void;
   onRemove: (id: string) => void;
+  onChangeAngle: (id: string, angleDeg: number) => void;
 }
 
 /**
- * The ornaments on the piece: add one, pick its icon, set how big and how thick
- * it is. Where it sits is set by dragging it in the preview, like the name —
- * there is no control for position here, because a number pair is a worse way to
- * place something than putting it where you want it.
+ * The ornaments on the piece: add one, pick its icon, set how big, how thick and
+ * how turned it is. Where it sits is set by dragging it in the preview, like the
+ * name — there is no control for position here, because a number pair is a worse
+ * way to place something than putting it where you want it. The angle is a
+ * control rather than a gesture for the opposite reason: there is no obvious
+ * drag that means "turn", and a slider is exact.
  */
-export function DecoratorControls({ className = '', decorators, pocketDepthMm, detachedIds, onAdd, onUpdate, onRemove }: DecoratorControlsProps) {
+export function DecoratorControls({ className = '', decorators, placements, pocketDepthMm, detachedIds, onAdd, onUpdate, onRemove, onChangeAngle }: DecoratorControlsProps) {
   // Which icon grid is open: a decorator's id while changing its icon, 'new'
   // while adding one, or null.
   const [picking, setPicking] = useState<string | null>(null);
@@ -73,6 +78,14 @@ export function DecoratorControls({ className = '', decorators, pocketDepthMm, d
             max={15}
             step={0.5}
             hint={`Can't go below the ${pocketDepthMm.toFixed(2)} mm pocket, or the icon would disappear into it.`}
+          />
+          <SliderField
+            label="Angle"
+            value={placements[decorator.id]?.angleDeg ?? 0}
+            onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)}
+            min={-180}
+            max={180}
+            unit="°"
           />
 
           {detachedIds.includes(decorator.id) && (
