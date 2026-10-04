@@ -33,7 +33,18 @@ export function CollapsibleSection({ id, title, defaultOpen = false, summary, cl
 
   return (
     <FocusTarget focusKey={id} className={`flex flex-col ${className}`}>
-      <button type="button" onClick={() => setOpen(id, !open)} aria-expanded={open} className="group flex w-full items-center gap-2 text-left">
+      <button
+        type="button"
+        onClick={() => setOpen(id, !open)}
+        aria-expanded={open}
+        // The whole band from one divider to the next, not just the line the
+        // title sits on: a header is a thing you aim at constantly, and a 20px
+        // strip is a poor target. The padding makes the band, the negative
+        // margin hands the space back to the layout, so nothing moves. Only the
+        // top half of it while the section is open — the bottom half would
+        // otherwise reach down over the section's own first control.
+        className={`group -mt-5 flex w-full items-center gap-2 pt-5 text-left ${open ? '' : '-mb-5 pb-5'}`}
+      >
         <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{title}</span>
         <span className="min-w-0 flex-1 truncate text-right text-xs text-stone-400 dark:text-stone-500">{open ? '' : summary}</span>
         <svg
