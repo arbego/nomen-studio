@@ -7,10 +7,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * The same icon file the geometry is built from (see fonts/registry.ts), loaded
- * here as a webfont so the picker can show the icons themselves rather than a
+ * The same icon files the geometry is built from (see fonts/registry.ts), loaded
+ * here as webfonts so the picker can show the icons themselves rather than a
  * list of their names. Referenced by codepoint, so no ligature support is
- * needed — see icons/catalog.ts.
+ * needed — see icons/catalog.ts, which also names the class each set is drawn
+ * with.
+ *
+ * A browser fetches a face only when something is actually rendered in it, so
+ * the two sets you never open cost nothing.
  */
 @font-face {
   font-family: 'Material Icons';
@@ -19,8 +23,23 @@
   src: url('./assets/icons/material-icons/MaterialIcons-Regular.ttf') format('truetype');
 }
 
-.material-icon {
-  font-family: 'Material Icons';
+@font-face {
+  font-family: 'Phosphor Fill';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/icons/phosphor-fill/Phosphor-Fill.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Noto Emoji';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/icons/noto-emoji/NotoEmoji-Regular.ttf') format('truetype');
+}
+
+.icon-material,
+.icon-phosphor,
+.icon-emoji {
   font-weight: normal;
   font-style: normal;
   line-height: 1;
@@ -31,6 +50,23 @@
   direction: ltr;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.icon-material {
+  font-family: 'Material Icons';
+}
+
+.icon-phosphor {
+  font-family: 'Phosphor Fill';
+}
+
+/*
+ * The system's own color emoji font would otherwise win for these codepoints,
+ * which is not what the preview is for: the picker has to show the glyph that
+ * will actually be extruded.
+ */
+.icon-emoji {
+  font-family: 'Noto Emoji';
 }
 
 html,

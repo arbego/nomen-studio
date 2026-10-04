@@ -21,7 +21,7 @@ npm run dev
 
 Two maintainer scripts regenerate the generated catalogues, and are not part of
 the build: `npm run fonts:catalog` (every Google Fonts family) and
-`npm run icons:catalog` (every icon in the self-hosted Material Icons font).
+`npm run icons:catalog` (every icon in each of the three self-hosted icon fonts).
 
 ## Products
 
@@ -33,12 +33,13 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
   move it or tilt it to an angle, and the pocket follows. Decorators — icons
-  from the full Material Icons set, or further words in a face of their own —
-  can be added alongside it and inlaid the same way, each with its own width,
-  thickness, angle, color and place on the letter. An icon is a glyph, so both
-  kinds go down the one text pipeline. Exports
-  one 3MF holding every piece as a separate, named, colored object, already
-  fitted together — see below for why not an STL.
+  from three libraries (plain Material symbols, solid Phosphor shapes, drawn
+  Noto Emoji line art, star signs and baby things among them), or further words
+  in a face of their own — can be added alongside it and inlaid the same way,
+  each with its own width, thickness, angle, color and place on the letter. An
+  icon is a glyph, so both kinds go down the one text pipeline. Exports one 3MF
+  holding every piece as a separate, named, colored object, already fitted
+  together — see below for why not an STL.
 
 ## Dark mode
 
@@ -75,7 +76,7 @@ owns only its own config, store, geometry, controls panel and scene content.
 ```
 src/
   fonts/      font registry + the generated Google Fonts catalogue
-  icons/      the Material Icons catalogue, and an icon as a buildable solid
+  icons/      the three icon-set catalogues, and an icon as a buildable solid
   project/    saving and opening designs as .json project files
   geometry/   framework-agnostic, millimeter-accurate solid generation
   scene/      the shared 3D preview, its draggable meshes and its ground
@@ -128,15 +129,28 @@ drags the camera's auto-fit away from the design.
   re-extrusion are both simpler and more exact than 3D CSG. Regions use the
   non-zero fill rule with normalized orientation, because script fonts routinely
   overlap adjacent letters and even-odd would cancel the shared area away.
-- **Icons as solids** (`icons/`): an icon is a glyph, so the icon face is
+- **Icons as solids** (`icons/`): an icon is a glyph, so each icon face is
   registered as a font and `buildIconBlock` runs an icon through the same text
   pipeline a letter goes through — outlines, holes, millimeter scaling,
-  extrusion, and the contours a pocket boolean needs. The set is the static
-  Material Icons face (Apache 2.0), self-hosted: it is filled rather than
-  outlined, which is what survives a printer, and static rather than variable,
-  which is what opentype.js reads reliably. Icons are addressed by codepoint
-  from a generated catalogue, since reading ligatures back out of GSUB is far
-  more work for the same answer.
+  extrusion, and the contours a pocket boolean needs. Three sets are
+  self-hosted, all of them static rather than variable faces, which is what
+  opentype.js reads reliably:
+
+  | Set | Face | License | What it is for |
+  | --- | --- | --- | --- |
+  | Material | Material Icons | Apache 2.0 | Plain symbols, and by far the widest vocabulary |
+  | Phosphor | Phosphor Fill | MIT | Solid rounded shapes — the safest to print small |
+  | Emoji | Noto Emoji (monochrome) | OFL 1.1 | Drawn line art: animals, flowers, star signs, baby things |
+
+  An icon id is qualified by set (`emoji:aries`), since the same name is a
+  different drawing in each; a bare name is read as a Material one, which is
+  what every icon id was before there were sets. Icons are addressed by
+  codepoint from generated catalogues, since reading ligatures back out of GSUB
+  is far more work for the same answer — and no face carries its own names, so
+  each catalogue names its glyphs from the list its publisher ships and then
+  drops every entry whose glyph is missing or blank in the font actually in the
+  repo. An emoji ornament starts out wider than the others (`IconSet.defaultWidthMm`):
+  it is drawn rather than filled, and a stroke has to be wide enough to print.
 - **Standing** (`geometry/baseGeometry.ts`): three ways to make a piece stand —
   nothing, a base rail, or a flat cut at the typographic baseline. A product
   applies it only to the pieces that actually stand: on a name display that is

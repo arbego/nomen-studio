@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { presetColor } from '../../ui/presets';
+import { iconDefaultWidthMm } from '../../icons/catalog';
 import type { DecoratorConfig, DecoratorPlacementConfig, IconDecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, TextDecoratorConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
@@ -11,7 +12,7 @@ function defaultLetterGaps(name: string): number[] {
 
 const DEFAULT_NAME = 'Matilde';
 
-/** An icon arrives at roughly the size of a letter of the name. A word has to be wider to be legible at all, so it arrives wider. */
+/** What an icon arrives at when its own set has no opinion — roughly the size of a letter of the name. A word has to be wider to be legible at all, so it arrives wider. */
 export const DEFAULT_DECORATOR_WIDTH_MM = 25;
 export const DEFAULT_TEXT_DECORATOR_WIDTH_MM = 60;
 export const DEFAULT_DECORATOR_DEPTH_MM = 5;
@@ -151,7 +152,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
           ? // In the name's face, so a word added to the piece looks like it
             // belongs to it; changeable right there in the panel if not.
             { kind: 'text', id, text: source.text ?? DEFAULT_DECORATOR_TEXT, fontId: state.nameFontId, widthMm: DEFAULT_TEXT_DECORATOR_WIDTH_MM, depthMm }
-          : { kind: 'icon', id, iconName: source.iconName, widthMm: DEFAULT_DECORATOR_WIDTH_MM, depthMm };
+          : // Its own set's idea of a good starting size: a drawn icon needs
+            // more width than a solid one before its strokes are printable.
+            { kind: 'icon', id, iconName: source.iconName, widthMm: iconDefaultWidthMm(source.iconName), depthMm };
 
       return {
         decorators: [...state.decorators, decorator],

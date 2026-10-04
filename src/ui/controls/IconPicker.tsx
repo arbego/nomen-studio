@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DEFAULT_RESULT_LIMIT, getIcon, ICON_COUNT, iconChar, searchIcons, SUGGESTED_ICONS } from '../../icons/catalog';
+import { DEFAULT_RESULT_LIMIT, getIcon, getIconSet, iconChar, iconCount, ICON_SETS, searchIcons, SUGGESTED_ICONS, type IconSetId } from '../../icons/catalog';
 
 interface IconPickerProps {
   /** The icon currently chosen, highlighted in the grid. Omitted when picking one for the first time. */
@@ -8,17 +8,24 @@ interface IconPickerProps {
   onClose: () => void;
 }
 
-/** One icon, drawn with the icon font rather than named — nobody picks an ornament from a list of words. */
+/** One icon, drawn with its own set's font rather than named — nobody picks an ornament from a list of words. */
 export function Icon({ name, className = '' }: { name: string; className?: string }) {
   return (
-    <span className={`material-icon ${className}`} aria-hidden>
+    <span className={`${getIconSet(getIcon(name).set).className} ${className}`} aria-hidden>
       {iconChar(name)}
     </span>
   );
 }
 
+const TAB_CLASS = 'rounded-md px-2.5 py-1 text-xs transition-colors';
+
 /**
- * A searchable grid of the icon set.
+ * A searchable grid of the icon sets.
+ *
+ * The sets stay separate rather than merging into one list: they are three
+ * drawing styles, and an ornament looks deliberate when its neighbours come from
+ * the same one. "All" is still the default, because the first question is "is
+ * there a cat at all" and only the second is "which cat".
  *
  * Results are capped rather than paged — typing two letters narrows them far
  * faster than scrolling would — but the cap is only a default: "Show all" lifts
@@ -28,19 +35,23 @@ export function Icon({ name, className = '' }: { name: string; className?: strin
 export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [set, setSet] = useState<IconSetId | undefined>(undefined);
 
   const results = useMemo(() => {
-    if (query.trim()) {
-      return searchIcons(query, showAll ? Number.POSITIVE_INFINITY : undefined);
+    const limit = showAll ? Number.POSITIVE_INFINITY : undefined;
+    if (query.trim() || set) {
+      return searchIcons(query, set, limit);
     }
-    // With nothing typed, show a few that suit this kind of piece instead of
-    // whatever happens to sort first alphabetically (which is "10k").
-    return showAll ? searchIcons('', Number.POSITIVE_INFINITY) : SUGGESTED_ICONS.map(getIcon);
-  }, [query, showAll]);
+    // With nothing typed and no set chosen, show a few that suit this kind of
+    // piece instead of whatever happens to sort first alphabetically (which is
+    // "10k"), and which between them show that there is more than one style.
+    return showAll ? searchIcons('', undefined, limit) : SUGGESTED_ICONS.map(getIcon);
+  }, [query, set, showAll]);
 
+  const total = iconCount(set);
   // Whether anything is being held back — the only case where offering to show
   // everything says something the grid does not already show.
-  const capped = !showAll && (query.trim() ? results.length >= DEFAULT_RESULT_LIMIT : true);
+  const capped = !showAll && (query.trim() || set ? results.length >= DEFAULT_RESULT_LIMIT : true);
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-3">
@@ -59,13 +70,36 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={() => setSet(undefined)}
+          aria-pressed={set === undefined}
+          className={`${TAB_CLASS} ${set === undefined ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+        >
+          All
+        </button>
+        {ICON_SETS.map((candidate) => (
+          <button
+            key={candidate.id}
+            type="button"
+            onClick={() => setSet(candidate.id)}
+            aria-pressed={set === candidate.id}
+            title={candidate.blurb}
+            className={`${TAB_CLASS} ${set === candidate.id ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+          >
+            {candidate.label}
+          </button>
+        ))}
+      </div>
+
+      {set && <p className="text-xs text-stone-400 dark:text-stone-500">{getIconSet(set).blurb}</p>}
+
       <div className="flex items-center justify-between gap-2 text-xs text-stone-400 dark:text-stone-500">
-        <span>
-          {showAll && !query.trim() ? `All ${ICON_COUNT} icons` : `${results.length} ${results.length === 1 ? 'icon' : 'icons'}`}
-        </span>
+        <span>{showAll && !query.trim() ? `All ${total} icons` : `${results.length} ${results.length === 1 ? 'icon' : 'icons'}`}</span>
         {capped ? (
           <button type="button" onClick={() => setShowAll(true)} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
-            Show all {ICON_COUNT}
+            Show all {total}
           </button>
         ) : (
           showAll && (
@@ -82,17 +116,17 @@ export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
         <div className="grid max-h-64 grid-cols-6 gap-1 overflow-y-auto">
           {results.map((icon) => (
             <button
-              key={icon.name}
+              key={icon.id}
               type="button"
-              title={icon.name}
+              title={`${icon.name} — ${getIconSet(icon.set).label}`}
               aria-label={icon.name}
-              aria-pressed={icon.name === value}
-              onClick={() => onChange(icon.name)}
+              aria-pressed={icon.id === value}
+              onClick={() => onChange(icon.id)}
               className={`flex aspect-square items-center justify-center rounded-md border text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 ${
-                icon.name === value ? 'border-stone-800 dark:border-stone-200 bg-stone-100 dark:bg-stone-700' : 'border-transparent'
+                icon.id === value ? 'border-stone-800 dark:border-stone-200 bg-stone-100 dark:bg-stone-700' : 'border-transparent'
               }`}
             >
-              <Icon name={icon.name} className="text-[22px]" />
+              <Icon name={icon.id} className="text-[22px]" />
             </button>
           ))}
         </div>

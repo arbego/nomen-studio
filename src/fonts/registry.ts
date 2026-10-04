@@ -57,33 +57,51 @@ export const FONT_REGISTRY: FontDefinition[] = [
 ];
 
 /**
- * The icon face, as a font — which is what it technically is: each icon is one
- * glyph, so the whole text pipeline (parse, outline, extrude, boolean) builds an
- * icon exactly as it builds a letter, for free.
+ * The icon faces, as fonts — which is what they technically are: each icon is
+ * one glyph, so the whole text pipeline (parse, outline, extrude, boolean)
+ * builds an icon exactly as it builds a letter, for free.
  *
- * Deliberately not in FONT_REGISTRY: it is not a face anyone sets a name in, and
- * nothing that offers the user a choice of fonts should offer this one. Icons
- * are chosen from the icon catalogue instead (see icons/catalog.ts). It is still
- * resolvable by id below, so loadFont and its cache need no special case.
+ * Deliberately not in FONT_REGISTRY: these are not faces anyone sets a name in,
+ * and nothing that offers the user a choice of fonts should offer them. Icons
+ * are chosen from the icon catalogues instead (see icons/catalog.ts), which is
+ * also what says which of these each icon belongs to. They are still resolvable
+ * by id below, so loadFont and its cache need no special case.
+ *
+ * `family` is the name the stylesheet declares each one under, so the picker can
+ * draw an icon with the same file its geometry is built from — see index.css.
  */
-export const ICON_FONT: FontDefinition = {
-  id: 'material-icons',
-  label: 'Material Icons',
-  family: 'Material Icons',
-  category: 'icons',
-  url: new URL('../assets/icons/material-icons/MaterialIcons-Regular.ttf', import.meta.url).href,
-};
+export const ICON_FONTS: FontDefinition[] = [
+  {
+    id: 'material-icons',
+    label: 'Material Icons',
+    family: 'Material Icons',
+    category: 'icons',
+    url: new URL('../assets/icons/material-icons/MaterialIcons-Regular.ttf', import.meta.url).href,
+  },
+  {
+    id: 'phosphor-fill',
+    label: 'Phosphor Fill',
+    family: 'Phosphor Fill',
+    category: 'icons',
+    url: new URL('../assets/icons/phosphor-fill/Phosphor-Fill.ttf', import.meta.url).href,
+  },
+  {
+    id: 'noto-emoji',
+    label: 'Noto Emoji',
+    family: 'Noto Emoji',
+    category: 'icons',
+    url: new URL('../assets/icons/noto-emoji/NotoEmoji-Regular.ttf', import.meta.url).href,
+  },
+];
 
 const BY_ID = new Map(FONT_REGISTRY.map((f) => [f.id, f]));
+const ICONS_BY_ID = new Map(ICON_FONTS.map((f) => [f.id, f]));
 
-/** Looks up a font by id — the curated/self-hosted fonts first, then the icon face, falling back to the full generated Google Fonts catalogue (see catalog.ts). */
+/** Looks up a font by id — the curated/self-hosted fonts first, then the icon faces, falling back to the full generated Google Fonts catalogue (see catalog.ts). */
 export function getFontDefinition(id: string): FontDefinition {
-  const curated = BY_ID.get(id);
+  const curated = BY_ID.get(id) ?? ICONS_BY_ID.get(id);
   if (curated) {
     return curated;
-  }
-  if (id === ICON_FONT.id) {
-    return ICON_FONT;
   }
   const catalogEntry = getCatalogEntry(id);
   if (!catalogEntry) {

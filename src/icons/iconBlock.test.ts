@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildIconBlock } from './iconBlock';
-import { getIcon, iconChar, searchIcons, SUGGESTED_ICONS } from './catalog';
+import { getIcon, iconChar, iconCount, iconFontId, ICON_SETS, searchIcons, SUGGESTED_ICONS } from './catalog';
 
 function bounds(block: Awaited<ReturnType<typeof buildIconBlock>>): THREE.Box3 {
   const box = new THREE.Box3();
@@ -46,6 +46,64 @@ describe('icon catalogue', () => {
   });
 });
 
+describe('icon sets', () => {
+  it('reads a bare name as a Material one, which is what every saved icon used to be', () => {
+    // Project files written before there were sets say `favorite`, and have to
+    // keep meaning the icon they meant then.
+    expect(getIcon('favorite').set).toBe('material');
+    expect(getIcon('favorite')).toEqual(getIcon('material:favorite'));
+  });
+
+  it('tells apart the same name in two different sets', () => {
+    // `star` exists in more than one set and is a different drawing in each,
+    // which is the whole reason ids are qualified.
+    expect(getIcon('phosphor:star').codepoint).not.toBe(getIcon('material:star').codepoint);
+    expect(getIcon('phosphor:star').set).toBe('phosphor');
+  });
+
+  it('builds each set from its own font', () => {
+    expect(iconFontId('material:favorite')).toBe('material-icons');
+    expect(iconFontId('phosphor:cat')).toBe('phosphor-fill');
+    expect(iconFontId('emoji:aries')).toBe('noto-emoji');
+  });
+
+  it('searches one set at a time, or all of them at once', () => {
+    for (const set of ICON_SETS) {
+      const results = searchIcons('', set.id, Number.POSITIVE_INFINITY);
+      expect(results.length).toBe(iconCount(set.id));
+      expect(results.every((icon) => icon.set === set.id)).toBe(true);
+    }
+
+    const everything = searchIcons('', undefined, Number.POSITIVE_INFINITY);
+    expect(everything.length).toBe(iconCount());
+    expect(new Set(everything.map((icon) => icon.set)).size).toBe(ICON_SETS.length);
+  });
+
+  it('browses one set at a time, rather than interleaving three styles', () => {
+    const results = searchIcons('', undefined, Number.POSITIVE_INFINITY);
+    const runs = results.map((icon) => icon.set).filter((set, i, all) => set !== all[i - 1]);
+    expect(runs).toEqual([...new Set(runs)]);
+  });
+
+  it('puts what you actually typed first, whichever set it is in', () => {
+    // Material has 50-odd names merely containing "cat" (`category`,
+    // `add_location`); Phosphor has one called exactly that. Grouping by set
+    // before ranking would bury it past the end of the first page.
+    const results = searchIcons('cat', undefined, Number.POSITIVE_INFINITY);
+    expect(results[0].id).toBe('phosphor:cat');
+    expect(results.findIndex((icon) => icon.id === 'emoji:cat')).toBeLessThan(results.findIndex((icon) => icon.id === 'material:category'));
+  });
+
+  it('has the vocabulary a birth-stat letter is actually made of', () => {
+    // The things in the reference piece this feature exists for: a star sign, a
+    // clock, baby feet, a ruler, an animal. If a set stops carrying these there
+    // is no point in it being here.
+    for (const id of ['emoji:aries', 'emoji:alarm_clock', 'emoji:footprints', 'emoji:straight_ruler', 'emoji:cat_face', 'phosphor:cat', 'phosphor:baby', 'phosphor:ruler']) {
+      expect(() => getIcon(id), id).not.toThrow();
+    }
+  });
+});
+
 describe('buildIconBlock', () => {
   it('builds a solid at the width asked for', async () => {
     const block = await buildIconBlock({ id: 'd1', iconName: 'favorite', widthMm: 30, extrudeDepthMm: 4 });
@@ -75,6 +133,20 @@ describe('buildIconBlock', () => {
     const block = await buildIconBlock({ id: 'd1', iconName: 'star_border', widthMm: 30, extrudeDepthMm: 4 });
     const contours = block.lines[0].letters[0].contours;
     expect(contours.some((contour) => contour.holes.length > 0)).toBe(true);
+  }, 30000);
+
+  it.each([
+    ['material:favorite', 'material'],
+    ['phosphor:cat', 'phosphor'],
+    ['emoji:aries', 'emoji'],
+  ])('builds %s from the %s font, at the width asked for', async (iconName) => {
+    // Each set is a different file that has to parse, scale and extrude — the
+    // one thing a second and third library could get wrong on its own.
+    const block = await buildIconBlock({ id: 'd1', iconName, widthMm: 30, extrudeDepthMm: 4 });
+    const box = bounds(block);
+    expect(box.max.x - box.min.x).toBeCloseTo(30, 1);
+    expect(box.max.z - box.min.z).toBeCloseTo(4, 3);
+    expect(block.lines[0].letters[0].contours.length).toBeGreaterThan(0);
   }, 30000);
 
   it('carries contours for every icon, which is what the pocket boolean cuts from', async () => {

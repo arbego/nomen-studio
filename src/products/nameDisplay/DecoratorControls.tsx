@@ -5,6 +5,7 @@ import { TextField } from '../../ui/controls/TextField';
 import { FontPicker } from '../../ui/controls/FontPicker';
 import { Icon, IconPicker } from '../../ui/controls/IconPicker';
 import { getFontDefinition } from '../../fonts/registry';
+import { getIcon, getIconSet } from '../../icons/catalog';
 import { DECORATOR_TEXT_MAX_LENGTH, type DecoratorConfig, type DecoratorPlacementConfig } from './config';
 import type { DecoratorPatch, NewDecorator } from './store';
 
@@ -33,6 +34,20 @@ const MAX_WIDTH_MM = { icon: 120, text: 250 };
 
 const ADD_BUTTON_CLASS =
   'flex-1 rounded-lg border border-dashed border-stone-300 dark:border-stone-600 px-4 py-2 text-sm text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100';
+
+/**
+ * An icon's own name, with the set it came from beside it — ids are qualified
+ * (`emoji:aries`), and showing the raw id would make a name the user never typed
+ * look like part of their design.
+ */
+function IconName({ id }: { id: string }) {
+  const icon = getIcon(id);
+  return (
+    <>
+      {icon.name} <span className="text-xs text-stone-400 dark:text-stone-500">{getIconSet(icon.set).label}</span>
+    </>
+  );
+}
 
 /** Which editor is open on which ornament. Only one at a time: these are full-width grids and lists, and two open at once would bury the piece being edited. */
 type OpenEditor = { id: string; what: 'icon' | 'font' } | null;
@@ -91,12 +106,12 @@ export function DecoratorControls({
               <Icon name="text_fields" className="h-10 shrink-0 text-[22px] leading-10 text-stone-400 dark:text-stone-500" />
             )}
             <span className="min-w-0 flex-1 truncate text-sm text-stone-600 dark:text-stone-400">
-              {decorator.kind === 'icon' ? decorator.iconName : decorator.text || 'Empty'}
+              {decorator.kind === 'icon' ? <IconName id={decorator.iconName} /> : decorator.text || 'Empty'}
             </span>
             <button
               type="button"
               onClick={() => onRemove(decorator.id)}
-              aria-label={`Remove ${decorator.kind === 'icon' ? decorator.iconName : decorator.text}`}
+              aria-label={`Remove ${decorator.kind === 'icon' ? getIcon(decorator.iconName).name : decorator.text}`}
               className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-red-700 dark:hover:text-red-400"
             >
               Remove
