@@ -1,11 +1,33 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { DEFAULT_RESULT_LIMIT, getIcon, getIconSet, iconChar, iconCount, ICON_SETS, searchIcons, SUGGESTED_ICONS, type IconSetId } from '../../icons/catalog';
+
+/** How the grid is currently being browsed: what has been typed, which set's tab is on, and whether the result cap has been lifted. */
+export interface IconBrowse {
+  query: string;
+  /** undefined is the "All" tab. */
+  set?: IconSetId;
+  showAll: boolean;
+}
+
+/** A fresh browse — what a picker opens on. */
+export const NEW_ICON_BROWSE: IconBrowse = { query: '', showAll: false };
 
 interface IconPickerProps {
   /** The icon currently chosen, highlighted in the grid. Omitted when picking one for the first time. */
   value?: string;
   onChange: (iconName: string) => void;
   onClose: () => void;
+  /**
+   * Where the browsing is up to, and how to update it.
+   *
+   * Held by the caller rather than in here because a picker can move in the
+   * middle of being used: picking the first icon for a new ornament turns the
+   * grid into that ornament's own, which is a different place in the tree and so
+   * a different React instance. Held in here, the search and the chosen tab
+   * would be thrown away at exactly the moment someone is browsing with them.
+   */
+  browse: IconBrowse;
+  onBrowse: (browse: IconBrowse) => void;
 }
 
 /** One icon, drawn with its own set's font rather than named — nobody picks an ornament from a list of words. */
@@ -37,10 +59,11 @@ const TAB_CLASS = 'rounded-md px-2.5 py-1 text-xs transition-colors';
  * instead of four — and the search and the chosen set survive, which is what
  * makes clicking through a set bearable at all.
  */
-export function IconPicker({ value, onChange, onClose }: IconPickerProps) {
-  const [query, setQuery] = useState('');
-  const [showAll, setShowAll] = useState(false);
-  const [set, setSet] = useState<IconSetId | undefined>(undefined);
+export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconPickerProps) {
+  const { query, set, showAll } = browse;
+  const setQuery = (next: string) => onBrowse({ ...browse, query: next });
+  const setShowAll = (next: boolean) => onBrowse({ ...browse, showAll: next });
+  const setSet = (next: IconSetId | undefined) => onBrowse({ ...browse, set: next });
 
   const results = useMemo(() => {
     const limit = showAll ? Number.POSITIVE_INFINITY : undefined;
