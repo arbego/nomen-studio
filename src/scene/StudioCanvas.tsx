@@ -7,6 +7,7 @@ import { fitCameraToBoxFrontal } from './cameraFit';
 import { GroundCenter } from './GroundCenter';
 import { GroundGrid } from './GroundGrid';
 import { ScaleReference } from './ScaleReference';
+import { StudioLights } from './StudioLights';
 import { useThemeStore } from '../ui/theme';
 
 interface StudioCanvasProps {
@@ -27,12 +28,7 @@ interface StudioCanvasProps {
 const HOME_CAMERA_POSITION: [number, number, number] = [0, 60, 220];
 const HOME_TARGET: [number, number, number] = [0, 0, 0];
 
-/**
- * The studio's backdrop, per theme. Only the room changes: the lights are the
- * same in both, because their job is to show what a filament will actually look
- * like, and a design that shifts colour when the UI theme does would be lying
- * about the thing being printed.
- */
+/** The studio's backdrop, per theme. Only the room changes — see StudioLights for why the light does not. */
 const BACKGROUND = { light: '#f3f1ec', dark: '#1b1917' } as const;
 
 /** The ground shadow needs less weight on a dark floor, where it has far less room to darken into before it disappears. */
@@ -92,9 +88,7 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
     <div className="relative h-full w-full">
       <Canvas shadows camera={{ position: [0, 60, 220], fov: 35, near: 1, far: 2000 }} gl={{ antialias: true }}>
         <color attach="background" args={[BACKGROUND[theme]]} />
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[80, 140, 120]} intensity={1.1} castShadow />
-        <directionalLight position={[-100, 60, -80]} intensity={0.35} />
+        <StudioLights />
 
         {/* The camera is framed the moment the design is first centered, so the
             initial load looks exactly like pressing the reset button. */}
