@@ -35,8 +35,8 @@ export function NameDisplayControls() {
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4">
-          <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="M" />
-          <FontPicker label="Initial font" value={config.initialFontId} onChange={(initialFontId) => onChange({ initialFontId })} previewText={config.initial || 'M'} />
+          <TextField label="Initial" value={config.initial} onChange={(initial) => onChange({ initial: initial.slice(0, 1) })} maxLength={1} placeholder="L" />
+          <FontPicker label="Initial font" value={config.initialFontId} onChange={(initialFontId) => onChange({ initialFontId })} previewText={config.initial || 'L'} />
           <SliderField label="Height" value={config.initialHeightMm} onChange={(initialHeightMm) => onChange({ initialHeightMm })} min={60} max={250} />
           <SliderField
             label="Thickness"
@@ -51,8 +51,8 @@ export function NameDisplayControls() {
         </div>
 
         <div className={`flex flex-col gap-4 ${SECTION}`}>
-          <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Matilde" />
-          <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Matilde'} />
+          <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
+          <FontPicker label="Name font" value={config.nameFontId} onChange={(nameFontId) => onChange({ nameFontId })} previewText={config.name || 'Liam'} />
           <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
           <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
           <SliderField

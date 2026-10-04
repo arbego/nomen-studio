@@ -9,9 +9,18 @@ import { getCatalogEntry } from './catalog';
 // generated catalogue (see catalog.ts) — getFontDefinition below falls back to it.
 export const FONT_REGISTRY: FontDefinition[] = [
   {
-    // The one display face among the curated set: a heavy slab serif whose flat
-    // feet stand on their own, which is what the name display's background
-    // initial wants and no script face can give.
+    // What the name display opens on: a soft, rounded display face with enough
+    // weight to carry an inlay, which is the other thing a background initial
+    // can be — Alfa Slab One below is the same job done bluntly.
+    id: 'calistoga',
+    label: 'Calistoga',
+    family: 'Calistoga',
+    category: 'display',
+    url: new URL('../assets/fonts/calistoga/Calistoga-Regular.ttf', import.meta.url).href,
+  },
+  {
+    // A display face whose flat feet stand on their own, which is what a
+    // background initial wants and no script face can give.
     id: 'alfa-slab-one',
     label: 'Alfa Slab One',
     family: 'Alfa Slab One',

@@ -10,8 +10,6 @@ function defaultLetterGaps(name: string): number[] {
   return new Array(Math.max(name.length - 1, 0)).fill(0);
 }
 
-const DEFAULT_NAME = 'Matilde';
-
 /** What an icon arrives at when its own set has no opinion — roughly the size of a letter of the name. A word has to be wider to be legible at all, so it arrives wider. */
 export const DEFAULT_DECORATOR_WIDTH_MM = 25;
 export const DEFAULT_TEXT_DECORATOR_WIDTH_MM = 60;
@@ -40,30 +38,58 @@ function newDecoratorId(): string {
   return `decorator-${nextDecoratorId}`;
 }
 
-/** Also the shape a loaded project file is read against — see project.ts. */
+/**
+ * Moves the counter past every id in a design that was not minted in this
+ * session — otherwise the next ornament added could be handed an id one of them
+ * is already using, and the two would share a placement and a color.
+ *
+ * Both the design the studio opens on and any design opened from a file arrive
+ * with ids of their own, so both go through here.
+ */
+function reserveDecoratorIds(decorators: readonly DecoratorConfig[]): void {
+  for (const decorator of decorators) {
+    const minted = /^decorator-(\d+)$/.exec(decorator.id);
+    if (minted) {
+      nextDecoratorId = Math.max(nextDecoratorId, Number(minted[1]));
+    }
+  }
+}
+
+/**
+ * The design the studio opens on: a finished piece rather than a bare monogram,
+ * so that what this product can do — the name tilted across the initial and
+ * inlaid into it, an ornament dropped in beside it in a third filament — is on
+ * screen before anyone has touched a slider.
+ *
+ * Laid out in the studio and saved back out of it, which is why the positions
+ * are the awkward numbers they are (rounded to 0.01mm, far below anything a
+ * nozzle can resolve). It holds to the same invariants the store maintains: one
+ * gap slot per pair of adjacent letters of the name, and one placement and one
+ * color per ornament.
+ *
+ * Also the shape a loaded project file is read against — see project.ts.
+ */
 export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
-  initial: 'M',
-  initialFontId: 'alfa-slab-one',
-  initialHeightMm: 120,
+  initial: 'L',
+  initialFontId: 'calistoga',
+  initialHeightMm: 140,
   initialDepthMm: 12,
-  initialColor: presetColor('altrosa'),
+  initialColor: presetColor('sky'),
 
-  name: DEFAULT_NAME,
+  name: 'Liam',
   nameFontId: 'dancing-script',
-  nameWidthMm: 150,
-  nameDepthMm: 5,
+  nameWidthMm: 117,
+  nameDepthMm: 3,
   nameColor: presetColor('white'),
-  // Centered horizontally (both blocks are x-centered on their own origin) and
-  // sitting across the initial's lower middle, as these displays are usually laid out.
-  nameOffset: { x: 0, y: 35 },
-  nameLetterGapsMm: defaultLetterGaps(DEFAULT_NAME),
-  nameAngleDeg: 0,
+  nameOffset: { x: -2.37, y: 9.77 },
+  nameLetterGapsMm: [0, 0, 0],
+  nameAngleDeg: 8,
 
-  decorators: [],
-  decoratorPlacements: {},
-  decoratorColors: {},
+  decorators: [{ kind: 'icon', id: 'decorator-1', iconName: 'material:rocket_launch', widthMm: 21, depthMm: 3 }],
+  decoratorPlacements: { 'decorator-1': { offset: { x: -6.39, y: 37.73 }, angleDeg: 0 } },
+  decoratorColors: { 'decorator-1': presetColor('white') },
 
-  pocketDepthMm: 2.5,
+  pocketDepthMm: 1,
   pocketClearanceMm: 0.25,
 
   standMode: 'none',
@@ -74,6 +100,8 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   railSocketDepthMm: 5,
   trimOffsetMm: 0,
 };
+
+reserveDecoratorIds(DEFAULT_NAME_DISPLAY_CONFIG.decorators);
 
 /**
  * An edit to one ornament.
@@ -198,16 +226,7 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   setDecoratorAngle: (id, angleDeg) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
-    // Ids from the file share a namespace with the ones this session hands out,
-    // so the counter is moved past them — otherwise the next ornament added
-    // could be given an id a loaded one is already using, and the two would
-    // share a placement.
-    for (const decorator of config.decorators) {
-      const loaded = /^decorator-(\d+)$/.exec(decorator.id);
-      if (loaded) {
-        nextDecoratorId = Math.max(nextDecoratorId, Number(loaded[1]));
-      }
-    }
+    reserveDecoratorIds(config.decorators);
     set(config);
   },
   reset: () => set(DEFAULT_NAME_DISPLAY_CONFIG),
