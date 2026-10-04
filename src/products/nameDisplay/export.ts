@@ -1,5 +1,5 @@
 import { threeMfBinary, type ThreeMfObject } from '../../export/threeMfExport';
-import { initialPrintGeometry, placedNameGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
+import { initialPrintGeometry, placedDecoratorGeometry, placedNameGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import type { NameDisplayConfig } from './config';
 
 /**
@@ -11,6 +11,13 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
   return [
     { name: `${config.initial} (initial)`, color: config.initialColor, geometry: initialPrintGeometry(blocks, assembly, config) },
     { name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) },
+    // Each ornament prints as its own piece, dropping into its own recess, so
+    // each is its own part rather than being merged into the name.
+    ...blocks.decorators.map((decorator) => ({
+      name: `${decorator.block.label} (decorator)`,
+      color: config.nameColor,
+      geometry: placedDecoratorGeometry(decorator, assembly),
+    })),
   ];
 }
 

@@ -4,6 +4,7 @@ import { FontPicker } from '../../ui/controls/FontPicker';
 import { SliderField } from '../../ui/controls/SliderField';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { StandControls } from '../../ui/controls/StandControls';
+import { DecoratorControls } from './DecoratorControls';
 import { ExportButtons } from './ExportButtons';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
@@ -16,6 +17,9 @@ export function NameDisplayControls() {
   const onChange = useNameDisplayStore((s) => s.setConfig);
   const setStandMode = useNameDisplayStore((s) => s.setStandMode);
   const resetNameLetterGaps = useNameDisplayStore((s) => s.resetNameLetterGaps);
+  const addDecorator = useNameDisplayStore((s) => s.addDecorator);
+  const updateDecorator = useNameDisplayStore((s) => s.updateDecorator);
+  const removeDecorator = useNameDisplayStore((s) => s.removeDecorator);
   const { blocks, assembly, loading, error } = useNameDisplayGeometry();
 
   const hasCustomGaps = config.nameLetterGapsMm.some((gap) => gap !== 0);
@@ -24,6 +28,7 @@ export function NameDisplayControls() {
   // Computed once in the provider's assembly rather than re-running the
   // Clipper intersection on every render of this panel.
   const detached = assembly ? !assembly.overlapsInitial : false;
+  const detachedDecoratorIds = assembly ? assembly.decorators.filter((decorator) => !decorator.overlapsInitial).map((decorator) => decorator.id) : [];
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -96,6 +101,16 @@ export function NameDisplayControls() {
             hint="How much larger the pocket is cut than the name, so the printed pieces actually go together."
           />
         </div>
+
+        <DecoratorControls
+          className={SECTION}
+          decorators={config.decorators}
+          pocketDepthMm={pocketDepth}
+          detachedIds={detachedDecoratorIds}
+          onAdd={addDecorator}
+          onUpdate={updateDecorator}
+          onRemove={removeDecorator}
+        />
 
         <StandControls
           className={SECTION}

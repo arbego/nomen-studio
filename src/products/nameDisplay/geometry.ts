@@ -7,7 +7,10 @@ import { combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../..
 import { growRegion, intersectRegions, regionFromContours, regionIsEmpty, regionToShapes, subtractRegions, type Region } from '../../geometry/clipper';
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
 import { degToRad, type Placement2D } from '../../geometry/placement';
+import { buildIconBlock } from '../../icons/iconBlock';
 import type { NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
+
+const ORIGIN: Offset2D = { x: 0, y: 0 };
 
 /**
  * A pocket can never take the whole thickness of the initial — that would cut
@@ -27,10 +30,25 @@ const MAX_POCKET_FRACTION = 0.6;
  */
 const SLAB_OVERLAP_MM = 0.01;
 
-/** The two pieces, as built from fonts — the expensive, async part. */
+/** One ornament, built from the icon font — paired with the config id it was built for. */
+export interface DecoratorBlock {
+  id: string;
+  block: TextBlock;
+}
+
+/** The pieces, as built from fonts — the expensive, async part. */
 export interface NameDisplayBlocks {
   initial: TextBlock;
   name: TextBlock;
+  decorators: DecoratorBlock[];
+}
+
+/** Where one decorator ended up, and whether the initial is actually there to hold it. */
+export interface DecoratorPlacement {
+  id: string;
+  placement: Placement2D;
+  /** A decorator dragged clear of the initial cuts no pocket and has nothing holding it. */
+  overlapsInitial: boolean;
 }
 
 /** Everything derived from those blocks by cheap, synchronous work: the pocket, and where the name sits in it. */
@@ -45,6 +63,8 @@ export interface NameDisplayAssembly {
   overlapsInitial: boolean;
   /** The exact placement the pocket was cut from — the preview applies this same transform, so the two can't drift apart. */
   namePlacement: Placement2D;
+  /** Where each ornament sits, in the same order as the blocks' decorators. */
+  decorators: DecoratorPlacement[];
 }
 
 /** The pocket depth actually used, after capping (see MAX_POCKET_FRACTION). */
@@ -91,6 +111,11 @@ export function namePlacement(blocks: NameDisplayBlocks, config: NameDisplayConf
   };
 }
 
+/** Where an ornament sits. A plain shift: a decorator is moved, not turned. */
+export function decoratorPlacement(id: string, config: NameDisplayAssemblyConfig): Placement2D {
+  return { translate: config.decoratorOffsets[id] ?? ORIGIN };
+}
+
 /**
  * Builds both pieces from their fonts. Everything that does *not* change the
  * glyphs themselves — where the name sits, its letter gaps, the pocket, the
@@ -100,7 +125,7 @@ export function namePlacement(blocks: NameDisplayBlocks, config: NameDisplayConf
  * here.)
  */
 export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): Promise<NameDisplayBlocks> {
-  const [rawInitial, rawName] = await Promise.all([
+  const [rawInitial, rawName, decorators] = await Promise.all([
     buildTextBlock({
       id: 'initial',
       label: config.initial,
@@ -117,15 +142,25 @@ export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): P
       fit: { mode: 'width', mm: config.nameWidthMm },
       extrudeDepthMm: config.nameDepthMm,
     }),
+    // One icon font for all of them, so this is one parse however many
+    // ornaments are on the piece — loadFont caches by id.
+    Promise.all(
+      config.decorators.map(async (decorator) => ({
+        id: decorator.id,
+        block: await buildIconBlock({ id: decorator.id, iconName: decorator.iconName, widthMm: decorator.widthMm, extrudeDepthMm: decorator.depthMm }),
+      })),
+    ),
   ]);
 
   // Standing applies to the initial alone. The initial is the piece that stands
-  // on the table; the name is held by the pocket it drops into, so it needs no
-  // foot of its own — and cutting its descenders flat, or hanging a rail off a
-  // piece that is suspended halfway up another one, would only disfigure it.
+  // on the table; the name and the ornaments are held by the pockets they drop
+  // into, so they need no foot of their own — and cutting their descenders
+  // flat, or hanging a rail off a piece that is suspended halfway up another
+  // one, would only disfigure them.
   return {
     initial: applyTrim(rawInitial, config, config.initialDepthMm),
     name: rawName,
+    decorators,
   };
 }
 
@@ -154,6 +189,11 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   const placement = namePlacement(blocks, config);
   const nameRegion = blockRegion(blocks.name, [config.nameLetterGapsMm], placement);
 
+  // Every inlaid piece cuts the same recess, at the same depth: they all seat on
+  // the one pocket floor, so one subtraction covers the lot.
+  const decoratorRegions = blocks.decorators.map((decorator) => blockRegion(decorator.block, [], decoratorPlacement(decorator.id, config)));
+  const inlayRegion: Region = [...nameRegion, ...decoratorRegions.flat()];
+
   const parts: THREE.BufferGeometry[] = [];
   const backSlab = extrudeMmShapes(regionToShapes(face), backDepth);
   if (backSlab) {
@@ -161,7 +201,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   }
 
   if (pocketDepth > 0) {
-    const frontShapes = regionToShapes(subtractRegions(face, growRegion(nameRegion, config.pocketClearanceMm)));
+    const frontShapes = regionToShapes(subtractRegions(face, growRegion(inlayRegion, config.pocketClearanceMm)));
     // Started just below the back slab's top so the two overlap; the pocket
     // floor still lands exactly at backDepth, since that is the back slab's top.
     const frontSlab = extrudeMmShapes(frontShapes, pocketDepth + SLAB_OVERLAP_MM);
@@ -177,6 +217,11 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     nameZMm: backDepth,
     overlapsInitial: !regionIsEmpty(intersectRegions(face, nameRegion)),
     namePlacement: placement,
+    decorators: blocks.decorators.map((decorator, i) => ({
+      id: decorator.id,
+      placement: decoratorPlacement(decorator.id, config),
+      overlapsInitial: !regionIsEmpty(intersectRegions(face, decoratorRegions[i])),
+    })),
   };
 }
 
@@ -234,14 +279,30 @@ export function namePrintGeometry(blocks: NameDisplayBlocks, config: NameDisplay
  * recess that was made for it.
  */
 export function placedNameGeometry(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): THREE.BufferGeometry {
-  const { pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 }, rotationRad = 0 } = assembly.namePlacement;
+  return placeInPocket(namePrintGeometry(blocks, config), assembly.namePlacement, assembly.nameZMm);
+}
+
+/**
+ * One ornament's printable solid, moved into the initial's frame and dropped to
+ * the pocket floor — the same seating the name gets, from the same placement the
+ * recess was cut from.
+ */
+export function placedDecoratorGeometry(decorator: DecoratorBlock, assembly: NameDisplayAssembly): THREE.BufferGeometry {
+  const placement = assembly.decorators.find((d) => d.id === decorator.id)?.placement ?? {};
+  const parts = decorator.block.lines.flatMap((line) => line.letters.map((letter) => letter.geometry));
+  return placeInPocket(combineGeometries(parts), placement, assembly.nameZMm);
+}
+
+/** Moves a piece from its own frame into the initial's and seats it at the pocket floor. */
+function placeInPocket(geometry: THREE.BufferGeometry, placement: Placement2D, zMm: number): THREE.BufferGeometry {
+  const { pivot = ORIGIN, translate = ORIGIN, rotationRad = 0 } = placement;
   // Reads, right to left, as placePoint does: to the pivot, turn, then back out
   // to the pivot plus the offset — with the pocket floor folded into that last
   // step, since a turn about Z leaves z alone.
   const matrix = new THREE.Matrix4()
-    .makeTranslation(pivot.x + translate.x, pivot.y + translate.y, assembly.nameZMm)
+    .makeTranslation(pivot.x + translate.x, pivot.y + translate.y, zMm)
     .multiply(new THREE.Matrix4().makeRotationZ(rotationRad))
     .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, 0));
-  return namePrintGeometry(blocks, config).applyMatrix4(matrix);
+  return geometry.applyMatrix4(matrix);
 }
 

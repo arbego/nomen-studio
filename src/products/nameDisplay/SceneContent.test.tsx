@@ -22,6 +22,8 @@ const config: NameDisplayConfig = {
   nameOffset: { x: 0, y: 35 },
   nameLetterGapsMm: [0, 0],
   nameAngleDeg: 0,
+  decorators: [],
+  decoratorOffsets: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',
@@ -36,12 +38,13 @@ async function renderScene(
   overrides: Partial<NameDisplayConfig> = {},
   onNameOffsetCommit: (offset: { x: number; y: number }) => void = () => {},
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
+  onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void = () => {},
 ) {
   const merged = { ...config, ...overrides };
   const blocks = await buildNameDisplayBlocks(merged);
   const assembly = assembleNameDisplay(blocks, merged);
   const renderer = await ReactThreeTestRenderer.create(
-    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} />,
+    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} />,
   );
   return { renderer, blocks, assembly, config: merged };
 }
@@ -177,6 +180,43 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     const committed = onNameOffsetCommit.mock.calls[0][0];
     expect(committed.x).toBeCloseTo(config.nameOffset.x, 1);
     expect(committed.y).toBeCloseTo(config.nameOffset.y + 10, 1);
+  }, 30000);
+
+  it('renders a decorator and commits its drag as an absolute offset', async () => {
+    const onDecoratorOffsetCommit = vi.fn();
+    const { renderer } = await renderScene(
+      { decorators: [{ id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }], decoratorOffsets: { d1: { x: 20, y: 90 } } },
+      () => {},
+      () => {},
+      onDecoratorOffsetCommit,
+    );
+
+    // The name's anchor group plus the decorator's own TextBlockMesh group.
+    const groups = root(renderer).children.filter((c) => c.type === 'Group');
+    expect(groups).toHaveLength(2);
+
+    // Unlike the name, a decorator needs no anchor group around it — it is
+    // shifted, never turned — so this is TextBlockMesh's own group.
+    const decoratorGroup = groups[1];
+    const object = decoratorGroup.instance as unknown as THREE.Object3D;
+    object.updateMatrixWorld(true);
+    // Seated on the pocket floor, like the name, and at the offset it was given.
+    const world = object.getWorldPosition(new THREE.Vector3());
+    expect(world.x).toBeCloseTo(20, 4);
+    expect(world.y).toBeCloseTo(90, 4);
+    expect(world.z).toBeCloseTo(12 - 2.5, 4);
+
+    const icon = () => decoratorGroup.children.filter((c) => c.type === 'Mesh')[0];
+    await act(async () => (icon().props.onPointerDown as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, 0, 0)));
+    await act(async () => (icon().props.onPointerMove as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, -15, 5)));
+    await act(async () => (icon().props.onPointerUp as (e: ThreeEvent<PointerEvent>) => void)(pointerEventAt(object, -15, 5)));
+
+    expect(onDecoratorOffsetCommit).toHaveBeenCalledTimes(1);
+    const [id, offset] = onDecoratorOffsetCommit.mock.calls[0];
+    expect(id).toBe('d1');
+    // Added to where it already was, not measured from the origin.
+    expect(offset.x).toBeCloseTo(5, 1);
+    expect(offset.y).toBeCloseTo(95, 1);
   }, 30000);
 
   it('commits a letter drag as a gap on the name', async () => {

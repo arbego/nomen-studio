@@ -17,6 +17,8 @@ const config: NameDisplayConfig = {
   nameOffset: { x: 0, y: 45 },
   nameLetterGapsMm: [],
   nameAngleDeg: 0,
+  decorators: [],
+  decoratorOffsets: {},
   pocketDepthMm: 2.5,
   pocketClearanceMm: 0.25,
   standMode: 'none',

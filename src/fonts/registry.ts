@@ -56,13 +56,34 @@ export const FONT_REGISTRY: FontDefinition[] = [
   },
 ];
 
+/**
+ * The icon face, as a font — which is what it technically is: each icon is one
+ * glyph, so the whole text pipeline (parse, outline, extrude, boolean) builds an
+ * icon exactly as it builds a letter, for free.
+ *
+ * Deliberately not in FONT_REGISTRY: it is not a face anyone sets a name in, and
+ * nothing that offers the user a choice of fonts should offer this one. Icons
+ * are chosen from the icon catalogue instead (see icons/catalog.ts). It is still
+ * resolvable by id below, so loadFont and its cache need no special case.
+ */
+export const ICON_FONT: FontDefinition = {
+  id: 'material-icons',
+  label: 'Material Icons',
+  family: 'Material Icons',
+  category: 'icons',
+  url: new URL('../assets/icons/material-icons/MaterialIcons-Regular.ttf', import.meta.url).href,
+};
+
 const BY_ID = new Map(FONT_REGISTRY.map((f) => [f.id, f]));
 
-/** Looks up a font by id — the 5 curated/self-hosted fonts first, falling back to the full generated Google Fonts catalogue (see catalog.ts). */
+/** Looks up a font by id — the curated/self-hosted fonts first, then the icon face, falling back to the full generated Google Fonts catalogue (see catalog.ts). */
 export function getFontDefinition(id: string): FontDefinition {
   const curated = BY_ID.get(id);
   if (curated) {
     return curated;
+  }
+  if (id === ICON_FONT.id) {
+    return ICON_FONT;
   }
   const catalogEntry = getCatalogEntry(id);
   if (!catalogEntry) {

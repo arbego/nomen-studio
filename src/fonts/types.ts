@@ -1,5 +1,5 @@
-/** Google Fonts' own family categories. */
-export type FontCategory = 'sans-serif' | 'serif' | 'display' | 'handwriting' | 'monospace';
+/** Google Fonts' own family categories, plus `icons` for the icon face — which is a font only in the technical sense, and is never offered as one to set text in. */
+export type FontCategory = 'sans-serif' | 'serif' | 'display' | 'handwriting' | 'monospace' | 'icons';
 
 export interface FontDefinition {
   id: string;

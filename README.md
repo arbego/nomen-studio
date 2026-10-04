@@ -19,6 +19,10 @@ npm run dev
 - `npm test` — run the test suite (geometry pipeline + scene wiring)
 - `npm run lint` — lint the codebase
 
+Two maintainer scripts regenerate the generated catalogues, and are not part of
+the build: `npm run fonts:catalog` (every Google Fonts family) and
+`npm run icons:catalog` (every icon in the self-hosted Material Icons font).
+
 ## Products
 
 - **Cake Topper** — a name on picks, to stand in a cake. One to three lines of
@@ -28,9 +32,11 @@ npm run dev
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
-  move it or tilt it to an angle, and the pocket follows. Exports one 3MF
-  holding both pieces as separate, named, colored objects, already fitted
-  together — see below for why not an STL.
+  move it or tilt it to an angle, and the pocket follows. Decorators — icons
+  from the full Material Icons set — can be added alongside it and inlaid the
+  same way, each with its own width, thickness and place on the letter. Exports
+  one 3MF holding every piece as a separate, named, colored object, already
+  fitted together — see below for why not an STL.
 
 ## Architecture
 
@@ -40,9 +46,10 @@ owns only its own config, store, geometry, controls panel and scene content.
 ```
 src/
   fonts/      font registry + the generated Google Fonts catalogue
+  icons/      the Material Icons catalogue, and an icon as a buildable solid
   geometry/   framework-agnostic, millimeter-accurate solid generation
   scene/      the shared 3D preview, its draggable meshes and its ground
-  export/     STL and 3MF bytes
+  export/     3MF bytes (and the minimal zip writer a 3MF needs)
   ui/         the shell, the product picker, and the generic controls
   products/
     registry.ts     every product, in picker order
@@ -90,6 +97,15 @@ drags the camera's auto-fit away from the design.
   re-extrusion are both simpler and more exact than 3D CSG. Regions use the
   non-zero fill rule with normalized orientation, because script fonts routinely
   overlap adjacent letters and even-odd would cancel the shared area away.
+- **Icons as solids** (`icons/`): an icon is a glyph, so the icon face is
+  registered as a font and `buildIconBlock` runs an icon through the same text
+  pipeline a letter goes through — outlines, holes, millimeter scaling,
+  extrusion, and the contours a pocket boolean needs. The set is the static
+  Material Icons face (Apache 2.0), self-hosted: it is filled rather than
+  outlined, which is what survives a printer, and static rather than variable,
+  which is what opentype.js reads reliably. Icons are addressed by codepoint
+  from a generated catalogue, since reading ligatures back out of GSUB is far
+  more work for the same answer.
 - **Standing** (`geometry/baseGeometry.ts`): three ways to make a piece stand —
   nothing, a base rail, or a flat cut at the typographic baseline. A product
   applies it only to the pieces that actually stand: on a name display that is

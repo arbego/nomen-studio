@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fonts:catalog": "node scripts/generate-font-catalog.mjs"
+    "fonts:catalog": "node scripts/generate-font-catalog.mjs",
+    "icons:catalog": "node scripts/generate-icon-catalog.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

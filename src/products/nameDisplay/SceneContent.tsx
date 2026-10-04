@@ -14,6 +14,7 @@ interface NameDisplaySceneProps {
   config: NameDisplayConfig;
   onNameOffsetCommit: (offset: { x: number; y: number }) => void;
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void;
+  onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void;
 }
 
 /**
@@ -23,7 +24,7 @@ interface NameDisplaySceneProps {
  * since the recess makes it a single boolean result and not a row of glyphs; it
  * is also not draggable — the name moves *onto* it, not the other way round.
  */
-export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit, onNameLetterGapCommit }: NameDisplaySceneProps) {
+export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit, onNameLetterGapCommit, onDecoratorOffsetCommit }: NameDisplaySceneProps) {
   // Memoized because it allocates: React Three Fiber never disposes a geometry
   // handed to it via the `geometry` prop, so rebuilding it on every render
   // (a slider drag is dozens per second) would leak GPU buffers. Only the
@@ -65,6 +66,25 @@ export function NameDisplayScene({ blocks, assembly, config, onNameOffsetCommit,
           }}
         />
       </group>
+
+      {/* Each ornament seats on the same pocket floor as the name, and drags the
+          same way — a one-glyph block, so TextBlockMesh's "drag the first letter
+          to move the line" gesture is exactly "drag the icon around". */}
+      {blocks.decorators.map((decorator) => {
+        const offset = config.decoratorOffsets[decorator.id] ?? { x: 0, y: 0 };
+        return (
+          <TextBlockMesh
+            key={decorator.id}
+            block={decorator.block}
+            color={config.nameColor}
+            position={[offset.x, offset.y, assembly.nameZMm]}
+            letterGapsMm={[[]]}
+            onLetterGapCommit={() => {}}
+            lineOffsets={[{ x: 0, y: 0 }]}
+            onLineOffsetCommit={(_lineIndex, dragged) => onDecoratorOffsetCommit(decorator.id, { x: offset.x + dragged.x, y: offset.y + dragged.y })}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -74,6 +94,7 @@ export function NameDisplaySceneContent() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
+  const setDecoratorOffset = useNameDisplayStore((s) => s.setDecoratorOffset);
   const { blocks, assembly } = useNameDisplayGeometry();
 
   if (!blocks || !assembly) {
@@ -81,6 +102,13 @@ export function NameDisplaySceneContent() {
   }
 
   return (
-    <NameDisplayScene blocks={blocks} assembly={assembly} config={config} onNameOffsetCommit={setNameOffset} onNameLetterGapCommit={setNameLetterGap} />
+    <NameDisplayScene
+      blocks={blocks}
+      assembly={assembly}
+      config={config}
+      onNameOffsetCommit={setNameOffset}
+      onNameLetterGapCommit={setNameLetterGap}
+      onDecoratorOffsetCommit={setDecoratorOffset}
+    />
   );
 }

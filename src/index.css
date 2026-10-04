@@ -1,5 +1,32 @@
 @import 'tailwindcss';
 
+/*
+ * The same icon file the geometry is built from (see fonts/registry.ts), loaded
+ * here as a webfont so the picker can show the icons themselves rather than a
+ * list of their names. Referenced by codepoint, so no ligature support is
+ * needed — see icons/catalog.ts.
+ */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/icons/material-icons/MaterialIcons-Regular.ttf') format('truetype');
+}
+
+.material-icon {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 html,
 body,
 #root {
