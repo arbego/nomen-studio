@@ -83,11 +83,16 @@ function unzip(data: Uint8Array): Map<string, string> {
   return files;
 }
 
-function modelOf(data: Uint8Array): string {
+function partsOf(data: Uint8Array): { model: string; settings: string } {
   const files = unzip(data);
-  // The three parts an OPC package needs before a reader will even look at the model.
-  expect([...files.keys()]).toEqual(['[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model']);
-  return files.get('3D/3dmodel.model')!;
+  // The parts an OPC package needs before a reader will look at the model, plus
+  // the slicer settings that name the pieces.
+  expect([...files.keys()]).toEqual(['[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model', 'Metadata/model_settings.config']);
+  return { model: files.get('3D/3dmodel.model')!, settings: files.get('Metadata/model_settings.config')! };
+}
+
+function modelOf(data: Uint8Array): string {
+  return partsOf(data).model;
 }
 
 describe('placing the name for export', () => {
@@ -137,22 +142,54 @@ describe('placing the name for export', () => {
 });
 
 describe('3mf export', () => {
-  it('keeps the initial and the name as two separate, named, colored objects', async () => {
+  it('keeps the initial and the name as two separate, named, colored meshes', async () => {
     // The reason this is a 3mf and not an stl: an stl is one anonymous bag of
     // triangles, and splitting it in a slicer splits by connected shell, which
     // on this design is a dozen-odd slabs and loose letters.
     const built = await build();
     const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
 
-    const objects = [...model.matchAll(/<object id="(\d+)"[^>]*name="([^"]*)"/g)];
-    expect(objects.map((m) => m[2])).toEqual(['M (initial)', 'Matilde (name)']);
-
-    // One build item per object, so each is picked up and placed in its own right.
-    expect([...model.matchAll(/<item objectid="(\d+)"/g)].map((m) => m[1])).toEqual(objects.map((m) => m[1]));
+    const meshes = [...model.matchAll(/<object id="(\d+)"[^>]*name="([^"]*)"[^>]*pindex="(\d+)"/g)];
+    expect(meshes.map((m) => m[2])).toEqual(['M (initial)', 'Matilde (name)']);
 
     expect(model).toContain('displaycolor="#D9A9ABFF"');
     expect(model).toContain('displaycolor="#F7F5F2FF"');
     expect(model).toContain('unit="millimeter"');
+  }, 30000);
+
+  it('groups the pieces into one object, so no slicer has to ask whether they belong together', async () => {
+    // Two top-level objects are two models to a slicer: Bambu Studio prompts
+    // ("multi-part object detected") and, answered the other way, scatters them
+    // across the plate and loses the fit the single file existed to preserve.
+    const built = await build();
+    const model = modelOf(combined3mfBinary(built.blocks, built.assembly, built.config));
+
+    const meshIds = [...model.matchAll(/<object id="(\d+)"[^>]*pindex="\d+"/g)].map((m) => m[1]);
+    const components = [...model.matchAll(/<component objectid="(\d+)"/g)].map((m) => m[1]);
+    expect(components).toEqual(meshIds);
+
+    const items = [...model.matchAll(/<item objectid="(\d+)"/g)].map((m) => m[1]);
+    expect(items).toHaveLength(1);
+    expect(meshIds).not.toContain(items[0]); // the assembly, not one of the pieces
+
+    // A component carries no transform, so the pieces keep the coordinates they
+    // were designed at and stay fitted together.
+    expect(model).not.toContain('<component objectid="2" transform=');
+  }, 30000);
+
+  it('names the parts and gives each its own filament, for slicers that read the settings', async () => {
+    const built = await build();
+    const { model, settings } = partsOf(combined3mfBinary(built.blocks, built.assembly, built.config));
+
+    const assemblyId = [...model.matchAll(/<item objectid="(\d+)"/g)][0][1];
+    expect(settings).toContain(`<object id="${assemblyId}">`);
+
+    const parts = [...settings.matchAll(/<part id="(\d+)" subtype="normal_part">/g)].map((m) => m[1]);
+    expect(parts).toEqual([...model.matchAll(/<component objectid="(\d+)"/g)].map((m) => m[1]));
+
+    expect(settings).toContain('<metadata key="name" value="M (initial)"/>');
+    expect(settings).toContain('<metadata key="name" value="Matilde (name)"/>');
+    expect([...settings.matchAll(/key="extruder" value="(\d+)"/g)].map((m) => m[1])).toEqual(['1', '2']);
   }, 30000);
 
   it('writes every triangle of both pieces', async () => {

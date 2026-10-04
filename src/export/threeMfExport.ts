@@ -22,10 +22,17 @@ export interface ThreeMfObject {
 
 const MODEL_PATH = '3D/3dmodel.model';
 
+/**
+ * Where PrusaSlicer-derived slicers — Bambu Studio, Orca — look for the names
+ * and filament assignments of an object's parts.
+ */
+const SETTINGS_PATH = 'Metadata/model_settings.config';
+
 const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+  <Default Extension="config" ContentType="application/xml"/>
 </Types>`;
 
 const RELATIONSHIPS = `<?xml version="1.0" encoding="UTF-8"?>
@@ -90,37 +97,76 @@ function meshXml(geometry: THREE.BufferGeometry): string {
   return `<mesh><vertices>${vertices.join('')}</vertices><triangles>${triangles.join('')}</triangles></mesh>`;
 }
 
-function modelXml(objects: ThreeMfObject[], title: string): string {
-  // Ids are shared across every resource in the file, so the materials take 1
-  // and the objects count on from there.
-  const materialsId = 1;
-  const objectId = (i: number) => materialsId + 1 + i;
+// Ids are shared across every resource in the file: the materials take 1, each
+// piece counts on from there, and the assembly that groups them comes last,
+// because 3MF requires an object to be defined before it is referenced.
+const MATERIALS_ID = 1;
+const partId = (index: number) => MATERIALS_ID + 1 + index;
+const assemblyId = (count: number) => partId(count);
 
+/**
+ * One object holding the pieces as components, rather than one object per piece.
+ *
+ * Separate top-level objects are separate *models* to a slicer, which then has
+ * to ask whether they are really one thing — Bambu Studio puts up a "multi-part
+ * object detected" prompt and, answered wrongly, scatters the pieces across the
+ * plate and loses the fit they were exported for. As components of a single
+ * object they arrive as one model with named parts, no question asked, each
+ * still selectable and assignable to its own filament.
+ */
+function modelXml(objects: ThreeMfObject[], title: string): string {
   const bases = objects.map((o) => `<base name="${escapeXml(o.name)}" displaycolor="${displayColor(o.color)}"/>`).join('');
-  const resources = objects
-    .map((o, i) => `<object id="${objectId(i)}" type="model" name="${escapeXml(o.name)}" pid="${materialsId}" pindex="${i}">${meshXml(o.geometry)}</object>`)
+  const parts = objects
+    .map((o, i) => `<object id="${partId(i)}" type="model" name="${escapeXml(o.name)}" pid="${MATERIALS_ID}" pindex="${i}">${meshXml(o.geometry)}</object>`)
     .join('');
-  // Each object is its own build item, at the coordinates it already carries —
-  // that is what makes them separate, individually selectable objects in the
-  // slicer while still sitting exactly as they were designed.
-  const items = objects.map((_, i) => `<item objectid="${objectId(i)}"/>`).join('');
+  // No transform on a component: each piece already carries the coordinates it
+  // was designed at, which is what keeps them fitted together.
+  const components = objects.map((_, i) => `<component objectid="${partId(i)}"/>`).join('');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
 <metadata name="Title">${escapeXml(title)}</metadata>
 <metadata name="Application">Name Studio</metadata>
-<resources><basematerials id="${materialsId}">${bases}</basematerials>${resources}</resources>
-<build>${items}</build>
+<resources><basematerials id="${MATERIALS_ID}">${bases}</basematerials>${parts}<object id="${assemblyId(objects.length)}" type="model" name="${escapeXml(title)}"><components>${components}</components></object></resources>
+<build><item objectid="${assemblyId(objects.length)}"/></build>
 </model>`;
 }
 
-/** A complete .3mf package: the named objects, each in its own color, in one file. */
+/**
+ * The part names and filament assignments, in the dialect PrusaSlicer-derived
+ * slicers read. Without it the parts arrive unnamed and all on one filament,
+ * which for a design whose whole point is two colors is most of the way back to
+ * an STL.
+ */
+function settingsXml(objects: ThreeMfObject[], title: string): string {
+  const parts = objects
+    .map(
+      (o, i) =>
+        `  <part id="${partId(i)}" subtype="normal_part">\n` +
+        `    <metadata key="name" value="${escapeXml(o.name)}"/>\n` +
+        // One filament per piece, numbered in order — the design is two-color by
+        // construction, so it arrives ready to print that way.
+        `    <metadata key="extruder" value="${i + 1}"/>\n` +
+        `  </part>\n`,
+    )
+    .join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <object id="${assemblyId(objects.length)}">
+    <metadata key="name" value="${escapeXml(title)}"/>
+${parts}  </object>
+</config>`;
+}
+
+/** A complete .3mf package: the named pieces, each in its own color, as parts of one model. */
 export function threeMfBinary(objects: ThreeMfObject[], title: string): Uint8Array {
   const encoder = new TextEncoder();
   return zipStore([
     { path: '[Content_Types].xml', data: encoder.encode(CONTENT_TYPES) },
     { path: '_rels/.rels', data: encoder.encode(RELATIONSHIPS) },
     { path: MODEL_PATH, data: encoder.encode(modelXml(objects, title)) },
+    { path: SETTINGS_PATH, data: encoder.encode(settingsXml(objects, title)) },
   ]);
 }
 
