@@ -56,6 +56,15 @@ interface PanelStore {
   focus: (section: string, target?: string) => void;
   /** A header click. Merges, so two sections can be held open side by side to compare — and leaves defaults alone, so opening a second section doesn't shut the one the panel arrived with. */
   setOpen: (id: string, open: boolean) => void;
+  /**
+   * What the panel is pointing at, for the preview to light up — the same
+   * conversation as `focus` above, running the other way.
+   *
+   * A bare key, with no opinion about what it names: the scene that renders a
+   * product knows what its own keys mean, and nothing here has to.
+   */
+  highlighted: string | null;
+  setHighlighted: (key: string | null) => void;
   /** Back to how a panel arrives. Called when the product changes, since the next one's sections have ids and defaults of their own. */
   reset: () => void;
 }
@@ -80,6 +89,7 @@ export const usePanelStore = create<PanelStore>((set) => ({
   request: null,
   open: {},
   defaultsApply: true,
+  highlighted: null,
   focus: (section, target = section) => {
     clearTimeout(flashTimer);
     // Only what was pointed at: you asked about one piece of the design, so the
@@ -89,9 +99,10 @@ export const usePanelStore = create<PanelStore>((set) => ({
     flashTimer = setTimeout(() => set({ request: null }), FLASH_MS);
   },
   setOpen: (id, isOpen) => set((state) => ({ open: { ...state.open, [id]: isOpen } })),
+  setHighlighted: (highlighted) => set({ highlighted }),
   reset: () => {
     clearTimeout(flashTimer);
-    set({ request: null, open: {}, defaultsApply: true });
+    set({ request: null, open: {}, defaultsApply: true, highlighted: null });
   },
 }));
 

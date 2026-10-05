@@ -222,7 +222,11 @@ the preview itself.
   the modifier is what puts a patch over each hole; without it the same click
   drags a letter. Pointing at one rebuilds the card with that hole toggled, so
   the preview is the actual result rather than a drawing of it, and a hole
-  already filled in is opened again the same way. A hole is keyed by the letter
+  already filled in is opened again the same way. Pointing at a row of the
+  checklist lights that one hole up on the card, which is the only way to tell
+  "line 1, letter 3, hole 2 of 2" from its neighbour without counting — the
+  panel says what it is pointing at through `panelStore.highlighted`, the same
+  channel `focus` uses in the other direction. A hole is keyed by the letter
   it was attributed to *and* which of that letter's holes it is: lines dragged
   across each other close pockets between their strokes, so one letter commonly
   owns several, and keyed by letter alone they would fill in together.

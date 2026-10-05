@@ -32,6 +32,7 @@ export function CakeTopperControls() {
   const onRemoveLine = useCakeTopperStore((s) => s.removeLine);
   const onResetLetterGaps = useCakeTopperStore((s) => s.resetLetterGaps);
   const onToggleClosedOutlineHole = useCakeTopperStore((s) => s.toggleClosedOutlineHole);
+  const onSetClosedOutlineHoles = useCakeTopperStore((s) => s.setClosedOutlineHoles);
   const { blocks, loading, error } = useCakeTopperGeometry();
 
   const hasCustomLetterGaps = config.letterGapsMm.some((gaps) => gaps.some((gap) => gap !== 0));
@@ -105,6 +106,7 @@ export function CakeTopperControls() {
             holeCandidates={outlineHoleCandidates}
             closedOutlineHoles={config.closedOutlineHoles}
             onToggleHole={onToggleClosedOutlineHole}
+            onSetAllHoles={onSetClosedOutlineHoles}
           />
         </CollapsibleSection>
       </div>

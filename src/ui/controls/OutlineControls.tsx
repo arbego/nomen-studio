@@ -1,5 +1,6 @@
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import type { OutlineHoleCandidate } from '../../geometry/outline';
+import { usePanelStore } from '../panelStore';
 
 /** Which letter a hole was attributed to, for counting how many share one. */
 function letterOf(candidate: OutlineHoleCandidate): string {
@@ -19,6 +20,8 @@ interface OutlineControlsProps {
   maxDepthMm: number;
   /** Every counter hole (e.g. the "a" in a script font) currently detected at this growMm. */
   holeCandidates: OutlineHoleCandidate[];
+  /** Fills every hole in at once, or opens them all again. */
+  onSetAllHoles: (keys: string[], closed: boolean) => void;
   closedOutlineHoles: string[];
   onToggleHole: (key: string) => void;
   className?: string;
@@ -40,13 +43,19 @@ export function OutlineControls({
   holeCandidates,
   closedOutlineHoles,
   onToggleHole,
+  onSetAllHoles,
   className = '',
 }: OutlineControlsProps) {
+  // Straight from the store rather than through a prop: pointing at a row is
+  // chrome shared with the preview, not something this product's design knows
+  // about — the same channel CollapsibleSection uses.
+  const setHighlighted = usePanelStore((state) => state.setHighlighted);
   const holesPerLetter = new Map<string, number>();
   for (const candidate of holeCandidates) {
     const letter = letterOf(candidate);
     holesPerLetter.set(letter, (holesPerLetter.get(letter) ?? 0) + 1);
   }
+  const allClosed = holeCandidates.length > 0 && holeCandidates.every((candidate) => closedOutlineHoles.includes(candidate.key));
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -99,7 +108,16 @@ export function OutlineControls({
           <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} variant="field" />
           {holeCandidates.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm text-stone-600 dark:text-stone-400">Counter holes</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-stone-600 dark:text-stone-400">Counter holes</span>
+                <button
+                  type="button"
+                  onClick={() => onSetAllHoles(holeCandidates.map((candidate) => candidate.key), !allClosed)}
+                  className="shrink-0 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+                >
+                  {allClosed ? 'Open all' : 'Fill all in'}
+                </button>
+              </div>
               <p className="text-xs text-stone-400 dark:text-stone-500">
                 Fill one in if you'd rather it print solid, like the rest of the card. Or hold Ctrl in the preview and click the hole itself.
               </p>
@@ -113,7 +131,15 @@ export function OutlineControls({
                   const siblings = holesPerLetter.get(letterOf(candidate)) ?? 1;
                   const where = `line ${candidate.lineIndex + 1}, letter ${candidate.letterIndex + 1}${siblings > 1 ? `, hole ${candidate.holeIndex + 1} of ${siblings}` : ''}`;
                   return (
-                    <label key={candidate.key} className="flex items-center justify-between gap-2 text-sm text-stone-600 dark:text-stone-400">
+                    <label
+                      key={candidate.key}
+                      // Lights the hole up in the preview, which is the only
+                      // way to tell "line 1, letter 3, hole 2 of 2" from its
+                      // neighbour without counting.
+                      onPointerEnter={() => setHighlighted(candidate.key)}
+                      onPointerLeave={() => setHighlighted(null)}
+                      className="-mx-1 flex items-center justify-between gap-2 rounded px-1 py-0.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+                    >
                       <span className="min-w-0 truncate">
                         “{candidate.char}” ({where})
                       </span>

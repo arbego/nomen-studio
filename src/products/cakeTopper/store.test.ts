@@ -108,6 +108,26 @@ describe('topperStore', () => {
     expect(state.lines).toHaveLength(1);
   });
 
+  it('fills a whole set of counter holes in at once, and opens them again', () => {
+    const keys = ['line-0-letter-1-hole-0', 'line-0-letter-2-hole-0'];
+    useCakeTopperStore.getState().setClosedOutlineHoles(keys, true);
+    expect(useCakeTopperStore.getState().closedOutlineHoles).toEqual(keys);
+
+    useCakeTopperStore.getState().setClosedOutlineHoles(keys, false);
+    expect(useCakeTopperStore.getState().closedOutlineHoles).toEqual([]);
+  });
+
+  it('leaves a closed hole the checklist cannot currently see alone', () => {
+    // Holes come and go with the grow, and one that is not on screen is not
+    // one the user just said anything about by pressing "fill all in".
+    useCakeTopperStore.getState().toggleClosedOutlineHole('line-2-letter-0-hole-0');
+    useCakeTopperStore.getState().setClosedOutlineHoles(['line-0-letter-1-hole-0'], true);
+    expect(useCakeTopperStore.getState().closedOutlineHoles).toContain('line-2-letter-0-hole-0');
+
+    useCakeTopperStore.getState().setClosedOutlineHoles(['line-0-letter-1-hole-0'], false);
+    expect(useCakeTopperStore.getState().closedOutlineHoles).toEqual(['line-2-letter-0-hole-0']);
+  });
+
   it('setLineOffset updates only the targeted line', () => {
     resetToOneLine();
     // Read rather than assumed to be the origin: the design the studio opens

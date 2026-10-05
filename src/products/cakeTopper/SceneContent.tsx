@@ -92,11 +92,22 @@ export function CakeTopperScene({
   // no pointerout will arrive once the patches are gone.
   const [hoveredHole, setHoveredHole] = useState<string | null>(null);
   const editingHoles = useKeyHeld('Control', () => setHoveredHole(null)) && outlineEnabled && !!onToggleOutlineHole;
+  // The panel pointing at one of its checklist rows. Lights that hole up even
+  // with nothing held: the row names it by line and letter, which is exact and
+  // no way to find it on the card.
+  const highlightedHole = usePanelStore((s) => s.highlighted);
+  const markingHoles = editingHoles || highlightedHole !== null;
   // Only worth finding while they can be pointed at — it is another run of the
   // offsetting, and the rest of the time nobody is asking.
   const holeCandidates = useMemo(
-    () => (editingHoles && wordBlock ? detectOutlineHoleCandidates(wordBlock, letterGapsMm, lineOffsets, outlineGrowMm) : []),
-    [editingHoles, wordBlock, letterGapsMm, lineOffsets, outlineGrowMm],
+    () => (markingHoles && outlineEnabled && wordBlock ? detectOutlineHoleCandidates(wordBlock, letterGapsMm, lineOffsets, outlineGrowMm) : []),
+    [markingHoles, outlineEnabled, wordBlock, letterGapsMm, lineOffsets, outlineGrowMm],
+  );
+  // Memoized because the patches build a geometry per candidate: a fresh array
+  // every render would throw all of them away and rebuild them every render.
+  const markedHoles = useMemo(
+    () => (editingHoles ? holeCandidates : holeCandidates.filter((candidate) => candidate.key === highlightedHole)),
+    [editingHoles, holeCandidates, highlightedHole],
   );
   // What the card would look like with the hole under the pointer toggled —
   // the preview is the real thing rebuilt, not a drawing of it.
@@ -144,14 +155,18 @@ export function CakeTopperScene({
           closedOutlineHoles={previewedHoles}
         />
       )}
-      {editingHoles && wordBlock && !wordLetterDragActive && (
+      {markedHoles.length > 0 && !wordLetterDragActive && (
         <OutlineHoleTargets
-          candidates={holeCandidates}
+          // Only the one being pointed at when that is all this is for: a card
+          // lit up all over would not say which row the pointer is on.
+          candidates={markedHoles}
           positionX={layout[wordIndex] ?? 0}
           cardDepthMm={outlineDepthMm}
-          hoveredKey={hoveredHole}
+          hoveredKey={editingHoles ? hoveredHole : null}
+          highlightedKey={highlightedHole}
+          interactive={editingHoles}
           onHoverChange={setHoveredHole}
-          onToggle={onToggleOutlineHole!}
+          onToggle={onToggleOutlineHole ?? (() => {})}
         />
       )}
     </group>

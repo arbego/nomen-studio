@@ -4,6 +4,20 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { OutlineHoleCandidate } from '../geometry/outline';
 import { useTapGesture } from './tapGesture';
 
+/**
+ * How strongly one patch is drawn.
+ *
+ * Nothing at all for the hole being pointed at in the preview, since the card
+ * behind it is already showing what would happen; strongest for one the panel
+ * is pointing at, which has to be findable among a dozen others; and a plain
+ * marker for the rest.
+ */
+function markerOpacity(key: string, hoveredKey: string | null, highlightedKey: string | null): number {
+  if (key === hoveredKey) return 0;
+  if (key === highlightedKey) return 0.85;
+  return 0.45;
+}
+
 /** Guarded because this runs fine in the browser, but not under the headless scene tests, which have no `document`. */
 function setCursor(cursor: string) {
   if (typeof document !== 'undefined') {
@@ -23,8 +37,18 @@ interface OutlineHoleTargetsProps {
   positionX: number;
   /** The card's front face, in millimeters from the back of the design. */
   cardDepthMm: number;
-  /** The one being pointed at, which is shown as it would be rather than marked. */
+  /** The one being pointed at in the preview, which is shown as it would be rather than marked. */
   hoveredKey: string | null;
+  /** The one the panel is pointing at, marked more strongly so it can be picked out of a crowd. */
+  highlightedKey: string | null;
+  /**
+   * Whether these can be clicked.
+   *
+   * False when they are only up to answer "which hole is this row?" — the
+   * modifier is not held, so a click there still belongs to whatever is behind
+   * them.
+   */
+  interactive: boolean;
   onHoverChange: (key: string | null) => void;
   onToggle: (key: string) => void;
 }
@@ -42,7 +66,7 @@ interface OutlineHoleTargetsProps {
  * you are looking at is the actual result rather than a drawing of it, and the
  * patch has to stay in the scene to know when the pointer leaves it.
  */
-export function OutlineHoleTargets({ candidates, positionX, cardDepthMm, hoveredKey, onHoverChange, onToggle }: OutlineHoleTargetsProps) {
+export function OutlineHoleTargets({ candidates, positionX, cardDepthMm, hoveredKey, highlightedKey, interactive, onHoverChange, onToggle }: OutlineHoleTargetsProps) {
   const tap = useTapGesture();
   const geometries = useMemo(() => candidates.map((candidate) => new THREE.ShapeGeometry(new THREE.Shape(candidate.points))), [candidates]);
   // React Three Fiber never disposes a geometry handed to it through the
@@ -62,29 +86,45 @@ export function OutlineHoleTargets({ candidates, positionX, cardDepthMm, hovered
         <mesh
           key={candidate.key}
           geometry={geometries[index]}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            tap.press(event);
-          }}
-          onPointerUp={(event) => {
-            event.stopPropagation();
-            handleUp(candidate.key, event);
-          }}
-          onPointerOver={(event) => {
-            event.stopPropagation();
-            onHoverChange(candidate.key);
-            setCursor('pointer');
-          }}
-          onPointerOut={(event) => {
-            event.stopPropagation();
-            onHoverChange(null);
-            setCursor('auto');
-          }}
+          onPointerDown={
+            interactive
+              ? (event) => {
+                  event.stopPropagation();
+                  tap.press(event);
+                }
+              : undefined
+          }
+          onPointerUp={
+            interactive
+              ? (event) => {
+                  event.stopPropagation();
+                  handleUp(candidate.key, event);
+                }
+              : undefined
+          }
+          onPointerOver={
+            interactive
+              ? (event) => {
+                  event.stopPropagation();
+                  onHoverChange(candidate.key);
+                  setCursor('pointer');
+                }
+              : undefined
+          }
+          onPointerOut={
+            interactive
+              ? (event) => {
+                  event.stopPropagation();
+                  onHoverChange(null);
+                  setCursor('auto');
+                }
+              : undefined
+          }
         >
           <meshBasicMaterial
             color={MARKER_COLOR}
             transparent
-            opacity={candidate.key === hoveredKey ? 0 : 0.45}
+            opacity={markerOpacity(candidate.key, hoveredKey, highlightedKey)}
             // Flat on top of whatever is behind it, and never writing depth, so
             // a marker can't hide the card it is marking.
             depthWrite={false}

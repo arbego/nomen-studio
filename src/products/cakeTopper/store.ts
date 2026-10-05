@@ -72,6 +72,8 @@ interface CakeTopperStore extends CakeTopperConfig {
   setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
+  /** Fills a whole set of holes in at once, or opens them all — "fill all in" over the checklist. */
+  setClosedOutlineHoles: (keys: string[], closed: boolean) => void;
   /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
   loadConfig: (config: CakeTopperConfig) => void;
   reset: () => void;
@@ -180,6 +182,15 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
         ? state.closedOutlineHoles.filter((existing) => existing !== key)
         : [...state.closedOutlineHoles, key],
     })),
+  setClosedOutlineHoles: (keys, closed) =>
+    set((state) => {
+      const touched = new Set(keys);
+      // Keys outside the set are left exactly as they are: holes come and go
+      // with the grow, and one the checklist cannot currently see is not one
+      // the user just said anything about.
+      const untouched = state.closedOutlineHoles.filter((existing) => !touched.has(existing));
+      return { closedOutlineHoles: closed ? [...untouched, ...keys] : untouched };
+    }),
   loadConfig: (config) => set(config),
   reset: () => set(DEFAULT_CAKE_TOPPER_CONFIG),
 }));
