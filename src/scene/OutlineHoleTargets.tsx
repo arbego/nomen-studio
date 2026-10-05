@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { OutlineHoleCandidate } from '../geometry/outline';
 import { useTapGesture } from './tapGesture';
+import { ACCENT } from '../ui/accent';
 
 /**
  * How strongly one patch is drawn.
@@ -24,9 +25,6 @@ function setCursor(cursor: string) {
     document.body.style.cursor = cursor;
   }
 }
-
-/** The studio's accent, as the export button and the panel's flash use it — the colour that means "this is the thing". */
-const MARKER_COLOR = '#fdba74';
 
 /** How far in front of the card's face the markers sit, in millimeters. Enough to not fight it for depth over a hole that is currently filled in. */
 const MARKER_LIFT_MM = 0.08;
@@ -122,7 +120,7 @@ export function OutlineHoleTargets({ candidates, positionX, cardDepthMm, hovered
           }
         >
           <meshBasicMaterial
-            color={MARKER_COLOR}
+            color={ACCENT}
             transparent
             opacity={markerOpacity(candidate.key, hoveredKey, highlightedKey)}
             // Flat on top of whatever is behind it, and never writing depth, so
