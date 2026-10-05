@@ -69,6 +69,15 @@ function letterBoundsList(block: TextBlock, letterGapsMm: number[][], lineOffset
   return { bounds, refs };
 }
 
+/**
+ * How finely a hole's own outline is sampled.
+ *
+ * Clipper hands back straight-edged polygons, so this only matters for the
+ * rounded joins its offsetting adds — enough to put a clickable patch over the
+ * hole that follows its edge rather than cutting the corners.
+ */
+const HOLE_OUTLINE_SEGMENTS = 16;
+
 function centroid(points: THREE.Vector2[]): THREE.Vector2 {
   const sum = points.reduce((acc, p) => acc.add(p), new THREE.Vector2());
   return sum.divideScalar(points.length);
@@ -129,12 +138,22 @@ export interface OutlineHoleCandidate {
   char: string;
   /** Which of that letter's holes this is, counting from the bottom left. 0 for a letter with only the one. */
   holeIndex: number;
+  /**
+   * The hole's own outline, in the same mm space the card's shapes are built
+   * in, so the preview can put something clickable exactly over it.
+   *
+   * Listed whether or not the hole is currently filled in: a filled one has to
+   * stay clickable to be opened again, and by then it is no longer a hole in
+   * anything.
+   */
+  points: THREE.Vector2[];
 }
 
 interface AttributedHole {
   key: string;
   ref: LetterRef;
   holeIndex: number;
+  points: THREE.Vector2[];
 }
 
 /**
@@ -144,20 +163,21 @@ interface AttributedHole {
  * two can never disagree about which hole a key names.
  */
 function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: LetterRef[], growMm: number): Map<THREE.Path, AttributedHole> {
-  const found = shapes.flatMap((shape) => shape.holes.map((hole) => ({ hole, at: centroid(hole.getPoints(8)) })));
+  const found = shapes.flatMap((shape) => shape.holes.map((hole) => ({ hole, points: hole.getPoints(HOLE_OUTLINE_SEGMENTS) })));
   // Numbered by where each hole sits rather than by the order Clipper happened
   // to emit them in: a letter's own holes all move together, so they keep their
   // numbering as the design is dragged about or the card grown.
-  found.sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
+  const placed = found.map((entry) => ({ ...entry, at: centroid(entry.points) }));
+  placed.sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
 
   const countPerLetter = new Map<number, number>();
   const attributed = new Map<THREE.Path, AttributedHole>();
-  for (const { hole, at } of found) {
+  for (const { hole, at, points } of placed) {
     const letter = attributeHoleToLetter(at, bounds, growMm);
     const holeIndex = countPerLetter.get(letter) ?? 0;
     countPerLetter.set(letter, holeIndex + 1);
     const ref = refs[letter];
-    attributed.set(hole, { key: outlineHoleKey(ref.lineIndex, ref.letterIndex, holeIndex), ref, holeIndex });
+    attributed.set(hole, { key: outlineHoleKey(ref.lineIndex, ref.letterIndex, holeIndex), ref, holeIndex, points });
   }
   return attributed;
 }
@@ -176,12 +196,13 @@ export function detectOutlineHoleCandidates(block: TextBlock, letterGapsMm: numb
   }
   const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
   const attributed = attributeHoles(shapes, bounds, refs, growMm);
-  const candidates = [...attributed.values()].map(({ key, ref, holeIndex }) => ({
+  const candidates = [...attributed.values()].map(({ key, ref, holeIndex, points }) => ({
     key,
     lineIndex: ref.lineIndex,
     letterIndex: ref.letterIndex,
     char: ref.char,
     holeIndex,
+    points,
   }));
   // Listed as the piece reads, line by line and letter by letter, rather than
   // in whatever order the holes came out of the offsetting.

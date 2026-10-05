@@ -6,6 +6,9 @@ import { combinedBlockBounds } from '../../geometry/letterLayout';
 import type { StickParams } from '../../scene/TextBlockMesh';
 import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { OutlineMesh } from '../../scene/OutlineMesh';
+import { OutlineHoleTargets } from '../../scene/OutlineHoleTargets';
+import { useKeyHeld } from '../../scene/useKeyHeld';
+import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import { usePanelStore } from '../../ui/panelStore';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
@@ -30,6 +33,8 @@ interface SceneProps {
   outlineColor: string;
   outlineDepthMm: number;
   closedOutlineHoles: string[];
+  /** Fills a counter hole in, or opens it again — the same toggle the panel's checklist drives. */
+  onToggleOutlineHole?: (key: string) => void;
   /** A letter was clicked rather than dragged — whichever letter, the line it belongs to is what the panel edits. */
   onLineTap?: (lineIndex: number) => void;
   /** A stick was clicked rather than dragged. */
@@ -57,6 +62,7 @@ export function CakeTopperScene({
   outlineColor,
   outlineDepthMm,
   closedOutlineHoles,
+  onToggleOutlineHole,
   onLineTap,
   onStickTap,
 }: SceneProps) {
@@ -80,6 +86,24 @@ export function CakeTopperScene({
   // letter or stick mesh, it's a re-triangulation, not just a reposition), so
   // it's hidden for the duration instead of visibly lagging behind.
   const [wordLetterDragActive, setWordLetterDragActive] = useState(false);
+
+  // Holding the modifier turns the card's counter holes into things you can
+  // point at. Letting go has to forget whatever was under the pointer, since
+  // no pointerout will arrive once the patches are gone.
+  const [hoveredHole, setHoveredHole] = useState<string | null>(null);
+  const editingHoles = useKeyHeld('Control', () => setHoveredHole(null)) && outlineEnabled && !!onToggleOutlineHole;
+  // Only worth finding while they can be pointed at — it is another run of the
+  // offsetting, and the rest of the time nobody is asking.
+  const holeCandidates = useMemo(
+    () => (editingHoles && wordBlock ? detectOutlineHoleCandidates(wordBlock, letterGapsMm, lineOffsets, outlineGrowMm) : []),
+    [editingHoles, wordBlock, letterGapsMm, lineOffsets, outlineGrowMm],
+  );
+  // What the card would look like with the hole under the pointer toggled —
+  // the preview is the real thing rebuilt, not a drawing of it.
+  const previewedHoles = useMemo(() => {
+    if (!editingHoles || !hoveredHole) return closedOutlineHoles;
+    return closedOutlineHoles.includes(hoveredHole) ? closedOutlineHoles.filter((key) => key !== hoveredHole) : [...closedOutlineHoles, hoveredHole];
+  }, [editingHoles, hoveredHole, closedOutlineHoles]);
 
   return (
     <group>
@@ -117,7 +141,17 @@ export function CakeTopperScene({
           growMm={outlineGrowMm}
           depthMm={outlineDepthMm}
           color={outlineColor}
-          closedOutlineHoles={closedOutlineHoles}
+          closedOutlineHoles={previewedHoles}
+        />
+      )}
+      {editingHoles && wordBlock && !wordLetterDragActive && (
+        <OutlineHoleTargets
+          candidates={holeCandidates}
+          positionX={layout[wordIndex] ?? 0}
+          cardDepthMm={outlineDepthMm}
+          hoveredKey={hoveredHole}
+          onHoverChange={setHoveredHole}
+          onToggle={onToggleOutlineHole!}
         />
       )}
     </group>
@@ -133,6 +167,7 @@ export function CakeTopperSceneContent() {
   const setStickOffset = useCakeTopperStore((s) => s.setStickOffset);
   const setLetterGap = useCakeTopperStore((s) => s.setLetterGap);
   const setLineOffset = useCakeTopperStore((s) => s.setLineOffset);
+  const onToggleClosedOutlineHole = useCakeTopperStore((s) => s.toggleClosedOutlineHole);
   const focus = usePanelStore((s) => s.focus);
   const { blocks } = useCakeTopperGeometry();
 
@@ -167,6 +202,7 @@ export function CakeTopperSceneContent() {
       outlineColor={config.outlineColor}
       outlineDepthMm={config.outlineDepthMm}
       closedOutlineHoles={config.closedOutlineHoles}
+      onToggleOutlineHole={onToggleClosedOutlineHole}
       onLineTap={(lineIndex) => focus(SECTIONS.text, lineFocusKey(lineIndex))}
       onStickTap={() => focus(SECTIONS.sticks)}
     />

@@ -4,6 +4,8 @@ import ReactThreeTestRenderer from '@react-three/test-renderer';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildCakeTopperBlocks } from './geometry';
+import { detectOutlineHoleCandidates } from '../../geometry/outline';
+import { installFakeWindow } from '../../test-setup/fakeWindow';
 import { clampStickOffsetToBounds } from '../../geometry/stickGeometry';
 import { gapForDesiredPosition } from '../../geometry/letterLayout';
 import type { TextBlock, Offset2D } from '../../geometry/types';
@@ -548,5 +550,76 @@ describe('clicking a piece of the topper rather than dragging it', () => {
     await act(async () => (stick.props.onPointerUp as Handler)(pointerEventAt(groupObject, 0, 0, { x: 401, y: 500 })));
 
     expect(onStickTap).toHaveBeenCalledTimes(1);
+  }, 30000);
+});
+
+describe('filling a counter hole in from the preview', () => {
+  const outline = { outlineEnabled: true, outlineGrowMm: 3, outlineColor: '#f7f5f2', outlineDepthMm: 1.5 };
+
+  async function renderWithHoleEditing() {
+    const onToggleOutlineHole = vi.fn();
+    const blocks = await buildCakeTopperBlocks(config);
+    const renderer = await ReactThreeTestRenderer.create(
+      <CakeTopperScene
+        blocks={blocks}
+        color={config.previewColor}
+        stick={stickParams}
+        stickColor={config.previewColor}
+        stickOffsets={config.stickOffsets}
+        onStickOffsetCommit={() => {}}
+        letterGapsMm={config.letterGapsMm}
+        onLetterGapCommit={() => {}}
+        lineOffsets={config.lineOffsets}
+        onLineOffsetCommit={() => {}}
+        outlineEnabled={outline.outlineEnabled}
+        outlineGrowMm={outline.outlineGrowMm}
+        outlineColor={outline.outlineColor}
+        outlineDepthMm={outline.outlineDepthMm}
+        closedOutlineHoles={[]}
+        onToggleOutlineHole={onToggleOutlineHole}
+      />,
+    );
+    return { renderer, onToggleOutlineHole };
+  }
+
+  /** Every patch over a hole — they live in their own group, which only exists while the modifier is down. */
+  function patchGroups(renderer: Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>) {
+    return renderer.scene.children[0].children.filter((child) => child.type === 'Group' && child.children.every((c) => c.type === 'Mesh') && child.children.length > 0);
+  }
+
+  it('puts nothing over the holes until the modifier is held, so the same click still drags a letter', async () => {
+    const window = installFakeWindow();
+    try {
+      const { renderer } = await renderWithHoleEditing();
+      const before = patchGroups(renderer).length;
+
+      await window.fire('keydown', { key: 'Control' });
+      const held = patchGroups(renderer).length;
+      expect(held).toBe(before + 1);
+
+      await window.fire('keyup', { key: 'Control' });
+      expect(patchGroups(renderer).length).toBe(before);
+    } finally {
+      window.remove();
+    }
+  }, 30000);
+
+  it('offers one patch per hole, keyed as the checklist keys them', async () => {
+    const window = installFakeWindow();
+    try {
+      const { renderer } = await renderWithHoleEditing();
+      await window.fire('keydown', { key: 'Control' });
+
+      const blocks = await buildCakeTopperBlocks(config);
+      const word = blocks.find((b) => b.id === 'word')!;
+      const candidates = detectOutlineHoleCandidates(word, config.letterGapsMm, config.lineOffsets, outline.outlineGrowMm);
+      expect(candidates.length).toBeGreaterThan(0);
+
+      const groups = patchGroups(renderer);
+      const patches = groups[groups.length - 1].children;
+      expect(patches).toHaveLength(candidates.length);
+    } finally {
+      window.remove();
+    }
   }, 30000);
 });

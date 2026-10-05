@@ -216,6 +216,16 @@ the preview itself.
   exported 3MF, with its own color.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
+  A counter that survives the grow stays a hole, and each one can be filled in
+  solid instead — from the checklist in the panel, or by holding Ctrl in the
+  preview and clicking the hole itself (`scene/OutlineHoleTargets.tsx`). Holding
+  the modifier is what puts a patch over each hole; without it the same click
+  drags a letter. Pointing at one rebuilds the card with that hole toggled, so
+  the preview is the actual result rather than a drawing of it, and a hole
+  already filled in is opened again the same way. A hole is keyed by the letter
+  it was attributed to *and* which of that letter's holes it is: lines dragged
+  across each other close pockets between their strokes, so one letter commonly
+  owns several, and keyed by letter alone they would fill in together.
 - **File format** (`export/`): every product exports 3MF, never STL. These
   designs are printed in more than one filament, and STL has no notion of a part
   or a color; splitting one in a slicer splits by connected shell, which on a

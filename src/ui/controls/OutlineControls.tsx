@@ -100,7 +100,9 @@ export function OutlineControls({
           {holeCandidates.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <span className="text-sm text-stone-600 dark:text-stone-400">Counter holes</span>
-              <p className="text-xs text-stone-400 dark:text-stone-500">Fill one in if you'd rather it print solid, like the rest of the card.</p>
+              <p className="text-xs text-stone-400 dark:text-stone-500">
+                Fill one in if you'd rather it print solid, like the rest of the card. Or hold Ctrl in the preview and click the hole itself.
+              </p>
               <div className="flex flex-col gap-1">
                 {holeCandidates.map((candidate) => {
                   const closed = closedOutlineHoles.includes(candidate.key);
