@@ -191,7 +191,7 @@ describe('buildOutlineGeometry (integration, real font)', () => {
     expect(candidates.some((c) => c.lineIndex === 0 && c.letterIndex === aIndex && c.char === 'a')).toBe(true);
 
     const key = candidates.find((c) => c.letterIndex === aIndex)!.key;
-    expect(key).toBe(outlineHoleKey(0, aIndex));
+    expect(key).toBe(outlineHoleKey(0, aIndex, 0));
 
     const openHoleCount = buildOutlineShapes(block, letterGapsMm, [ZERO_OFFSET], grow).reduce((sum, s) => sum + s.holes.length, 0);
     expect(openHoleCount).toBeGreaterThan(0); // "Lara" has two "a"s, so two counters
@@ -210,7 +210,7 @@ describe('buildOutlineGeometry (integration, real font)', () => {
     const block = fakePick(letters);
     const letterGapsMm = [[0, 0, 0]];
 
-    const withBogusKey = buildOutlineShapes(block, letterGapsMm, [ZERO_OFFSET], 1, ['line-0-letter-99']);
+    const withBogusKey = buildOutlineShapes(block, letterGapsMm, [ZERO_OFFSET], 1, ['line-0-letter-99-hole-0']);
     const withoutIt = buildOutlineShapes(block, letterGapsMm, [ZERO_OFFSET], 1, []);
     expect(withBogusKey.reduce((sum, s) => sum + s.holes.length, 0)).toBe(withoutIt.reduce((sum, s) => sum + s.holes.length, 0));
   }, 30000);
@@ -266,5 +266,36 @@ describe('outline across multiple lines', () => {
     const totalHoles = buildOutlineShapes(block, letterGapsMm, lineOffsets, grow).reduce((sum, s) => sum + s.holes.length, 0);
     const closedHoles = buildOutlineShapes(block, letterGapsMm, lineOffsets, grow, [line0Keys[0]]).reduce((sum, s) => sum + s.holes.length, 0);
     expect(closedHoles).toBe(totalHoles - 1);
+  }, 30000);
+
+  it('gives a letter with two holes two keys, so filling one in leaves the other open', async () => {
+    // Three lines dragged across each other, which is what produces the case:
+    // the grown card closes pockets between one line's strokes and the next's,
+    // and each is attributed to whichever letter is nearest — so one letter
+    // ends up owning several holes. Keyed by letter alone they all filled in
+    // together, and the checklist showed them ticking each other.
+    const lines = await buildLines(['Happy', '3day', 'Lara'], 'dancing-script', 150, 3);
+    const block = fakeMultiLinePick(lines);
+    const letterGapsMm = [[-2.71, 0, 0, 0], [], [0, 0, 0]];
+    const lineOffsets = [
+      { x: -10.65, y: -47.29 },
+      { x: 19.64, y: -18.22 },
+      { x: -19.17, y: 30.37 },
+    ];
+    const grow = 3;
+
+    const candidates = detectOutlineHoleCandidates(block, letterGapsMm, lineOffsets, grow);
+    expect(new Set(candidates.map((c) => c.key)).size).toBe(candidates.length);
+
+    const shared = candidates.filter(
+      (c) => candidates.filter((other) => other.lineIndex === c.lineIndex && other.letterIndex === c.letterIndex).length > 1,
+    );
+    expect(shared.length, 'this design has a letter owning more than one hole').toBeGreaterThan(1);
+    // Numbered within the letter, not left all at zero.
+    expect(new Set(shared.map((c) => c.holeIndex)).size).toBeGreaterThan(1);
+
+    const total = buildOutlineShapes(block, letterGapsMm, lineOffsets, grow).reduce((sum, s) => sum + s.holes.length, 0);
+    const afterOne = buildOutlineShapes(block, letterGapsMm, lineOffsets, grow, [shared[0].key]).reduce((sum, s) => sum + s.holes.length, 0);
+    expect(afterOne).toBe(total - 1);
   }, 30000);
 });

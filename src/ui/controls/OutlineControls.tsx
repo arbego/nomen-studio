@@ -1,6 +1,11 @@
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import type { OutlineHoleCandidate } from '../../geometry/outline';
 
+/** Which letter a hole was attributed to, for counting how many share one. */
+function letterOf(candidate: OutlineHoleCandidate): string {
+  return `${candidate.lineIndex}-${candidate.letterIndex}`;
+}
+
 interface OutlineControlsProps {
   enabled: boolean;
   onChangeEnabled: (enabled: boolean) => void;
@@ -37,6 +42,12 @@ export function OutlineControls({
   onToggleHole,
   className = '',
 }: OutlineControlsProps) {
+  const holesPerLetter = new Map<string, number>();
+  for (const candidate of holeCandidates) {
+    const letter = letterOf(candidate);
+    holesPerLetter.set(letter, (holesPerLetter.get(letter) ?? 0) + 1);
+  }
+
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <label className="flex items-center justify-between">
@@ -93,17 +104,23 @@ export function OutlineControls({
               <div className="flex flex-col gap-1">
                 {holeCandidates.map((candidate) => {
                   const closed = closedOutlineHoles.includes(candidate.key);
+                  // A letter often has more than one hole — lines dragged
+                  // across each other close pockets between their strokes, and
+                  // each is attributed to whichever letter is nearest. Saying
+                  // which one keeps two rows from reading as the same row.
+                  const siblings = holesPerLetter.get(letterOf(candidate)) ?? 1;
+                  const where = `line ${candidate.lineIndex + 1}, letter ${candidate.letterIndex + 1}${siblings > 1 ? `, hole ${candidate.holeIndex + 1} of ${siblings}` : ''}`;
                   return (
-                    <label key={candidate.key} className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-                      <span>
-                        “{candidate.char}” (line {candidate.lineIndex + 1}, letter {candidate.letterIndex + 1})
+                    <label key={candidate.key} className="flex items-center justify-between gap-2 text-sm text-stone-600 dark:text-stone-400">
+                      <span className="min-w-0 truncate">
+                        “{candidate.char}” ({where})
                       </span>
                       <input
                         type="checkbox"
                         checked={closed}
                         onChange={() => onToggleHole(candidate.key)}
-                        className="h-4 w-4 accent-stone-800 dark:accent-stone-300"
-                        aria-label={`Fill the "${candidate.char}" hole (line ${candidate.lineIndex + 1}, letter ${candidate.letterIndex + 1}) solid`}
+                        className="h-4 w-4 shrink-0 accent-stone-800 dark:accent-stone-300"
+                        aria-label={`Fill the "${candidate.char}" hole (${where}) solid`}
                       />
                     </label>
                   );

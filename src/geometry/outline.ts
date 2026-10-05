@@ -104,15 +104,22 @@ function attributeHoleToLetter(holeCentroid: THREE.Vector2, bounds: THREE.Box2[]
 }
 
 /**
- * Identifies which letter of which line a hole belongs to (see
- * attributeHoleToLetter), stable across grow/size/color/drag changes — used
- * both to look up a per-hole "manually closed" override and to key the
- * checklist UI that exposes those overrides. Reset by the store whenever any
- * line's text or the font changes, since a different letter at that position
- * invalidates it.
+ * Identifies one hole: which letter of which line it was attributed to (see
+ * attributeHoleToLetter), and which of that letter's holes it is.
+ *
+ * The ordinal is what makes this a hole's name rather than a letter's. A letter
+ * routinely ends up with more than one — lines dragged across each other close
+ * extra pockets between their strokes, and every one of those is attributed to
+ * whichever letter is nearest — and without it they would all share a key and
+ * so be filled in and reopened together, which is not what ticking one of them
+ * says.
+ *
+ * Stable across grow/size/color/drag changes, which is what lets it be saved in
+ * a project file. Reset by the store whenever any line's text or the font
+ * changes, since a different letter at that position invalidates it.
  */
-export function outlineHoleKey(lineIndex: number, letterIndex: number): string {
-  return `line-${lineIndex}-letter-${letterIndex}`;
+export function outlineHoleKey(lineIndex: number, letterIndex: number, holeIndex: number): string {
+  return `line-${lineIndex}-letter-${letterIndex}-hole-${holeIndex}`;
 }
 
 export interface OutlineHoleCandidate {
@@ -120,6 +127,39 @@ export interface OutlineHoleCandidate {
   lineIndex: number;
   letterIndex: number;
   char: string;
+  /** Which of that letter's holes this is, counting from the bottom left. 0 for a letter with only the one. */
+  holeIndex: number;
+}
+
+interface AttributedHole {
+  key: string;
+  ref: LetterRef;
+  holeIndex: number;
+}
+
+/**
+ * Every hole in `shapes`, attributed to a letter and numbered within it.
+ *
+ * One walk, shared by the checklist and by the build that acts on it, so the
+ * two can never disagree about which hole a key names.
+ */
+function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: LetterRef[], growMm: number): Map<THREE.Path, AttributedHole> {
+  const found = shapes.flatMap((shape) => shape.holes.map((hole) => ({ hole, at: centroid(hole.getPoints(8)) })));
+  // Numbered by where each hole sits rather than by the order Clipper happened
+  // to emit them in: a letter's own holes all move together, so they keep their
+  // numbering as the design is dragged about or the card grown.
+  found.sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
+
+  const countPerLetter = new Map<number, number>();
+  const attributed = new Map<THREE.Path, AttributedHole>();
+  for (const { hole, at } of found) {
+    const letter = attributeHoleToLetter(at, bounds, growMm);
+    const holeIndex = countPerLetter.get(letter) ?? 0;
+    countPerLetter.set(letter, holeIndex + 1);
+    const ref = refs[letter];
+    attributed.set(hole, { key: outlineHoleKey(ref.lineIndex, ref.letterIndex, holeIndex), ref, holeIndex });
+  }
+  return attributed;
 }
 
 /**
@@ -135,13 +175,17 @@ export function detectOutlineHoleCandidates(block: TextBlock, letterGapsMm: numb
     return [];
   }
   const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
-  const candidates: OutlineHoleCandidate[] = [];
-  for (const shape of shapes) {
-    for (const hole of shape.holes) {
-      const ref = refs[attributeHoleToLetter(centroid(hole.getPoints(8)), bounds, growMm)];
-      candidates.push({ key: outlineHoleKey(ref.lineIndex, ref.letterIndex), lineIndex: ref.lineIndex, letterIndex: ref.letterIndex, char: ref.char });
-    }
-  }
+  const attributed = attributeHoles(shapes, bounds, refs, growMm);
+  const candidates = [...attributed.values()].map(({ key, ref, holeIndex }) => ({
+    key,
+    lineIndex: ref.lineIndex,
+    letterIndex: ref.letterIndex,
+    char: ref.char,
+    holeIndex,
+  }));
+  // Listed as the piece reads, line by line and letter by letter, rather than
+  // in whatever order the holes came out of the offsetting.
+  candidates.sort((a, b) => a.lineIndex - b.lineIndex || a.letterIndex - b.letterIndex || a.holeIndex - b.holeIndex);
   return candidates;
 }
 
@@ -177,10 +221,9 @@ function naturalOutlineShapes(block: TextBlock, letterGapsMm: number[][], lineOf
  * two sides shut. Both are Clipper's polygon-offsetting doing what it already
  * does — not something detected/handled here.
  *
- * `closedOutlineHoles` is a list of `outlineHoleKey(lineIndex, letterIndex)`
- * strings the user has manually chosen to fill in solid (see
- * attributeHoleToLetter) — any hole attributed to one of those letters is
- * simply omitted, leaving that area part of the solid card instead of a void.
+ * `closedOutlineHoles` is a list of `outlineHoleKey` strings the user has
+ * manually chosen to fill in solid — each names one hole, so each omits that
+ * one hole, leaving its area part of the solid card instead of a void.
  */
 export function buildOutlineShapes(
   block: TextBlock,
@@ -196,11 +239,11 @@ export function buildOutlineShapes(
 
   const closed = new Set(closedOutlineHoles);
   const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
+  // Attributed over the whole set before anything is removed, so the numbering
+  // is the same one the checklist was built from.
+  const attributed = attributeHoles(shapes, bounds, refs, growMm);
   for (const shape of shapes) {
-    shape.holes = shape.holes.filter((hole) => {
-      const ref = refs[attributeHoleToLetter(centroid(hole.getPoints(8)), bounds, growMm)];
-      return !closed.has(outlineHoleKey(ref.lineIndex, ref.letterIndex));
-    });
+    shape.holes = shape.holes.filter((hole) => !closed.has(attributed.get(hole)!.key));
   }
   return shapes;
 }
