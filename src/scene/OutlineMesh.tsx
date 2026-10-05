@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { TextBlock, Offset2D } from '../geometry/types';
-import { buildOutlineGeometry } from '../geometry/outline';
+import { buildOutlineGeometry, type ExtraContours } from '../geometry/outline';
 
 interface OutlineMeshProps {
   block: TextBlock;
@@ -13,6 +13,8 @@ interface OutlineMeshProps {
   color: string;
   /** Counter holes (e.g. the "a" in a script font) the user has manually filled in — see outline.ts. */
   closedOutlineHoles: string[];
+  /** Silhouettes that belong on the card but are not lettering — a topper's ornaments, which the card grows around and holds. */
+  extraContours?: ExtraContours;
 }
 
 /**
@@ -22,10 +24,10 @@ interface OutlineMeshProps {
  * nothing when there's nothing to show (not grown at all, or the block has no
  * letters yet).
  */
-export function OutlineMesh({ block, positionX, letterGapsMm, lineOffsets, growMm, depthMm, color, closedOutlineHoles }: OutlineMeshProps) {
+export function OutlineMesh({ block, positionX, letterGapsMm, lineOffsets, growMm, depthMm, color, closedOutlineHoles, extraContours }: OutlineMeshProps) {
   const outline = useMemo(
-    () => buildOutlineGeometry(block, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles),
-    [block, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles],
+    () => buildOutlineGeometry(block, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles, extraContours),
+    [block, letterGapsMm, lineOffsets, growMm, depthMm, closedOutlineHoles, extraContours],
   );
 
   if (!outline) {

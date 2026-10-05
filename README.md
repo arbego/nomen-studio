@@ -27,8 +27,14 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
 
 - **Cake Topper** — a name on picks, to stand in a cake. One to three lines of
   script lettering, individually draggable letters, optional sticks and an
-  optional solid backing card. Exports one 3MF, the lettering and its backing
-  card as two colored parts.
+  optional solid backing card. Icons can be dropped on alongside the lettering,
+  each dragged where you want it in its own size, angle and filament — icons
+  only, since a word belongs in the lettering, which already sets it in the
+  piece's own face and at the piece's own scale. The backing card grows around
+  them as it does around the letters, so one placed off the end of the word is
+  still held; a gap inside a symbol is part of the drawing and always prints
+  solid. Exports one 3MF: the lettering, the backing card, and an ornament per
+  icon, each a named part in its own color.
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to

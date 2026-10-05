@@ -81,3 +81,14 @@ export function combinedBlockBounds(block: TextBlock, letterGapsMm: number[][], 
   });
   return box;
 }
+
+/**
+ * The point a block turns about: the middle of its own combined bounds.
+ *
+ * Its own middle rather than its origin, so turning a placed block spins it
+ * where it sits instead of swinging it away across the piece it is placed on.
+ */
+export function blockPivot(block: TextBlock, letterGapsMm: number[]): Offset2D {
+  const bounds = combinedBlockBounds(block, [letterGapsMm], [{ x: 0, y: 0 }]);
+  return { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 };
+}

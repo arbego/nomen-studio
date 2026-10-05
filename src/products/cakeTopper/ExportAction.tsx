@@ -9,14 +9,14 @@ import { selectCakeTopperConfig, useCakeTopperStore } from './store';
 /** One file for the whole topper, the lettering and its backing card as two colored parts — see export.ts. */
 export function CakeTopperExport() {
   const config = useCakeTopperStore(useShallow(selectCakeTopperConfig));
-  const { blocks, loading, error } = useCakeTopperGeometry();
+  const { blocks, decorators, loading, error } = useCakeTopperGeometry();
 
   const block = blocks[0];
   const designName = config.lines.join(' ');
   const build =
     block && !loading && !error
       ? (): ExportFile => ({
-          blob: threeMfBlob(combined3mfBinary(block, config, designName)),
+          blob: threeMfBlob(combined3mfBinary(block, config, designName, decorators)),
           filename: `${slugifyFilename(designName, 'topper')}-topper.3mf`,
         })
       : null;

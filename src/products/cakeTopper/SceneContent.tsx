@@ -12,8 +12,10 @@ import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import { usePanelStore } from '../../ui/panelStore';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
-import { lineFocusKey, SECTIONS } from './focus';
-import { stickThicknessMm } from './geometry';
+import { decoratorFocusKey, lineFocusKey, SECTIONS } from './focus';
+import { decoratorOutlineContours, decoratorPlacement, stickThicknessMm, type DecoratorBlock } from './geometry';
+import { rotateOffset } from '../../geometry/placement';
+import { decoratorColor, type CakeTopperConfig } from './config';
 
 const BLOCK_GAP_MM = 12;
 
@@ -33,6 +35,12 @@ interface SceneProps {
   outlineColor: string;
   outlineDepthMm: number;
   closedOutlineHoles: string[];
+  /** The ornaments on the piece, built from their icons. */
+  decorators?: DecoratorBlock[];
+  /** The whole config, for the ornaments' placements and colours — they are keyed by id rather than positional. */
+  config?: CakeTopperConfig;
+  onDecoratorOffsetCommit?: (id: string, offset: Offset2D) => void;
+  onDecoratorTap?: (id: string) => void;
   /** Fills a counter hole in, or opens it again — the same toggle the panel's checklist drives. */
   onToggleOutlineHole?: (key: string) => void;
   /** A letter was clicked rather than dragged — whichever letter, the line it belongs to is what the panel edits. */
@@ -62,6 +70,10 @@ export function CakeTopperScene({
   outlineColor,
   outlineDepthMm,
   closedOutlineHoles,
+  decorators = [],
+  config: fullConfig,
+  onDecoratorOffsetCommit,
+  onDecoratorTap,
   onToggleOutlineHole,
   onLineTap,
   onStickTap,
@@ -97,11 +109,18 @@ export function CakeTopperScene({
   // no way to find it on the card.
   const highlightedHole = usePanelStore((s) => s.highlighted);
   const markingHoles = editingHoles || highlightedHole !== null;
+  // The card grows around the ornaments as well as the letters, so it reaches
+  // out and holds them. Memoized because it is rebuilt from every ornament's
+  // contours, and the card itself re-triangulates whenever this changes.
+  const ornamentContours = useMemo(
+    () => (fullConfig && outlineEnabled && decorators.length > 0 ? decoratorOutlineContours(decorators, fullConfig) : undefined),
+    [fullConfig, outlineEnabled, decorators],
+  );
   // Only worth finding while they can be pointed at — it is another run of the
   // offsetting, and the rest of the time nobody is asking.
   const holeCandidates = useMemo(
-    () => (markingHoles && outlineEnabled && wordBlock ? detectOutlineHoleCandidates(wordBlock, letterGapsMm, lineOffsets, outlineGrowMm) : []),
-    [markingHoles, outlineEnabled, wordBlock, letterGapsMm, lineOffsets, outlineGrowMm],
+    () => (markingHoles && outlineEnabled && wordBlock ? detectOutlineHoleCandidates(wordBlock, letterGapsMm, lineOffsets, outlineGrowMm, ornamentContours) : []),
+    [markingHoles, outlineEnabled, wordBlock, letterGapsMm, lineOffsets, outlineGrowMm, ornamentContours],
   );
   // Memoized because the patches build a geometry per candidate: a fresh array
   // every render would throw all of them away and rebuild them every render.
@@ -153,8 +172,38 @@ export function CakeTopperScene({
           depthMm={outlineDepthMm}
           color={outlineColor}
           closedOutlineHoles={previewedHoles}
+          extraContours={ornamentContours}
         />
       )}
+      {/* Each ornament in its own anchor group, turned about its own centre, as
+          the name display places its own. dragMode="whole" is what makes any
+          part of an icon pick the whole thing up: an ornament is placed, not
+          kerned, so it has no gaps of its own to retune. */}
+      {fullConfig &&
+        decorators.map((decorator) => {
+          const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = decoratorPlacement(decorator, fullConfig);
+          return (
+            <group key={decorator.id} position={[(layout[wordIndex] ?? 0) + translate.x + pivot.x, translate.y + pivot.y, 0]} rotation={[0, 0, rotationRad]}>
+              <TextBlockMesh
+                block={decorator.block}
+                color={decoratorColor(fullConfig, decorator.id)}
+                position={[-pivot.x, -pivot.y, 0]}
+                letterGapsMm={[[]]}
+                onLetterGapCommit={() => {}}
+                dragMode="whole"
+                lineOffsets={[{ x: 0, y: 0 }]}
+                // Measured inside the turned group, so the delta is turned back
+                // into the lettering's frame before it moves the ornament.
+                onLineOffsetCommit={(_lineIndex, dragged) => {
+                  const delta = rotateOffset(dragged, rotationRad);
+                  onDecoratorOffsetCommit?.(decorator.id, { x: translate.x + delta.x, y: translate.y + delta.y });
+                }}
+                onLetterTap={onDecoratorTap && (() => onDecoratorTap(decorator.id))}
+              />
+            </group>
+          );
+        })}
+
       {markedHoles.length > 0 && !wordLetterDragActive && (
         <OutlineHoleTargets
           // Only the one being pointed at when that is all this is for: a card
@@ -183,8 +232,9 @@ export function CakeTopperSceneContent() {
   const setLetterGap = useCakeTopperStore((s) => s.setLetterGap);
   const setLineOffset = useCakeTopperStore((s) => s.setLineOffset);
   const onToggleClosedOutlineHole = useCakeTopperStore((s) => s.toggleClosedOutlineHole);
+  const setDecoratorOffset = useCakeTopperStore((s) => s.setDecoratorOffset);
   const focus = usePanelStore((s) => s.focus);
-  const { blocks } = useCakeTopperGeometry();
+  const { blocks, decorators } = useCakeTopperGeometry();
 
   // A stick is embedded into the outline card when there is one, so it reads
   // as (and is sized/colored like) part of that piece rather than the
@@ -217,6 +267,10 @@ export function CakeTopperSceneContent() {
       outlineColor={config.outlineColor}
       outlineDepthMm={config.outlineDepthMm}
       closedOutlineHoles={config.closedOutlineHoles}
+      decorators={decorators}
+      config={config}
+      onDecoratorOffsetCommit={setDecoratorOffset}
+      onDecoratorTap={(id) => focus(SECTIONS.decorators, decoratorFocusKey(id))}
       onToggleOutlineHole={onToggleClosedOutlineHole}
       onLineTap={(lineIndex) => focus(SECTIONS.text, lineFocusKey(lineIndex))}
       onStickTap={() => focus(SECTIONS.sticks)}

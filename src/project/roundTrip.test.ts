@@ -173,6 +173,37 @@ describe('reading a damaged or foreign design', () => {
   });
 });
 
+describe('cake topper round trip', () => {
+  it('brings back its ornaments, where they sit and what colour they are', () => {
+    useCakeTopperStore.getState().reset();
+    const id = useCakeTopperStore.getState().addDecorator('star');
+    useCakeTopperStore.getState().updateDecorator(id, { widthMm: 33, depthMm: 4 });
+    useCakeTopperStore.getState().setDecoratorOffset(id, { x: -12, y: 48 });
+    useCakeTopperStore.getState().setDecoratorAngle(id, -25);
+    useCakeTopperStore.getState().setDecoratorColor(id, '#b7c4ac');
+    const before = selectCakeTopperConfig(useCakeTopperStore.getState());
+
+    const file = parseProjectFile(serializeProject('cake-topper', before), known);
+    useCakeTopperStore.getState().reset();
+    getProduct('cake-topper')!.project.load(file.design);
+
+    expect(selectCakeTopperConfig(useCakeTopperStore.getState())).toEqual(before);
+  });
+
+  it('drops a placement for an ornament that is not in the file, rather than keeping a key nothing uses', () => {
+    const orphaned = {
+      ...selectCakeTopperConfig(useCakeTopperStore.getState()),
+      decorators: [],
+      decoratorPlacements: { 'decorator-9': { offset: { x: 1, y: 2 }, angleDeg: 0 } },
+      decoratorColors: { 'decorator-9': '#000000' },
+    };
+    getProduct('cake-topper')!.project.load(orphaned);
+
+    expect(useCakeTopperStore.getState().decoratorPlacements).toEqual({});
+    expect(useCakeTopperStore.getState().decoratorColors).toEqual({});
+  });
+});
+
 describe('loading restores the design wholesale', () => {
   it('does not apply the edit-time corrections that would rewrite it', () => {
     // setConfig resets letter gaps when the name changes, which is right for an

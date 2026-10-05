@@ -12,10 +12,16 @@ export const SECTIONS = {
   size: 'size',
   color: 'color',
   sticks: 'sticks',
+  decorators: 'decorators',
   outline: 'outline',
 } as const;
 
 /** A line of lettering points at its own text field within the Text section: with three lines on the piece, which one you clicked is the answer. */
 export function lineFocusKey(lineIndex: number): string {
   return `line-${lineIndex}`;
+}
+
+/** An ornament points at its own card, which is also the card that gets expanded — with several on the piece, which one you clicked is the answer. */
+export function decoratorFocusKey(id: string): string {
+  return `decorator-${id}`;
 }

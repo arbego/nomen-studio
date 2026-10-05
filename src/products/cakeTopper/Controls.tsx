@@ -7,6 +7,7 @@ import { SizePicker } from '../../ui/controls/SizePicker';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { CollapsibleSection } from '../../ui/controls/CollapsibleSection';
 import { StickControls } from './StickControls';
+import { DecoratorControls } from './DecoratorControls';
 import { OutlineControls } from '../../ui/controls/OutlineControls';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
@@ -33,6 +34,11 @@ export function CakeTopperControls() {
   const onResetLetterGaps = useCakeTopperStore((s) => s.resetLetterGaps);
   const onToggleClosedOutlineHole = useCakeTopperStore((s) => s.toggleClosedOutlineHole);
   const onSetClosedOutlineHoles = useCakeTopperStore((s) => s.setClosedOutlineHoles);
+  const onAddDecorator = useCakeTopperStore((s) => s.addDecorator);
+  const onUpdateDecorator = useCakeTopperStore((s) => s.updateDecorator);
+  const onRemoveDecorator = useCakeTopperStore((s) => s.removeDecorator);
+  const onSetDecoratorAngle = useCakeTopperStore((s) => s.setDecoratorAngle);
+  const onSetDecoratorColor = useCakeTopperStore((s) => s.setDecoratorColor);
   const { blocks, loading, error } = useCakeTopperGeometry();
 
   const hasCustomLetterGaps = config.letterGapsMm.some((gaps) => gaps.some((gap) => gap !== 0));
@@ -89,6 +95,25 @@ export function CakeTopperControls() {
             stickCounts={{ word: stickCount }}
             onAddStick={onAddStick}
             onRemoveStick={(blockId) => onRemoveStick(blockId, config.stickOffsets[blockId].length - 1)}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          id={SECTIONS.decorators}
+          title="Decorators"
+          summary={config.decorators.length === 0 ? 'None' : `${config.decorators.length}`}
+          className={SECTION}
+        >
+          <DecoratorControls
+            decorators={config.decorators}
+            placements={config.decoratorPlacements}
+            colors={config.decoratorColors}
+            fallbackColor={config.previewColor}
+            onAdd={onAddDecorator}
+            onUpdate={onUpdateDecorator}
+            onRemove={onRemoveDecorator}
+            onChangeAngle={onSetDecoratorAngle}
+            onChangeColor={onSetDecoratorColor}
           />
         </CollapsibleSection>
 

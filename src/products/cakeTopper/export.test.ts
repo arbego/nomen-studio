@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type * as THREE from 'three';
-import { buildCakeTopperBlocks, mergedBlockGeometry } from './geometry';
+import * as THREE from 'three';
+import { buildCakeTopperBlocks, buildCakeTopperDecorators, decoratorOutlineContours, mergedBlockGeometry } from './geometry';
+import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import type { CakeTopperConfig } from './config';
 import { combined3mfBinary, printObjects } from './export';
 import { slugifyFilename } from '../../export/filename';
@@ -22,6 +23,9 @@ const config: CakeTopperConfig = {
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
   closedOutlineHoles: [],
+  decorators: [],
+  decoratorPlacements: {},
+  decoratorColors: {},
 };
 
 function triangleCount(geometry: THREE.BufferGeometry): number {
@@ -100,4 +104,103 @@ describe('slugifyFilename', () => {
     expect(slugifyFilename('!!!', 'topper')).toBe('topper');
     expect(slugifyFilename('')).toBe('design');
   });
+});
+
+describe('ornaments on a topper', () => {
+  const decorated: CakeTopperConfig = {
+    ...config,
+    decorators: [{ id: 'd1', iconName: 'star', widthMm: 20, depthMm: 3 }],
+    decoratorPlacements: { d1: { offset: { x: 30, y: 25 }, angleDeg: 0 } },
+    decoratorColors: { d1: '#b7c4ac' },
+  };
+
+  it('prints each one as its own named part, in its own filament', async () => {
+    const [block] = await buildCakeTopperBlocks(decorated);
+    const decorators = await buildCakeTopperDecorators(decorated);
+
+    const objects = printObjects(block, decorated, decorators);
+    const ornament = objects[objects.length - 1];
+    expect(objects).toHaveLength(2); // the lettering, and the one ornament
+    expect(ornament.name).toBe('star');
+    expect(ornament.color).toBe('#b7c4ac');
+    expect(ornament.geometry.getAttribute('position').count).toBeGreaterThan(0);
+  }, 30000);
+
+  it('puts it where it was dragged, by exactly how far it was dragged', async () => {
+    const [block] = await buildCakeTopperBlocks(decorated);
+    const atRest = { ...decorated, decoratorPlacements: { d1: { offset: { x: 0, y: 0 }, angleDeg: 0 } } };
+
+    const centreOf = async (config: CakeTopperConfig) => {
+      const placed = printObjects(block, config, await buildCakeTopperDecorators(config))[1].geometry;
+      placed.computeBoundingBox();
+      const box = placed.boundingBox!;
+      return { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2, minZ: box.min.z, maxZ: box.max.z };
+    };
+
+    const before = await centreOf(atRest);
+    const after = await centreOf(decorated);
+
+    // An offset moves the ornament from where it would naturally sit — it does
+    // not teleport its centre to the offset, the same as the name's does.
+    expect(after.x - before.x).toBeCloseTo(30, 4);
+    expect(after.y - before.y).toBeCloseTo(25, 4);
+    // Seated on the same back face as the letters and the card, so a thinner
+    // ornament sits flush at the back rather than floating inside the piece.
+    expect(after.minZ).toBeCloseTo(0, 5);
+    expect(after.maxZ).toBeCloseTo(3, 5);
+  }, 30000);
+
+  it('falls back to the lettering filament for one never given a colour of its own', async () => {
+    const uncoloured = { ...decorated, decoratorColors: {} };
+    const [block] = await buildCakeTopperBlocks(uncoloured);
+    const decorators = await buildCakeTopperDecorators(uncoloured);
+
+    expect(printObjects(block, uncoloured, decorators)[1].color).toBe(uncoloured.previewColor);
+  }, 30000);
+});
+
+describe('the backing card and an ornament', () => {
+  const carded: CakeTopperConfig = {
+    ...config,
+    outlineEnabled: true,
+    outlineGrowMm: 4,
+    decorators: [{ id: 'd1', iconName: 'star', widthMm: 20, depthMm: 3 }],
+    // Just off the end of the lettering, so the card has to reach out to it.
+    decoratorPlacements: { d1: { offset: { x: 70, y: 20 }, angleDeg: 0 } },
+    decoratorColors: {},
+  };
+
+  it('grows the card around the ornament, not only around the letters', async () => {
+    const [block] = await buildCakeTopperBlocks(carded);
+    const decorators = await buildCakeTopperDecorators(carded);
+
+    const withOrnament = printObjects(block, carded, decorators).find((o) => o.name === 'Backing card')!.geometry;
+    const lettersOnly = printObjects(block, { ...carded, decorators: [] }, []).find((o) => o.name === 'Backing card')!.geometry;
+    withOrnament.computeBoundingBox();
+    lettersOnly.computeBoundingBox();
+
+    // The card now reaches out past where the lettering alone would have taken
+    // it — which is what holds a piece placed off the end of the word.
+    expect(withOrnament.boundingBox!.max.x).toBeGreaterThan(lettersOnly.boundingBox!.max.x);
+  }, 30000);
+
+  it('leaves an ornament solid, however the card is grown around it', async () => {
+    // A gap inside a symbol is part of the drawing, not somewhere anyone meant
+    // to see through the piece — so it is never offered in the checklist and
+    // never left open in the card.
+    const ringed: CakeTopperConfig = { ...carded, decorators: [{ id: 'd1', iconName: 'favorite_border', widthMm: 30, depthMm: 3 }] };
+    const [block] = await buildCakeTopperBlocks(ringed);
+    const decorators = await buildCakeTopperDecorators(ringed);
+    const contours = decoratorOutlineContours(decorators, ringed);
+
+    const candidates = detectOutlineHoleCandidates(block, ringed.letterGapsMm, ringed.lineOffsets, ringed.outlineGrowMm, contours);
+    const ornamentBounds = new THREE.Box2().setFromPoints(contours.flatMap((c) => [...c]));
+    for (const candidate of candidates) {
+      const centre = new THREE.Vector2(
+        candidate.points.reduce((sum, p) => sum + p.x, 0) / candidate.points.length,
+        candidate.points.reduce((sum, p) => sum + p.y, 0) / candidate.points.length,
+      );
+      expect(ornamentBounds.containsPoint(centre), `${candidate.char} hole sits inside the ornament`).toBe(false);
+    }
+  }, 30000);
 });

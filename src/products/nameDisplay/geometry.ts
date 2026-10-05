@@ -3,10 +3,10 @@ import type { Offset2D, TextBlock } from '../../geometry/types';
 import { buildTextBlock } from '../../geometry/textGeometry';
 import { extrudeMmShapes } from '../../geometry/extrudeToMm';
 import { combineGeometries } from '../../geometry/combine';
-import { combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
+import { blockPivot, combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
 import { growRegion, intersectRegions, regionFromContours, regionIsEmpty, regionToShapes, subtractRegions, type Region } from '../../geometry/clipper';
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
-import { degToRad, type Placement2D } from '../../geometry/placement';
+import { degToRad, placeGeometry, type Placement2D } from '../../geometry/placement';
 import { buildIconBlock } from '../../icons/iconBlock';
 import type { DecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
 
@@ -94,12 +94,6 @@ export function blockRegion(block: TextBlock, letterGapsMm: number[][], placemen
     });
   });
   return paths;
-}
-
-/** Where a piece turns when it's tilted: the center of its own silhouette, so the angle turns it in place rather than swinging it off the initial. */
-export function blockPivot(block: TextBlock, letterGapsMm: number[]): Offset2D {
-  const bounds = combinedBlockBounds(block, [letterGapsMm], [{ x: 0, y: 0 }]);
-  return { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 };
 }
 
 /** How the name is placed onto the initial — the one description the preview transform and the pocket boolean both follow, so the recess can never drift from what's on screen. */
@@ -342,14 +336,6 @@ export function placedDecoratorGeometry(decorator: DecoratorBlock, assembly: Nam
 
 /** Moves a piece from its own frame into the initial's and seats it at the pocket floor. */
 function placeInPocket(geometry: THREE.BufferGeometry, placement: Placement2D, zMm: number): THREE.BufferGeometry {
-  const { pivot = ORIGIN, translate = ORIGIN, rotationRad = 0 } = placement;
-  // Reads, right to left, as placePoint does: to the pivot, turn, then back out
-  // to the pivot plus the offset — with the pocket floor folded into that last
-  // step, since a turn about Z leaves z alone.
-  const matrix = new THREE.Matrix4()
-    .makeTranslation(pivot.x + translate.x, pivot.y + translate.y, zMm)
-    .multiply(new THREE.Matrix4().makeRotationZ(rotationRad))
-    .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, 0));
-  return geometry.applyMatrix4(matrix);
+  return placeGeometry(geometry, placement, zMm);
 }
 

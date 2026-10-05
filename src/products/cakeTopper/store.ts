@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { Offset2D } from '../../geometry/types';
 import { presetColor } from '../../ui/presets';
-import type { CakeTopperConfig, CakeTopperGeometryConfig, CakeTopperBlockId } from './config';
+import { iconDefaultWidthMm } from '../../icons/catalog';
+import type { CakeTopperConfig, CakeTopperDecoratorConfig, DecoratorPlacementConfig, CakeTopperGeometryConfig, CakeTopperBlockId } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(line: string): number[] {
@@ -10,6 +11,40 @@ function defaultLetterGaps(line: string): number[] {
 
 /** One base line plus up to 2 more — matches the "+" button's disabled state in LinesControls. */
 const MAX_LINES = 3;
+
+/** What a new ornament starts out as, before anything is dragged or dialled. Thick enough to print as its own piece rather than a sheet of foil. */
+const DEFAULT_DECORATOR_DEPTH_MM = 3;
+
+/**
+ * Where a newly added ornament lands: above the lettering and a little to the
+ * right of centre, stepped diagonally per ornament already on the piece so a
+ * second one is visibly a second one rather than hidden under the first.
+ */
+function defaultDecoratorPlacement(existingCount: number): DecoratorPlacementConfig {
+  return { offset: { x: 20 + existingCount * 12, y: 40 - existingCount * 12 }, angleDeg: 0 };
+}
+
+// Ids only have to be unique within a session. They exist so a placement and a
+// colour can be kept against an ornament across edits and removals.
+let nextDecoratorId = 0;
+function newDecoratorId(): string {
+  nextDecoratorId += 1;
+  return `decorator-${nextDecoratorId}`;
+}
+
+/**
+ * Moves the counter past every id in a design that was not minted in this
+ * session, so the next ornament added cannot be handed one that is already in
+ * use — the two would then share a placement and a colour.
+ */
+function reserveDecoratorIds(decorators: readonly CakeTopperDecoratorConfig[]): void {
+  for (const decorator of decorators) {
+    const minted = /^decorator-(\d+)$/.exec(decorator.id);
+    if (minted) {
+      nextDecoratorId = Math.max(nextDecoratorId, Number(minted[1]));
+    }
+  }
+}
 
 /**
  * The design the studio opens on: a finished three-line birthday topper rather
@@ -52,6 +87,9 @@ export const DEFAULT_CAKE_TOPPER_CONFIG: CakeTopperConfig = {
   outlineColor: presetColor('white'),
   outlineDepthMm: 1.5,
   closedOutlineHoles: [],
+  decorators: [],
+  decoratorPlacements: {},
+  decoratorColors: {},
 };
 
 /** Horizontal spacing (mm) used to offset a newly added stick from the previous one, so it doesn't start out exactly overlapping. */
@@ -72,6 +110,13 @@ interface CakeTopperStore extends CakeTopperConfig {
   setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
+  /** Returns the new ornament's id, so the grid that added it can go on changing that one instead of adding more. */
+  addDecorator: (iconName: string) => string;
+  updateDecorator: (id: string, patch: Partial<Omit<CakeTopperDecoratorConfig, 'id'>>) => void;
+  removeDecorator: (id: string) => void;
+  setDecoratorOffset: (id: string, offset: Offset2D) => void;
+  setDecoratorAngle: (id: string, angleDeg: number) => void;
+  setDecoratorColor: (id: string, color: string) => void;
   /** Fills a whole set of holes in at once, or opens them all — "fill all in" over the checklist. */
   setClosedOutlineHoles: (keys: string[], closed: boolean) => void;
   /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
@@ -191,14 +236,48 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
       const untouched = state.closedOutlineHoles.filter((existing) => !touched.has(existing));
       return { closedOutlineHoles: closed ? [...untouched, ...keys] : untouched };
     }),
-  loadConfig: (config) => set(config),
+  addDecorator: (iconName) => {
+    // Minted outside the updater so it can be returned: the caller needs to
+    // know which ornament this was, and an updater's return value is the state.
+    const id = newDecoratorId();
+    set((state) => ({
+      // Its own set's idea of a good starting size — a drawn icon needs more
+      // width than a solid one before its strokes are printable.
+      decorators: [...state.decorators, { id, iconName, widthMm: iconDefaultWidthMm(iconName), depthMm: DEFAULT_DECORATOR_DEPTH_MM }],
+      decoratorPlacements: { ...state.decoratorPlacements, [id]: defaultDecoratorPlacement(state.decorators.length) },
+      // In the lettering's filament to begin with, set explicitly rather than
+      // left to the fallback so the colour picker opens showing which swatch is
+      // in use.
+      decoratorColors: { ...state.decoratorColors, [id]: state.previewColor },
+    }));
+    return id;
+  },
+  updateDecorator: (id, patch) =>
+    set((state) => ({ decorators: state.decorators.map((decorator) => (decorator.id === id ? { ...decorator, ...patch } : decorator)) })),
+  removeDecorator: (id) =>
+    set((state) => {
+      // Its placement and its colour go with it, so a later ornament can never
+      // inherit a position or a filament meant for a removed one.
+      const { [id]: _removedPlacement, ...decoratorPlacements } = state.decoratorPlacements;
+      const { [id]: _removedColor, ...decoratorColors } = state.decoratorColors;
+      return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorPlacements, decoratorColors };
+    }),
+  setDecoratorOffset: (id, offset) =>
+    set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
+  setDecoratorAngle: (id, angleDeg) =>
+    set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
+  setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
+  loadConfig: (config) => {
+    reserveDecoratorIds(config.decorators);
+    set(config);
+  },
   reset: () => set(DEFAULT_CAKE_TOPPER_CONFIG),
 }));
 
 /** The subset that drives the expensive async geometry build — excludes stick and letter-gap/line-offset fields on purpose. */
 export function selectCakeTopperGeometryConfig(state: CakeTopperStore): CakeTopperGeometryConfig {
-  const { lines, wordFontId, sizeMm, extrudeDepthMm } = state;
-  return { lines, wordFontId, sizeMm, extrudeDepthMm };
+  const { lines, wordFontId, sizeMm, extrudeDepthMm, decorators } = state;
+  return { lines, wordFontId, sizeMm, extrudeDepthMm, decorators };
 }
 
 /** The full config — used by the controls panel (needs every field) and export (needs everything to merge sticks). */
@@ -220,6 +299,9 @@ export function selectCakeTopperConfig(state: CakeTopperStore): CakeTopperConfig
     outlineColor,
     outlineDepthMm,
     closedOutlineHoles,
+    decorators,
+    decoratorPlacements,
+    decoratorColors,
   } = state;
   return {
     lines,
@@ -238,5 +320,8 @@ export function selectCakeTopperConfig(state: CakeTopperStore): CakeTopperConfig
     outlineColor,
     outlineDepthMm,
     closedOutlineHoles,
+    decorators,
+    decoratorPlacements,
+    decoratorColors,
   };
 }

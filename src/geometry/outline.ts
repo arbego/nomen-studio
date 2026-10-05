@@ -19,31 +19,50 @@ interface LetterRef {
  * within-line gap cascade *and* its line's own draggable (x, y) offset — the
  * "natural" (un-grown) silhouette the outline is built from.
  */
-function currentOutlinePaths(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[]): ClipperLib.Path[] {
+function currentOutlinePaths(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], extraContours: ExtraContours = []): ClipperLib.Path[] {
   const paths: ClipperLib.Path[] = [];
+  for (const contour of extraContours) {
+    paths.push(normalized(toClipperPath(contour)));
+  }
   block.lines.forEach((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, letterGapsMm[lineIndex] ?? []));
     const offset = lineOffsets[lineIndex] ?? ZERO_OFFSET;
     line.letters.forEach((letter, letterIndex) => {
       for (const { outer: contour } of letter.contours) {
         const shifted = contour.map((p) => new THREE.Vector2(p.x + cascade[letterIndex] + offset.x, p.y + offset.y));
-        const path = toClipperPath(shifted);
-        // ClipperOffset expects consistent outer-contour orientation; every
-        // contour here is an outer boundary as drawn by the font (never a
-        // pre-marked hole), so normalize them all to the same winding rather
-        // than trusting the font/SVG pipeline's own (consistent, but
-        // arbitrary) convention. (Reversing a Path is just reversing its point
-        // order — the installed clipper-lib only exposes that as
-        // ReversePaths, plural.)
-        if (!ClipperLib.Clipper.Orientation(path)) {
-          path.reverse();
-        }
-        paths.push(path);
+        paths.push(normalized(toClipperPath(shifted)));
       }
     });
   });
   return paths;
 }
+
+/**
+ * ClipperOffset expects consistent outer-contour orientation; every contour fed
+ * to it here is an outer boundary as drawn by the font (never a pre-marked
+ * hole), so they are all normalized to the same winding rather than trusting
+ * the font/SVG pipeline's own — consistent, but arbitrary — convention.
+ * (Reversing a Path is just reversing its point order; the installed
+ * clipper-lib only exposes that as ReversePaths, plural.)
+ */
+function normalized(path: ClipperLib.Path): ClipperLib.Path {
+  if (!ClipperLib.Clipper.Orientation(path)) {
+    path.reverse();
+  }
+  return path;
+}
+
+/**
+ * Silhouettes that belong on the card but are not lettering — a topper's
+ * ornaments — already placed where they sit.
+ *
+ * Grown into the card exactly as a letter is, so the card reaches around them
+ * and holds them. Only their outer boundaries, so an ornament's own counters
+ * come out filled: a hole in a symbol is part of the drawing, not somewhere you
+ * were meant to see through the piece, and nothing lists it to be decided
+ * about.
+ */
+export type ExtraContours = readonly THREE.Vector2[][];
 
 /** Every letter's bounding box across every line, in the same cascade- and
  * line-offset-shifted mm-space `buildOutlineShapes` uses — used to attribute
@@ -162,7 +181,7 @@ interface AttributedHole {
  * One walk, shared by the checklist and by the build that acts on it, so the
  * two can never disagree about which hole a key names.
  */
-function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: LetterRef[], growMm: number): Map<THREE.Path, AttributedHole> {
+function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: LetterRef[], growMm: number, extraContours: ExtraContours = []): Map<THREE.Path, AttributedHole> {
   const found = shapes.flatMap((shape) => shape.holes.map((hole) => ({ hole, points: hole.getPoints(HOLE_OUTLINE_SEGMENTS) })));
   // Numbered by where each hole sits rather than by the order Clipper happened
   // to emit them in: a letter's own holes all move together, so they keep their
@@ -170,9 +189,18 @@ function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: Lette
   const placed = found.map((entry) => ({ ...entry, at: centroid(entry.points) }));
   placed.sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
 
+  // An ornament's own enclosed areas never become holes: a gap inside a symbol
+  // is part of the drawing, not somewhere anyone meant to see through the
+  // piece. Left out of the map entirely, so they are neither listed in the
+  // checklist nor kept in the card.
+  const ornamentAreas = extraContours.map((contour) => new THREE.Box2().setFromPoints([...contour]).expandByScalar(growMm));
+
   const countPerLetter = new Map<number, number>();
   const attributed = new Map<THREE.Path, AttributedHole>();
   for (const { hole, at, points } of placed) {
+    if (ornamentAreas.some((area) => area.containsPoint(at))) {
+      continue;
+    }
     const letter = attributeHoleToLetter(at, bounds, growMm);
     const holeIndex = countPerLetter.get(letter) ?? 0;
     countPerLetter.set(letter, holeIndex + 1);
@@ -189,13 +217,19 @@ function attributeHoles(shapes: THREE.Shape[], bounds: THREE.Box2[], refs: Lette
  * reopen) a hole they already closed. Most letters contribute none; a script
  * font's "a"/"e"/"o"-style counters typically contribute one each.
  */
-export function detectOutlineHoleCandidates(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], growMm: number): OutlineHoleCandidate[] {
-  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm);
+export function detectOutlineHoleCandidates(
+  block: TextBlock,
+  letterGapsMm: number[][],
+  lineOffsets: Offset2D[],
+  growMm: number,
+  extraContours: ExtraContours = [],
+): OutlineHoleCandidate[] {
+  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm, extraContours);
   if (shapes.length === 0) {
     return [];
   }
   const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
-  const attributed = attributeHoles(shapes, bounds, refs, growMm);
+  const attributed = attributeHoles(shapes, bounds, refs, growMm, extraContours);
   const candidates = [...attributed.values()].map(({ key, ref, holeIndex, points }) => ({
     key,
     lineIndex: ref.lineIndex,
@@ -211,11 +245,11 @@ export function detectOutlineHoleCandidates(block: TextBlock, letterGapsMm: numb
 }
 
 /** The outline's natural shapes (every hole Clipper's offsetting actually finds), with no manual "closed" overrides applied yet. */
-function naturalOutlineShapes(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], growMm: number): THREE.Shape[] {
+function naturalOutlineShapes(block: TextBlock, letterGapsMm: number[][], lineOffsets: Offset2D[], growMm: number, extraContours: ExtraContours = []): THREE.Shape[] {
   if (growMm <= 0) {
     return [];
   }
-  const naturalPaths = currentOutlinePaths(block, letterGapsMm, lineOffsets);
+  const naturalPaths = currentOutlinePaths(block, letterGapsMm, lineOffsets, extraContours);
   if (naturalPaths.length === 0) {
     return [];
   }
@@ -252,9 +286,10 @@ export function buildOutlineShapes(
   lineOffsets: Offset2D[],
   growMm: number,
   closedOutlineHoles: readonly string[] = [],
+  extraContours: ExtraContours = [],
 ): THREE.Shape[] {
-  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm);
-  if (shapes.length === 0 || closedOutlineHoles.length === 0) {
+  const shapes = naturalOutlineShapes(block, letterGapsMm, lineOffsets, growMm, extraContours);
+  if (shapes.length === 0) {
     return shapes;
   }
 
@@ -262,9 +297,14 @@ export function buildOutlineShapes(
   const { bounds, refs } = letterBoundsList(block, letterGapsMm, lineOffsets);
   // Attributed over the whole set before anything is removed, so the numbering
   // is the same one the checklist was built from.
-  const attributed = attributeHoles(shapes, bounds, refs, growMm);
+  const attributed = attributeHoles(shapes, bounds, refs, growMm, extraContours);
   for (const shape of shapes) {
-    shape.holes = shape.holes.filter((hole) => !closed.has(attributed.get(hole)!.key));
+    // A hole an ornament made is filled whatever the checklist says, since the
+    // checklist never offered it: see attributeHoles.
+    shape.holes = shape.holes.filter((hole) => {
+      const found = attributed.get(hole);
+      return found !== undefined && !closed.has(found.key);
+    });
   }
   return shapes;
 }
@@ -282,8 +322,9 @@ export function buildOutlineGeometry(
   growMm: number,
   extrudeDepthMm: number,
   closedOutlineHoles: readonly string[] = [],
+  extraContours: ExtraContours = [],
 ): OutlineGeometry | null {
-  const shapes = buildOutlineShapes(block, letterGapsMm, lineOffsets, growMm, closedOutlineHoles);
+  const shapes = buildOutlineShapes(block, letterGapsMm, lineOffsets, growMm, closedOutlineHoles, extraContours);
   if (shapes.length === 0) {
     return null;
   }

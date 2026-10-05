@@ -30,6 +30,9 @@ const config: CakeTopperConfig = {
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
   closedOutlineHoles: [],
+  decorators: [],
+  decoratorPlacements: {},
+  decoratorColors: {},
 };
 
 const stickParams: StickParams = {

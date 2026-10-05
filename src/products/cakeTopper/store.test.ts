@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { useCakeTopperStore } from './store';
+import { selectCakeTopperConfig, useCakeTopperStore } from './store';
 
 beforeEach(() => {
   useCakeTopperStore.getState().reset();
@@ -138,5 +138,76 @@ describe('topperStore', () => {
     const state = useCakeTopperStore.getState();
     expect(state.lineOffsets[1]).toEqual({ x: 5, y: -10 });
     expect(state.lineOffsets[0]).toEqual(untouched);
+  });
+});
+
+describe('topper ornaments', () => {
+  it('adds one with an icon, a size and a place to stand', () => {
+    const id = useCakeTopperStore.getState().addDecorator('star');
+    const { decorators, decoratorPlacements, decoratorColors } = useCakeTopperStore.getState();
+
+    expect(decorators).toHaveLength(1);
+    // Handed back so the picker that added it can go on changing that same one
+    // rather than adding a second with the next click.
+    expect(id).toBe(decorators[0].id);
+    expect(decorators[0].iconName).toBe('star');
+    expect(decorators[0].widthMm).toBeGreaterThan(0);
+    expect(decoratorPlacements[id].angleDeg).toBe(0);
+    // In the lettering's filament to begin with, set explicitly so the colour
+    // picker opens showing which swatch is in use.
+    expect(decoratorColors[id]).toBe(useCakeTopperStore.getState().previewColor);
+  });
+
+  it('puts a second one somewhere other than exactly on top of the first', () => {
+    const first = useCakeTopperStore.getState().addDecorator('star');
+    const second = useCakeTopperStore.getState().addDecorator('favorite');
+    const { decoratorPlacements } = useCakeTopperStore.getState();
+    expect(decoratorPlacements[first].offset).not.toEqual(decoratorPlacements[second].offset);
+  });
+
+  it('takes the placement and the colour away with the ornament', () => {
+    const id = useCakeTopperStore.getState().addDecorator('star');
+    useCakeTopperStore.getState().removeDecorator(id);
+
+    const state = useCakeTopperStore.getState();
+    expect(state.decorators).toHaveLength(0);
+    expect(state.decoratorPlacements[id]).toBeUndefined();
+    expect(state.decoratorColors[id]).toBeUndefined();
+  });
+
+  it('edits, turns and recolours one without touching the others', () => {
+    const first = useCakeTopperStore.getState().addDecorator('star');
+    const second = useCakeTopperStore.getState().addDecorator('favorite');
+    const before = useCakeTopperStore.getState().decorators[0];
+
+    useCakeTopperStore.getState().updateDecorator(second, { widthMm: 60, iconName: 'pets' });
+    useCakeTopperStore.getState().setDecoratorAngle(second, -30);
+    useCakeTopperStore.getState().setDecoratorColor(second, '#b7c4ac');
+
+    const state = useCakeTopperStore.getState();
+    expect(state.decorators[0]).toEqual(before);
+    expect(state.decorators[1].widthMm).toBe(60);
+    expect(state.decorators[1].iconName).toBe('pets');
+    expect(state.decoratorPlacements[second].angleDeg).toBe(-30);
+    expect(state.decoratorColors[second]).toBe('#b7c4ac');
+    expect(state.decoratorColors[first]).not.toBe('#b7c4ac');
+  });
+
+  it('does not hand a newly added ornament an id a loaded one is already using', () => {
+    // Loading restores ids like `decorator-2`; a session counter starting from
+    // zero would hand the same id out again, and the two would share a
+    // placement and a colour.
+    const loaded = { ...useCakeTopperStore.getState().decorators };
+    useCakeTopperStore.getState().loadConfig({
+      ...selectCakeTopperConfig(useCakeTopperStore.getState()),
+      decorators: [{ id: 'decorator-7', iconName: 'star', widthMm: 25, depthMm: 3 }],
+      decoratorPlacements: { 'decorator-7': { offset: { x: 1, y: 2 }, angleDeg: 0 } },
+      decoratorColors: {},
+    });
+    void loaded;
+
+    const added = useCakeTopperStore.getState().addDecorator('favorite');
+    expect(added).not.toBe('decorator-7');
+    expect(useCakeTopperStore.getState().decoratorPlacements['decorator-7']).toEqual({ offset: { x: 1, y: 2 }, angleDeg: 0 });
   });
 });

@@ -20,6 +20,9 @@ const baseConfig: CakeTopperConfig = {
   outlineColor: '#f7f5f2',
   outlineDepthMm: 1.5,
   closedOutlineHoles: [],
+  decorators: [],
+  decoratorPlacements: {},
+  decoratorColors: {},
 };
 
 function allLetters(block: TextBlock) {

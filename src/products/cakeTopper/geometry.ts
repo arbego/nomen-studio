@@ -1,10 +1,25 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { TextBlock } from '../../geometry/types';
 import { buildTextBlock } from '../../geometry/textGeometry';
 import { stickToGeometry, clampStickOffsetToBounds, stickLengthForLevelTip } from '../../geometry/stickGeometry';
 import { combineGeometries } from '../../geometry/combine';
-import { combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
+import { blockPivot, combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
+import { degToRad, placeGeometry, placePoint, type Placement2D } from '../../geometry/placement';
+import type { ExtraContours } from '../../geometry/outline';
+import { buildIconBlock } from '../../icons/iconBlock';
 import type { CakeTopperBlockId, CakeTopperConfig, CakeTopperGeometryConfig } from './config';
+
+/** One ornament, built from its glyph — paired with the config id it was built for. */
+export interface DecoratorBlock {
+  id: string;
+  block: TextBlock;
+}
+
+/** Everything the font build produces for a topper: the lettering, and an ornament per icon on it. */
+export interface CakeTopperGeometry {
+  blocks: TextBlock[];
+  decorators: DecoratorBlock[];
+}
 
 /**
  * Builds the word block's letter geometry — the expensive, async, font-dependent
@@ -13,6 +28,11 @@ import type { CakeTopperBlockId, CakeTopperConfig, CakeTopperGeometryConfig } fr
  * sticksForBlock and mergedBlockGeometry below), so none of them needs to re-run
  * font extrusion.
  */
+export async function buildCakeTopperGeometry(config: CakeTopperGeometryConfig): Promise<CakeTopperGeometry> {
+  const [blocks, decorators] = await Promise.all([buildCakeTopperBlocks(config), buildCakeTopperDecorators(config)]);
+  return { blocks, decorators };
+}
+
 export async function buildCakeTopperBlocks(config: CakeTopperGeometryConfig): Promise<TextBlock[]> {
   return [
     await buildTextBlock({
@@ -24,6 +44,66 @@ export async function buildCakeTopperBlocks(config: CakeTopperGeometryConfig): P
       extrudeDepthMm: config.extrudeDepthMm,
     }),
   ];
+}
+
+/**
+ * Every ornament as its own solid.
+ *
+ * An icon is a glyph, so each goes down the same pipeline a letter does — the
+ * whole reason an ornament costs this product almost nothing beyond its panel.
+ */
+export async function buildCakeTopperDecorators(config: CakeTopperGeometryConfig): Promise<DecoratorBlock[]> {
+  return Promise.all(
+    config.decorators.map(async (decorator) => ({
+      id: decorator.id,
+      block: await buildIconBlock({ id: decorator.id, iconName: decorator.iconName, widthMm: decorator.widthMm, extrudeDepthMm: decorator.depthMm }),
+    })),
+  );
+}
+
+/**
+ * Where an ornament sits and how far it is turned — one description, followed
+ * by the preview and by what gets exported, so what you drag is what prints.
+ */
+export function decoratorPlacement(decorator: DecoratorBlock, config: CakeTopperConfig): Placement2D {
+  const { offset = { x: 0, y: 0 }, angleDeg = 0 } = config.decoratorPlacements[decorator.id] ?? {};
+  return { translate: offset, rotationRad: degToRad(angleDeg), pivot: blockPivot(decorator.block, []) };
+}
+
+/**
+ * Every ornament's outline, placed where it sits, for the backing card to grow
+ * around.
+ *
+ * Outer boundaries only, so an ornament's own counters come out filled — a gap
+ * inside a symbol is part of the drawing, not somewhere anyone meant to see
+ * through the piece.
+ */
+export function decoratorOutlineContours(decorators: DecoratorBlock[], config: CakeTopperConfig): ExtraContours {
+  return decorators.flatMap((decorator) => {
+    const placement = decoratorPlacement(decorator, config);
+    return decorator.block.lines.flatMap((line) =>
+      line.letters.flatMap((letter) =>
+        letter.contours.map(({ outer }) =>
+          outer.map((point) => {
+            const placed = placePoint(point.x, point.y, placement);
+            return new THREE.Vector2(placed.x, placed.y);
+          }),
+        ),
+      ),
+    );
+  });
+}
+
+/**
+ * One ornament's printable solid, moved into the lettering's frame.
+ *
+ * Seated at z = 0, the same back face the letters and the card share, so an
+ * ornament thinner than the lettering sits flush at the back rather than
+ * floating in the middle of the piece.
+ */
+export function placedDecoratorGeometry(decorator: DecoratorBlock, config: CakeTopperConfig): THREE.BufferGeometry {
+  const parts = decorator.block.lines.flatMap((line) => line.letters.map((letter) => letter.geometry.clone()));
+  return placeGeometry(combineGeometries(parts), decoratorPlacement(decorator, config));
 }
 
 /**

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAsyncGeometry } from '../../hooks/useAsyncGeometry';
 import { useCakeTopperStore, selectCakeTopperGeometryConfig } from './store';
-import { buildCakeTopperBlocks } from './geometry';
+import { buildCakeTopperGeometry } from './geometry';
 import { CakeTopperGeometryContext } from './geometryContext';
 
 /**
@@ -14,6 +14,6 @@ import { CakeTopperGeometryContext } from './geometryContext';
  */
 export function CakeTopperProvider({ children }: { children: ReactNode }) {
   const config = useCakeTopperStore(useShallow(selectCakeTopperGeometryConfig));
-  const state = useAsyncGeometry(config, buildCakeTopperBlocks);
+  const state = useAsyncGeometry(config, buildCakeTopperGeometry);
   return <CakeTopperGeometryContext.Provider value={state}>{children}</CakeTopperGeometryContext.Provider>;
 }
