@@ -1,4 +1,4 @@
-import { COLOR_PRESETS } from '../presets';
+import { COLOR_FAMILIES, COLOR_PRESETS } from '../presets';
 
 interface ColorSwatchPickerProps {
   value: string;
@@ -21,19 +21,27 @@ export function ColorSwatchPicker({ value, onChange, label = 'Preview color', va
         <span className={variant === 'section' ? 'text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300' : 'text-sm text-stone-600 dark:text-stone-400'}>{label}</span>
       )}
       {hint && <p className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
-      <div className="flex flex-wrap gap-2 pt-1">
-        {COLOR_PRESETS.map((color) => (
-          <button
-            key={color.id}
-            type="button"
-            title={color.label}
-            aria-pressed={value === color.hex}
-            onClick={() => onChange(color.hex)}
-            className={`h-8 w-8 rounded-full border-2 transition-transform ${
-              value === color.hex ? 'scale-110 border-stone-800 dark:border-stone-200' : 'border-white dark:border-stone-900'
-            }`}
-            style={{ backgroundColor: color.hex, boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}
-          />
+      {/* One row per family rather than one wall of swatches: a pastel and a
+          bold are different kinds of design, not shades of one, and thirty
+          circles in a single wrap read as a gradient to scan rather than two
+          sets to choose between. */}
+      <div className="flex flex-col gap-2 pt-1">
+        {COLOR_FAMILIES.map((family) => (
+          <div key={family} className="flex flex-wrap gap-2">
+            {COLOR_PRESETS.filter((color) => color.family === family).map((color) => (
+              <button
+                key={color.id}
+                type="button"
+                title={color.label}
+                aria-pressed={value === color.hex}
+                onClick={() => onChange(color.hex)}
+                className={`h-8 w-8 rounded-full border-2 transition-transform ${
+                  value === color.hex ? 'scale-110 border-stone-800 dark:border-stone-200' : 'border-white dark:border-stone-900'
+                }`}
+                style={{ backgroundColor: color.hex, boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}
+              />
+            ))}
+          </div>
         ))}
       </div>
     </div>
