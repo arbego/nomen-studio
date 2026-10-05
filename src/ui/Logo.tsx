@@ -8,8 +8,17 @@ import { ACCENT } from './accent';
 const LETTER =
   'M0 0L196 0L391 293L389 82L333 66L333 0L563 0L563 68L512 82L512 511L367 511L173 221L174 430L229 444L229 511L0 511L0 445L51 430L51 82L0 67Z';
 
-/** The groove cut across its face — the inlay the whole studio is about, in the one accent colour. */
-const INLAY = 'M95 0L117 0L464 511L442 511Z';
+/**
+ * The groove cut across its face — the inlay the whole studio is about, in the
+ * one accent colour.
+ *
+ * Widened from the traced original, which was drawn at 1024px and came out a
+ * hairline at the sizes this is actually used: barely over a pixel at the
+ * landing screen's 40, and all but gone in a 16px tab, where the light letter
+ * of the dark theme gives it least contrast to work with. Centred on the same
+ * axis, so the mark itself has not moved.
+ */
+const INLAY = 'M88 0L124 0L471 511L435 511Z';
 
 interface LogoProps {
   /** Size it by height and let the width follow: `h-8 w-auto`. */
