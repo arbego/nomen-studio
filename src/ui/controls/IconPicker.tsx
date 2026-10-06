@@ -155,7 +155,7 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
       {results.length === 0 ? (
         <p className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">No icon matches “{query.trim()}”.</p>
       ) : (
-        <div className="grid max-h-64 grid-cols-6 gap-1 overflow-y-auto">
+        <div className="grid max-h-64 grid-cols-[repeat(auto-fill,44px)] gap-1 overflow-y-auto">
           {results.map((icon) => (
             <button
               key={icon.id}
@@ -164,7 +164,7 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
               aria-label={icon.name}
               aria-pressed={icon.id === value}
               onClick={() => onChange(icon.id)}
-              className={`flex aspect-square items-center justify-center rounded-md border text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 ${
+              className={`flex h-11 w-11 items-center justify-center rounded-md border text-stone-700 dark:text-stone-300 transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 ${
                 icon.id === value ? 'border-stone-800 dark:border-stone-200 bg-stone-100 dark:bg-stone-700' : 'border-transparent'
               }`}
             >
