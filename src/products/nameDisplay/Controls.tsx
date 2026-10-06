@@ -65,8 +65,8 @@ export function NameDisplayControls() {
             value={config.initialDepthMm}
             onChange={(initialDepthMm) => onChange({ initialDepthMm })}
             min={5}
-            max={30}
-            step={0.5}
+            max={100}
+            step={1}
             hint="The initial is the structural piece — it holds the name and keeps the display upright."
           />
           <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />
