@@ -8,7 +8,12 @@ interface OutlineMeshProps {
   letterGapsMm: number[][];
   lineOffsets: Offset2D[];
   growMm: number;
-  /** The card's own thickness — deliberately independent of the word's extrudeDepthMm, and normally shallower, so the letters (which start at the same z=0 base) visibly stand proud of it instead of being flush with (and so hidden behind) it. */
+  /**
+   * The card's own thickness, deliberately independent of the word's
+   * extrudeDepthMm. The card is extruded from z=0 forward, and whatever stands on
+   * it starts where it ends — so this is also how far the lettering is lifted off
+   * the back of the piece (see the cake topper's contentZMm).
+   */
   depthMm: number;
   color: string;
   /** Counter holes (e.g. the "a" in a script font) the user has manually filled in — see outline.ts. */

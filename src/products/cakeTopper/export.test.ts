@@ -93,6 +93,38 @@ describe('what the cake topper puts in the file', () => {
     expect(lettering.geometry.boundingBox!.min.y).toBeLessThan(letters.boundingBox!.min.y - 40);
   }, 30000);
 
+  it('stands the lettering on the card rather than burying the card inside it', async () => {
+    // Sharing a back face put the card's whole thickness inside the letters —
+    // two parts in two filaments in the same volume, for the slicer to resolve
+    // by part order. Seated, every layer belongs to one part.
+    const { block: word, config: used } = await block({ outlineEnabled: true });
+    const [lettering, card] = printObjects(word, used);
+    [lettering, card].forEach((o) => o.geometry.computeBoundingBox());
+
+    expect(card.geometry.boundingBox!.min.z).toBeCloseTo(0, 5);
+    expect(card.geometry.boundingBox!.max.z).toBeCloseTo(used.outlineDepthMm, 5);
+    // The card's front face is the lettering's back face: they meet across it,
+    // which is contact enough to fuse, and share no volume at all.
+    expect(lettering.geometry.boundingBox!.min.z).toBeCloseTo(used.outlineDepthMm, 5);
+    expect(lettering.geometry.boundingBox!.max.z).toBeCloseTo(used.outlineDepthMm + used.extrudeDepthMm, 5);
+  }, 30000);
+
+  it('keeps the sticks within the card they are sunk into', async () => {
+    // They are cut to its thickness, so carrying them cannot make the card part
+    // any deeper than the card.
+    const { block: word, config: used } = await block({ outlineEnabled: true });
+    const card = printObjects(word, used)[1];
+    card.geometry.computeBoundingBox();
+    expect(card.geometry.boundingBox!.max.z).toBeCloseTo(used.outlineDepthMm, 5);
+  }, 30000);
+
+  it('leaves the lettering on the bed when there is no card under it', async () => {
+    const { block: word, config: used } = await block();
+    const [lettering] = printObjects(word, used);
+    lettering.geometry.computeBoundingBox();
+    expect(lettering.geometry.boundingBox!.min.z).toBeCloseTo(0, 5);
+  }, 30000);
+
   it('leaves the card out entirely when it is switched off, rather than exporting an empty part', async () => {
     const { block: word, config: used } = await block();
     expect(printObjects(word, used)).toHaveLength(1);
@@ -214,6 +246,16 @@ describe('the backing card and an ornament', () => {
     // The card now reaches out past where the lettering alone would have taken
     // it — which is what holds a piece placed off the end of the word.
     expect(withOrnament.boundingBox!.max.x).toBeGreaterThan(lettersOnly.boundingBox!.max.x);
+  }, 30000);
+
+  it('stands the ornament on the card too, not half-sunk into it', async () => {
+    const [block] = await buildCakeTopperBlocks(carded);
+    const decorators = await buildCakeTopperDecorators(carded);
+    const ornament = printObjects(block, carded, decorators).find((o) => o.name === 'star')!.geometry;
+    ornament.computeBoundingBox();
+
+    expect(ornament.boundingBox!.min.z).toBeCloseTo(carded.outlineDepthMm, 5);
+    expect(ornament.boundingBox!.max.z).toBeCloseTo(carded.outlineDepthMm + carded.decorators[0].depthMm, 5);
   }, 30000);
 
   it('leaves an ornament solid, however the card is grown around it', async () => {

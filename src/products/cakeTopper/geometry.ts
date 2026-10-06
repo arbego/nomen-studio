@@ -97,13 +97,13 @@ export function decoratorOutlineContours(decorators: DecoratorBlock[], config: C
 /**
  * One ornament's printable solid, moved into the lettering's frame.
  *
- * Seated at z = 0, the same back face the letters and the card share, so an
- * ornament thinner than the lettering sits flush at the back rather than
- * floating in the middle of the piece.
+ * Seated on the same face the letters are (see contentZMm), so an ornament
+ * thinner than the lettering sits flush against the card's front rather than
+ * floating in the middle of the piece or buried inside the card.
  */
 export function placedDecoratorGeometry(decorator: DecoratorBlock, config: CakeTopperConfig): THREE.BufferGeometry {
   const parts = decorator.block.lines.flatMap((line) => line.letters.map((letter) => letter.geometry.clone()));
-  return placeGeometry(combineGeometries(parts), decoratorPlacement(decorator, config));
+  return placeGeometry(combineGeometries(parts), decoratorPlacement(decorator, config), contentZMm(config));
 }
 
 /**
@@ -141,19 +141,38 @@ export function sticksForBlock(block: TextBlock, config: CakeTopperConfig): THRE
 }
 
 /**
+ * The z the lettering and the ornaments are seated at: the card's front face
+ * when there is a card, the back of the piece when there is not.
+ *
+ * They sit *on* the card rather than starting at the same back face it does.
+ * Sharing a back face buried the card's whole thickness inside the letters —
+ * two parts in two filaments occupying the same volume, which a slicer has to
+ * resolve by part order, and which prints as the first 1.5mm of every letter in
+ * the card's colour. Seated, each layer belongs to exactly one part, and the two
+ * still fuse: they meet across a whole face.
+ *
+ * `outlineGrowMm` is read as well as the switch because a card grown by nothing
+ * is no card (see outline.ts), and the lettering would be left standing on air.
+ */
+export function contentZMm(config: CakeTopperConfig): number {
+  return config.outlineEnabled && config.outlineGrowMm > 0 ? config.outlineDepthMm : 0;
+}
+
+/**
  * Where each letter of each line actually is: its own solid, shifted to its
- * current gap-adjusted and line-offset-shifted position. Each letter's own
- * geometry is left untouched (cloned before shifting) since the live scene still
- * needs the natural-position original.
+ * current gap-adjusted and line-offset-shifted position and seated on the card.
+ * Each letter's own geometry is left untouched (cloned before shifting) since
+ * the live scene still needs the natural-position original.
  */
 export function placedLetterGeometries(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry[] {
+  const dz = contentZMm(config);
   return block.lines.flatMap((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, config.letterGapsMm[lineIndex] ?? []));
     const offset = config.lineOffsets[lineIndex] ?? { x: 0, y: 0 };
     return line.letters.map((letter, i) => {
       const dx = cascade[i] + offset.x;
       const dy = offset.y;
-      return dx === 0 && dy === 0 ? letter.geometry : letter.geometry.clone().translate(dx, dy, 0);
+      return dx === 0 && dy === 0 && dz === 0 ? letter.geometry : letter.geometry.clone().translate(dx, dy, dz);
     });
   });
 }

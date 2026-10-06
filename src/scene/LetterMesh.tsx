@@ -15,6 +15,8 @@ interface LetterMeshProps {
   xMm: number;
   /** y offset (mm) — this letter's line's own draggable position offset, shared by every letter in that line. */
   yMm: number;
+  /** z offset (mm) — how far in front of the block's origin the lettering is seated, shared by every letter of the block. */
+  zMm?: number;
   /** Every letter is draggable: the first letter of a line drags the whole line's position, every other letter closes/opens the gap before it. */
   draggable: boolean;
   dragging: boolean;
@@ -34,7 +36,7 @@ interface LetterMeshProps {
 }
 
 /** One letter of a line — a static, pre-extruded solid positioned via a cheap (x, y) translation, draggable to either close/open the gap before it or (for a line's first letter) reposition the whole line. */
-export function LetterMesh({ letter, color, xMm, yMm, draggable, dragging, anyDragActive, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
+export function LetterMesh({ letter, color, xMm, yMm, zMm = 0, draggable, dragging, anyDragActive, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
   const [hovered, setHovered] = useState(false);
   // Hovering lights this letter up, unless it's just being passed over while
   // something *else* is being dragged — but being dragged itself always
@@ -44,7 +46,7 @@ export function LetterMesh({ letter, color, xMm, yMm, draggable, dragging, anyDr
   return (
     <mesh
       geometry={letter.geometry}
-      position={[xMm, yMm, 0]}
+      position={[xMm, yMm, zMm]}
       castShadow
       receiveShadow
       onPointerDown={draggable ? onPointerDown : undefined}

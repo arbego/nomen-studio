@@ -5,7 +5,7 @@ import { buildOutlineShapes } from '../../geometry/outline';
 import { cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
 import { DEFAULT_CURVE_SEGMENTS } from '../../geometry/units';
 import { getIcon } from '../../icons/catalog';
-import { decoratorOutlineContours, decoratorPlacement, sticksForBlock, stickThicknessMm, type DecoratorBlock } from './geometry';
+import { contentZMm, decoratorOutlineContours, decoratorPlacement, sticksForBlock, stickThicknessMm, type DecoratorBlock } from './geometry';
 import type { CakeTopperBlockId, CakeTopperConfig } from './config';
 
 const ORIGIN = { x: 0, y: 0 };
@@ -25,13 +25,16 @@ function letterId(lineIndex: number, letterIndex: number): string {
  * other.
  */
 function letterPieces(block: TextBlock, config: CakeTopperConfig): SolidPiece[] {
+  const z = contentZMm(config);
   return block.lines.flatMap((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, config.letterGapsMm[lineIndex] ?? []));
     const offset = config.lineOffsets[lineIndex] ?? ORIGIN;
     return line.letters.map((letter, letterIndex) => ({
       id: letterId(lineIndex, letterIndex),
       region: regionFromContours(letter.contours, { translate: { x: cascade[letterIndex] + offset.x, y: offset.y } }),
-      zRange: [0, config.extrudeDepthMm] as const,
+      // Seated on the card's front face, which its own band ends at: they meet
+      // across that plane rather than overlapping, and a plane is contact.
+      zRange: [z, z + config.extrudeDepthMm] as const,
     }));
   });
 }
@@ -85,14 +88,15 @@ function stickPieces(block: TextBlock, config: CakeTopperConfig): SolidPiece[] {
 }
 
 function decoratorPieces(decorators: DecoratorBlock[], config: CakeTopperConfig): SolidPiece[] {
+  const z = contentZMm(config);
   return decorators.map((decorator) => {
     const placement = decoratorPlacement(decorator, config);
     return {
       id: `decorator-${decorator.id}`,
       region: decorator.block.lines.flatMap((line) => line.letters.flatMap((letter) => regionFromContours(letter.contours, placement))),
-      // Seated on the same back face as everything else (see
-      // placedDecoratorGeometry), so even a thin ornament meets what it sits on.
-      zRange: [0, config.decorators.find((d) => d.id === decorator.id)?.depthMm ?? 0] as const,
+      // On the same face the lettering is seated on (see placedDecoratorGeometry),
+      // so even a thin ornament meets what it sits on.
+      zRange: [z, z + (config.decorators.find((d) => d.id === decorator.id)?.depthMm ?? 0)] as const,
     };
   });
 }

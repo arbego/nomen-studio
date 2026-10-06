@@ -13,7 +13,7 @@ import { usePanelStore } from '../../ui/panelStore';
 import { useCakeTopperStore, selectCakeTopperConfig } from './store';
 import { useCakeTopperGeometry } from './geometryContext';
 import { decoratorFocusKey, lineFocusKey, SECTIONS } from './focus';
-import { decoratorOutlineContours, decoratorPlacement, stickThicknessMm, type DecoratorBlock } from './geometry';
+import { contentZMm, decoratorOutlineContours, decoratorPlacement, stickThicknessMm, type DecoratorBlock } from './geometry';
 import { rotateOffset } from '../../geometry/placement';
 import { decoratorColor, type CakeTopperConfig } from './config';
 
@@ -92,6 +92,10 @@ export function CakeTopperScene({
     return positions.map((p) => p - centerOffset);
   }, [blocks, letterGapsMm, lineOffsets]);
 
+  // Everything that is not the card sits on its front face, so the two meet
+  // across a face instead of the card being buried inside the letters — the
+  // preview shows the same stack the file carries. See contentZMm.
+  const contentZ = fullConfig ? contentZMm(fullConfig) : 0;
   const wordIndex = blocks.findIndex((p) => p.id === 'word');
   const wordBlock = blocks[wordIndex];
   // The outline card can't cheaply track a live letter/line drag (unlike a
@@ -145,6 +149,8 @@ export function CakeTopperScene({
             block={block}
             color={color}
             position={[layout[i] ?? 0, 0, 0]}
+            // The letters rise onto the card; the sticks stay sunk into it.
+            letterZMm={contentZ}
             stick={stick}
             stickColor={stickColor}
             stickOffsets={stickOffsets[blockId]}
@@ -183,7 +189,7 @@ export function CakeTopperScene({
         decorators.map((decorator) => {
           const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = decoratorPlacement(decorator, fullConfig);
           return (
-            <group key={decorator.id} position={[(layout[wordIndex] ?? 0) + translate.x + pivot.x, translate.y + pivot.y, 0]} rotation={[0, 0, rotationRad]}>
+            <group key={decorator.id} position={[(layout[wordIndex] ?? 0) + translate.x + pivot.x, translate.y + pivot.y, contentZ]} rotation={[0, 0, rotationRad]}>
               <TextBlockMesh
                 block={decorator.block}
                 color={decoratorColor(fullConfig, decorator.id)}

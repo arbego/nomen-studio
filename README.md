@@ -235,6 +235,12 @@ them is a real way to make one of these.
   exported 3MF, with its own color.
 - **Outline card** (`geometry/outline.ts`): polygon offsetting that grows a solid
   backing under the lettering, merging nearby disconnected pieces as it grows.
+  The lettering and the ornaments stand *on* it — the card's front face is their
+  back face — rather than all three being extruded from the same z=0. Sharing a
+  back face buried the card's whole thickness inside the letters: two parts in
+  two filaments occupying one volume, for the slicer to resolve by part order.
+  Seated, every layer belongs to exactly one part, and they still fuse, meeting
+  across a whole face.
   A counter that survives the grow stays a hole, and each one can be filled in
   solid instead — from the checklist in the panel, or by holding Ctrl in the
   preview and clicking the hole itself (`scene/OutlineHoleTargets.tsx`). Holding
