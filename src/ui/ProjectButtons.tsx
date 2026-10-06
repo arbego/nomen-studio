@@ -17,12 +17,14 @@ function SaveIcon() {
 
 export function SaveProjectButton({ product }: { product: ProductDefinition }) {
   const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
   return (
     <div className="flex flex-col items-end gap-2">
-      <button type="button" onClick={() => {
+      <button type="button" disabled={busy} onClick={async () => {
         setFailed(false);
-        try { saveProject(product); } catch { setFailed(true); }
-      }} className={`${BUTTON_CLASS} h-10 rounded-full px-4 text-sm shadow-md`}>
+        setBusy(true);
+        try { await saveProject(product); } catch { setFailed(true); } finally { setBusy(false); }
+      }} className={`${BUTTON_CLASS} h-10 rounded-full px-4 text-sm shadow-md disabled:cursor-not-allowed disabled:opacity-50`}>
         <SaveIcon />
         Save project
       </button>

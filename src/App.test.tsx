@@ -38,8 +38,8 @@ function enterEditor() {
 function editProject() {
   project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Edited' } });
 }
-function click(label: string) {
-  act(() => button(label).click());
+async function click(label: string) {
+  await act(async () => button(label).click());
 }
 function leaveDialog() {
   return container.querySelector('dialog')!;
@@ -49,6 +49,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Hello' } });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.spyOn(window, 'prompt').mockImplementation((_message, suggestedName) => suggestedName ?? null);
   Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute('open', ''); } });
   Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute('open'); } });
   useAppStore.getState().clearProduct();
@@ -80,7 +81,7 @@ describe('project navigation', () => {
     expect(history.clear).toHaveBeenCalledOnce();
     const actions = container.querySelector('[data-testid="view-actions"]')!;
     expect([...actions.querySelectorAll('button')].map((element) => element.textContent?.trim())).toEqual(['Save project', 'Export']);
-    click('Save project');
+    await click('Save project');
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), 'my-cake.json');
   });
 
@@ -93,65 +94,77 @@ describe('project navigation', () => {
     expect(useAppStore.getState().selectedProductId).toBeNull();
   });
 
-  it('lets users cancel leaving or leave without downloading', () => {
+  it('lets users cancel leaving or leave without downloading', async () => {
     enterEditor();
     editProject();
-    click('All products');
+    await click('All products');
     expect(leaveDialog().open).toBe(true);
-    click('Cancel');
+    await click('Cancel');
     expect(leaveDialog().open).toBe(false);
     expect(useAppStore.getState().selectedProductId).toBe('cake');
-    click('All products');
-    click('Leave without saving');
+    await click('All products');
+    await click('Leave without saving');
     expect(useAppStore.getState().selectedProductId).toBeNull();
     expect(saveAs).not.toHaveBeenCalled();
   });
 
-  it('downloads the project before leaving and keeps the editor open if saving fails', () => {
+  it('downloads the project before leaving and keeps the editor open if saving fails', async () => {
     enterEditor();
     editProject();
-    click('All products');
+    await click('All products');
     vi.mocked(saveAs).mockImplementationOnce(() => { throw new Error('Download failed'); });
-    click('Save and leave');
+    await click('Save and leave');
     expect(useAppStore.getState().selectedProductId).toBe('cake');
     expect(leaveDialog().open).toBe(true);
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("couldn't be saved");
-    click('Save and leave');
+    await click('Save and leave');
     expect(saveAs).toHaveBeenLastCalledWith(expect.any(Blob), 'my-cake.json');
     expect(useAppStore.getState().selectedProductId).toBeNull();
   });
 
-  it('leaves a newly started or saved design without prompting', () => {
+  it('leaves a newly started or saved design without prompting', async () => {
     enterEditor();
     expect(history.clear).toHaveBeenCalledOnce();
-    click('All products');
+    await click('All products');
     expect(useAppStore.getState().selectedProductId).toBeNull();
     enterEditor();
     editProject();
-    click('Save project');
+    await click('Save project');
     const event = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(false);
-    click('All products');
+    await click('All products');
     expect(useAppStore.getState().selectedProductId).toBeNull();
   });
 
-  it('prompts again after editing a saved design', () => {
+  it('prompts again after editing a saved design', async () => {
     enterEditor();
-    click('Save project');
+    await click('Save project');
     editProject();
-    click('All products');
+    await click('All products');
     expect(leaveDialog().open).toBe(true);
   });
 
-  it('guards tab navigation only while the editor is mounted', () => {
+  it('keeps the editor open when the save filename prompt is canceled', async () => {
+    enterEditor();
+    editProject();
+    await click('All products');
+    vi.mocked(window.prompt).mockReturnValueOnce(null);
+    await click('Save and leave');
+    expect(useAppStore.getState().selectedProductId).toBe('cake');
+    expect(leaveDialog().open).toBe(true);
+    expect(saveAs).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('guards tab navigation only while the editor is mounted', async () => {
     enterEditor();
     editProject();
     const event = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
-    click('All products');
-    click('Leave without saving');
+    await click('All products');
+    await click('Leave without saving');
     const nextEvent = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(nextEvent);
     expect(nextEvent.defaultPrevented).toBe(false);
