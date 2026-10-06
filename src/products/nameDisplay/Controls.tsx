@@ -37,8 +37,8 @@ export function NameDisplayControls() {
   const pocketCapped = pocketDepth < config.pocketDepthMm;
   // Computed once in the provider's assembly rather than re-running the
   // Clipper intersection on every render of this panel.
-  const detached = assembly ? !assembly.overlapsInitial : false;
-  const detachedDecoratorIds = assembly ? assembly.decorators.filter((decorator) => !decorator.overlapsInitial).map((decorator) => decorator.id) : [];
+  const detached = assembly ? !assembly.heldByInitial : false;
+  const detachedDecoratorIds = assembly ? assembly.decorators.filter((decorator) => !decorator.heldByInitial).map((decorator) => decorator.id) : [];
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">

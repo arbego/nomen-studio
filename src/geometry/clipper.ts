@@ -146,6 +146,51 @@ export function shapesFromPolyTree(node: ClipperLib.PolyNode, shapes: THREE.Shap
 }
 
 /**
+ * Walks a PolyTree into one region per *separate solid*: an outer boundary with
+ * its own holes, and then, separately, whatever sits inside those holes — an
+ * island in a counter is a solid of its own, not part of the ring around it.
+ */
+function solidsFromPolyTree(node: ClipperLib.PolyNode, into: Region[]): void {
+  for (const child of node.Childs()) {
+    if (child.IsHole()) {
+      solidsFromPolyTree(child, into);
+      continue;
+    }
+    const solid: Region = [orient(child.Contour().slice(), true)];
+    for (const hole of child.Childs()) {
+      if (hole.IsHole()) {
+        solid.push(orient(hole.Contour().slice(), false));
+      }
+    }
+    into.push(solid);
+    solidsFromPolyTree(child, into);
+  }
+}
+
+/**
+ * Each connected solid of a region, as a region of its own.
+ *
+ * A region is routinely several separate things: the dot and the stem of an "i",
+ * the body and the flames of a rocket, a backing card grown into islands, a word
+ * whose letters have been dragged apart. Nothing about `Paths` says which
+ * boundary belongs with which, so this unions into a PolyTree and reads the
+ * nesting back out — the same recovery `regionToShapes` makes, kept apart from it
+ * because what is wanted here is the pieces, not shapes to extrude.
+ */
+export function splitRegion(region: Region): Region[] {
+  if (region.length === 0) {
+    return [];
+  }
+  const clipper = new ClipperLib.Clipper();
+  clipper.AddPaths(region, ClipperLib.PolyType.ptSubject, true);
+  const tree = new ClipperLib.PolyTree();
+  clipper.Execute(ClipperLib.ClipType.ctUnion, tree, FILL, FILL);
+  const solids: Region[] = [];
+  solidsFromPolyTree(tree, solids);
+  return solids;
+}
+
+/**
  * A region as extrudable `THREE.Shape`s with correct holes. Goes through a
  * no-op union into a PolyTree purely to recover the outer/hole nesting that a
  * flat `Paths` list has already thrown away (see shapesFromPolyTree).

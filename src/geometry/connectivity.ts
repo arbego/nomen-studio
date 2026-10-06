@@ -1,5 +1,5 @@
 import * as ClipperLib from 'clipper-lib';
-import { CLIPPER_SCALE, growRegion, intersectRegions, regionIsEmpty, type Region } from './clipper';
+import { CLIPPER_SCALE, growRegion, intersectRegions, regionIsEmpty, splitRegion, type Region } from './clipper';
 
 /**
  * How close two pieces have to come before they count as touching.
@@ -22,11 +22,13 @@ const CONTACT_TOLERANCE_MM = 0.05;
  * footprints meet *and* their depth bands do. That is two cheap tests, where a
  * mesh-level answer would be a solid intersection per pair.
  *
- * Granularity is the caller's to choose, and it is the whole question. A piece is
- * taken to be internally connected, so handing over the lettering as one piece
- * asks whether the lettering is held, while handing over a piece per letter asks
- * whether the letters hold each other. Pass what the printed part is, split no
- * further than the parts that could actually come apart.
+ * A piece is what gets *printed* as one part, not what is connected: its region
+ * is split into its separate solids here, because a part is routinely several —
+ * the dot and the stem of an "i", the body and the flames of a rocket, a word
+ * whose letters have been dragged off each other. Each of those has to be held by
+ * something; being named in the same part as something that is held is not being
+ * held. What they do get from sharing a part is each other: solids of one piece
+ * that touch are fused, whatever `Attachment` says about pieces (see below).
  */
 export interface SolidPiece {
   /** Names the piece in the report. The caller's own vocabulary; nothing here reads it. */
@@ -62,11 +64,14 @@ interface Bounds {
   maxY: number;
 }
 
+/** One separate solid of one piece — the unit everything below is actually about. */
 interface Prepared extends SolidPiece {
+  /** Which piece it was split out of. Two solids of one piece are fused where they touch; two pieces may not be. */
+  part: number;
   /** Grown by half the tolerance, so a bare touch reads as the overlap it will print as. */
   grown: Region;
   bounds: Bounds;
-  /** Filled area, for telling which group of pieces is the design and which came off it. */
+  /** Filled area, for telling which group of solids is the design and which came off it. */
   area: number;
 }
 
@@ -97,9 +102,27 @@ function filledArea(region: Region): number {
   return Math.abs(scaled) / (CLIPPER_SCALE * CLIPPER_SCALE);
 }
 
-function prepare(piece: SolidPiece): Prepared {
-  const grown = growRegion(piece.region, CONTACT_TOLERANCE_MM / 2);
-  return { ...piece, grown, bounds: boundsOf(grown), area: filledArea(piece.region) };
+/** Every piece broken into the separate solids it is actually made of, each still knowing which piece that was. */
+function prepare(pieces: readonly SolidPiece[]): Prepared[] {
+  return pieces.flatMap((piece, part) =>
+    splitRegion(piece.region).map((region) => {
+      const grown = growRegion(region, CONTACT_TOLERANCE_MM / 2);
+      return { ...piece, part, region, grown, bounds: boundsOf(grown), area: filledArea(region) };
+    }),
+  );
+}
+
+/**
+ * Whether contact between these two would actually join them.
+ *
+ * Within one piece it always does: two solids of one printed part that meet are
+ * fused, so a name resting on the initial by its first letter holds the rest of
+ * itself, cantilevered. Between pieces it depends on how the design goes
+ * together — see `Attachment`. Contact with an anchor always counts, since that
+ * is what being seated on it means.
+ */
+function joins(a: Prepared, b: Prepared, attachment: Attachment): boolean {
+  return attachment === 'chain' || a.part === b.part || a.anchor === true || b.anchor === true;
 }
 
 /**
@@ -115,14 +138,14 @@ function touches(a: Prepared, b: Prepared): boolean {
   return !regionIsEmpty(intersectRegions(a.grown, b.grown));
 }
 
-/** Every piece reachable from `roots` by hopping between pieces in contact. */
-function reachableFrom(roots: number[], pieces: Prepared[]): Set<number> {
+/** Every solid reachable from `roots` by hopping between solids that are in contact and joined by it. */
+function reachableFrom(roots: number[], solids: Prepared[], attachment: Attachment): Set<number> {
   const found = new Set(roots);
   const queue = [...roots];
   while (queue.length > 0) {
     const from = queue.pop()!;
-    pieces.forEach((piece, i) => {
-      if (!found.has(i) && touches(pieces[from], piece)) {
+    solids.forEach((solid, i) => {
+      if (!found.has(i) && joins(solids[from], solid, attachment) && touches(solids[from], solid)) {
         found.add(i);
         queue.push(i);
       }
@@ -132,21 +155,21 @@ function reachableFrom(roots: number[], pieces: Prepared[]): Set<number> {
 }
 
 /**
- * Which group of pieces is "the design", when the caller marked no anchor: the
+ * Which group of solids is "the design", when the caller marked no anchor: the
  * one covering the most ground. A design that has come apart has a body and a
  * crumb, and the crumb is the news.
  */
-function largestGroup(pieces: Prepared[]): Set<number> {
-  const ungrouped = new Set(pieces.keys());
+function largestGroup(solids: Prepared[], attachment: Attachment): Set<number> {
+  const ungrouped = new Set(solids.keys());
   let largest = new Set<number>();
   let largestArea = -1;
   while (ungrouped.size > 0) {
     const [seed] = ungrouped;
-    const group = reachableFrom([seed], pieces);
+    const group = reachableFrom([seed], solids, attachment);
     for (const index of group) {
       ungrouped.delete(index);
     }
-    const area = [...group].reduce((sum, index) => sum + pieces[index].area, 0);
+    const area = [...group].reduce((sum, index) => sum + solids[index].area, 0);
     if (area > largestArea) {
       largestArea = area;
       largest = group;
@@ -155,19 +178,15 @@ function largestGroup(pieces: Prepared[]): Set<number> {
   return largest;
 }
 
-/** Which pieces are held, or null when the question has no answer — see the `anchor` case. */
-function heldPieces(pieces: Prepared[], attachment: Attachment): Set<number> | null {
-  const anchors = [...pieces.keys()].filter((i) => pieces[i].anchor);
-  if (attachment === 'anchor') {
-    // With no anchor there is nothing for a piece to be loose *from*: every
-    // answer would be arbitrary, so none is given.
-    if (anchors.length === 0) {
-      return null;
-    }
-    const seated = [...pieces.keys()].filter((i) => anchors.some((anchor) => touches(pieces[i], pieces[anchor])));
-    return new Set([...anchors, ...seated]);
+/** Which solids are held, or null when the question has no answer — see the `anchor` case. */
+function heldSolids(solids: Prepared[], attachment: Attachment): Set<number> | null {
+  const anchors = [...solids.keys()].filter((i) => solids[i].anchor);
+  // With no anchor there is nothing for a piece to be loose *from*: every answer
+  // would be arbitrary, so none is given.
+  if (attachment === 'anchor' && anchors.length === 0) {
+    return null;
   }
-  return anchors.length > 0 ? reachableFrom(anchors, pieces) : largestGroup(pieces);
+  return anchors.length > 0 ? reachableFrom(anchors, solids, attachment) : largestGroup(solids, attachment);
 }
 
 /**
@@ -180,13 +199,15 @@ function heldPieces(pieces: Prepared[], attachment: Attachment): Set<number> | n
  * piece has nothing to say either.
  */
 export function loosePieceIds(pieces: readonly SolidPiece[], attachment: Attachment = 'chain'): string[] {
-  const present = pieces.filter((piece) => !regionIsEmpty(piece.region)).map(prepare);
-  if (present.length < 2) {
+  const solids = prepare(pieces.filter((piece) => !regionIsEmpty(piece.region)));
+  if (solids.length < 2) {
     return [];
   }
-  const held = heldPieces(present, attachment);
+  const held = heldSolids(solids, attachment);
   if (held === null) {
     return [];
   }
-  return [...new Set(present.filter((_, i) => !held.has(i)).map((piece) => piece.id))];
+  // By piece, not by solid: a piece whose dot has come away is named once, as the
+  // thing the panel calls it.
+  return [...new Set(solids.filter((_, i) => !held.has(i)).map((solid) => solid.id))];
 }

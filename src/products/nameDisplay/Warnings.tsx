@@ -28,9 +28,9 @@ export function NameDisplayWarnings() {
     return null;
   }
 
-  const adrift = new Set(assembly.decorators.filter((decorator) => !decorator.overlapsInitial).map((decorator) => decorator.id));
+  const adrift = new Set(assembly.decorators.filter((decorator) => !decorator.heldByInitial).map((decorator) => decorator.id));
   const parts = [
-    ...(assembly.overlapsInitial ? [] : [quote(config.name)]),
+    ...(assembly.heldByInitial ? [] : [quote(config.name)]),
     ...config.decorators.filter((decorator) => adrift.has(decorator.id)).map(decoratorLabel),
   ];
 

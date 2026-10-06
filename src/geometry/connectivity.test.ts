@@ -51,6 +51,16 @@ describe('what a design is held together by', () => {
     expect(loosePieceIds([])).toEqual([]);
   });
 
+  it('asks after each separate solid of a piece, not only the piece', () => {
+    // A piece is one printed part, not one solid: the dot and the stem of an "i",
+    // the flames and the body of a rocket. A solid standing on nothing is loose
+    // however firmly the rest of its part is held.
+    const stemOnTheBody = rectRegion(10, 0, 15, 10);
+    const dotOutInTheOpen = rectRegion(70, 0, 75, 10);
+    const letter: SolidPiece = { id: 'i', region: [...stemOnTheBody, ...dotOutInTheOpen], zRange: [0, 3] };
+    expect(loosePieceIds([slab('body', 0, 50), letter])).toEqual(['i']);
+  });
+
   it('passes over a piece with no footprint rather than calling it loose', () => {
     // A letter a flat-bottom trim cut away entirely, or an ornament whose text
     // was cleared: not a piece that came off, a piece that isn't there.
@@ -72,6 +82,27 @@ describe('pieces that are assembled rather than fused', () => {
     expect(loosePieceIds(pieces, 'anchor')).toEqual(['ornament']);
     // The very same design, printed as one fused object, holds.
     expect(loosePieceIds(pieces, 'chain')).toEqual([]);
+  });
+
+  it('lets a piece carry the parts of itself that hang off, since they print fused', () => {
+    // Two solids of one piece, close enough to fuse but not overlapping — a
+    // script name whose letters meet, cantilevered off the initial. The same two
+    // as separate pieces are two prints resting on each other, which is the case
+    // above.
+    const initial = slab('initial', 0, 50, [0, 12], { anchor: true });
+    const seated = rectRegion(30, 0, 60, 10);
+    const overhanging = rectRegion(60.02, 0, 90, 10);
+    // One piece is one printed part, however many solids it is made of.
+    const asOnePart: SolidPiece = { id: 'name', region: [...seated, ...overhanging], zRange: [9, 14] };
+    expect(loosePieceIds([initial, asOnePart], 'anchor')).toEqual([]);
+
+    // The same two solids printed as two parts are two pieces resting on each
+    // other, and the far one is seated on nothing.
+    const asTwoParts: SolidPiece[] = [
+      { id: 'name', region: seated, zRange: [9, 14] },
+      { id: 'ornament', region: overhanging, zRange: [9, 14] },
+    ];
+    expect(loosePieceIds([initial, ...asTwoParts], 'anchor')).toEqual(['ornament']);
   });
 
   it('holds every piece that does reach the anchor', () => {

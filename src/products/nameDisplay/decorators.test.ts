@@ -88,12 +88,12 @@ describe('decorator geometry', () => {
     const plain = await build();
     const adrift = await withHeart(OFF_THE_LETTER);
     expect(triangleCount(adrift.assembly.initialGeometry)).toBe(triangleCount(plain.assembly.initialGeometry));
-    expect(adrift.assembly.decorators[0].overlapsInitial).toBe(false);
+    expect(adrift.assembly.decorators[0].heldByInitial).toBe(false);
   }, 30000);
 
   it('reports whether the initial is there to hold it', async () => {
-    expect((await withHeart()).assembly.decorators[0].overlapsInitial).toBe(true);
-    expect((await withHeart(OFF_THE_LETTER)).assembly.decorators[0].overlapsInitial).toBe(false);
+    expect((await withHeart()).assembly.decorators[0].heldByInitial).toBe(true);
+    expect((await withHeart(OFF_THE_LETTER)).assembly.decorators[0].heldByInitial).toBe(false);
   }, 30000);
 
   it('seats in the recess cut for it, within the fit clearance', async () => {
@@ -204,13 +204,23 @@ describe('text ornaments', () => {
 
   it('cuts its own pocket and seats in it, like any other ornament', async () => {
     const plain = await build();
-    const built = await withWord();
+    // Lower down the M than the heart sits: at y=90 the dot of its "i" lands in
+    // the letter's notch with nothing under it, which is the next test.
+    const built = await withWord(word.text, { x: 0, y: 60 });
     expect(triangleCount(built.assembly.initialGeometry)).toBeGreaterThan(triangleCount(plain.assembly.initialGeometry));
-    expect(built.assembly.decorators[0].overlapsInitial).toBe(true);
+    expect(built.assembly.decorators[0].heldByInitial).toBe(true);
 
     const placed = bounds(placedDecoratorGeometry(built.blocks.decorators[0], built.assembly));
     expect(placed.min.z).toBeCloseTo(built.assembly.nameZMm, 4);
     expect(placed.max.z).toBeCloseTo(built.assembly.nameZMm + word.depthMm, 4);
+  }, 30000);
+
+  it('is not held just because most of it is — the dot of an "i" needs the letter under it too', async () => {
+    // A word ornament is one printed part but several solids, and a solid with
+    // no pocket under it is held by nothing, whatever it is grouped with. Here
+    // the M's notch opens right where the dot falls.
+    const inTheNotch = await withWord(word.text, { x: 0, y: 90 });
+    expect(inTheNotch.assembly.decorators[0].heldByInitial).toBe(false);
   }, 30000);
 
   it.each(['', '   '])('is dropped from the build while its text is cleared (%p), not left to fail it', async (text) => {

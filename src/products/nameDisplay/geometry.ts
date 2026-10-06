@@ -48,8 +48,13 @@ export interface NameDisplayBlocks {
 export interface DecoratorPlacement {
   id: string;
   placement: Placement2D;
-  /** A decorator dragged clear of the initial cuts no pocket and has nothing holding it. */
-  overlapsInitial: boolean;
+  /**
+   * Whether every separate solid of it is seated on the initial. A decorator
+   * dragged clear of the initial cuts no pocket and has nothing holding it — and
+   * so does any one piece of it, since an icon is routinely several (the rocket's
+   * flames are not joined to its body).
+   */
+  heldByInitial: boolean;
 }
 
 /** Everything derived from those blocks by cheap, synchronous work: the pocket, and where the name sits in it. */
@@ -60,8 +65,13 @@ export interface NameDisplayAssembly {
   protrusionMm: number;
   /** The z at which the name's own extrusion starts — the pocket floor. */
   nameZMm: number;
-  /** Whether the name overlaps the initial at all. A name dragged clear of it has nothing holding it. */
-  overlapsInitial: boolean;
+  /**
+   * Whether the name is held — every solid of it either seated on the initial or
+   * fused to one that is. A letter dragged off the others, over a part of the
+   * initial that isn't there, is held by nothing even though the rest of the name
+   * is.
+   */
+  heldByInitial: boolean;
   /** The exact placement the pocket was cut from — the preview applies this same transform, so the two can't drift apart. */
   namePlacement: Placement2D;
   /** Where each ornament sits, in the same order as the blocks' decorators. */
@@ -273,12 +283,12 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     initialGeometry: combineGeometries(parts),
     protrusionMm: config.nameDepthMm - pocketDepth,
     nameZMm: backDepth,
-    overlapsInitial: !loose.has('name'),
+    heldByInitial: !loose.has('name'),
     namePlacement: placement,
     decorators: blocks.decorators.map((decorator) => ({
       id: decorator.id,
       placement: decoratorPlacement(decorator, config),
-      overlapsInitial: !loose.has(decorator.id),
+      heldByInitial: !loose.has(decorator.id),
     })),
   };
 }

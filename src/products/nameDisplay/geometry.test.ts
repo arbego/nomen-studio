@@ -86,7 +86,7 @@ describe('buildNameDisplay', () => {
   it('cuts nothing when the name is dragged clear of the initial', async () => {
     const clear = { ...config, nameOffset: { x: 5000, y: 0 } };
     const built = await buildNameDisplay(clear);
-    expect(built.overlapsInitial).toBe(false);
+    expect(built.heldByInitial).toBe(false);
 
     // Same silhouette as a pocket-less build: the overhang had nothing to cut.
     const withoutPocket = await buildNameDisplay({ ...clear, pocketDepthMm: 0 });
@@ -96,7 +96,19 @@ describe('buildNameDisplay', () => {
 
   it('reports that a centered name does overlap the initial', async () => {
     const built = await buildNameDisplay(config);
-    expect(built.overlapsInitial).toBe(true);
+    expect(built.heldByInitial).toBe(true);
+  }, 30000);
+
+  it('reports a single letter dragged off the others, not only a whole name dragged clear', async () => {
+    // The name is one printed part, but a letter pushed out past the initial is
+    // its own solid with no pocket under it — held by nothing, however firmly the
+    // rest of the name is seated.
+    const strayLetter = { ...config, nameLetterGapsMm: [0, 0, 0, 0, 0, 120] };
+    const built = await buildNameDisplay(strayLetter);
+    expect(built.heldByInitial).toBe(false);
+    // And the letters that stayed are still held, so this is the name's state and
+    // not a build that fell over.
+    expect(bounds(built.initialGeometry).max.x).toBeCloseTo(bounds((await buildNameDisplay(config)).initialGeometry).max.x, 3);
   }, 30000);
 
   it('keeps the counter of an initial that has one', async () => {
@@ -226,7 +238,7 @@ describe('name angle', () => {
 
   it('turns the name about its own center, so tilting does not swing it off the initial', async () => {
     const tilted = await buildNameDisplay({ ...config, nameAngleDeg: 30 });
-    expect(tilted.overlapsInitial).toBe(true);
+    expect(tilted.heldByInitial).toBe(true);
 
     // The pivot the pocket turned about is the name's own center, and it stays
     // put: a point at the pivot maps to pivot + offset at any angle.
