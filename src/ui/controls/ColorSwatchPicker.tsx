@@ -27,7 +27,13 @@ export function ColorSwatchPicker({ value, onChange, label = 'Preview color', va
           sets to choose between. */}
       <div className="flex flex-col gap-2 pt-1">
         {COLOR_FAMILIES.map((family) => (
-          <div key={family} className="flex flex-wrap gap-2">
+          // Eight columns that divide up whatever width there is, rather than
+          // fixed-size swatches left to wrap: the picker is rendered at several
+          // widths — a panel section, and nested inside a decorator card that is
+          // 26px narrower — and wrapping put seven on a row there and eight here,
+          // which reads as the grid breaking rather than as the same control. A
+          // row of eight also divides the pastels exactly.
+          <div key={family} className="grid grid-cols-8 gap-2">
             {COLOR_PRESETS.filter((color) => color.family === family).map((color) => (
               <button
                 key={color.id}
@@ -35,7 +41,7 @@ export function ColorSwatchPicker({ value, onChange, label = 'Preview color', va
                 title={color.label}
                 aria-pressed={value === color.hex}
                 onClick={() => onChange(color.hex)}
-                className={`h-8 w-8 rounded-full border-2 transition-transform ${
+                className={`aspect-square w-full rounded-full border-2 transition-transform ${
                   value === color.hex ? 'scale-110 border-stone-800 dark:border-stone-200' : 'border-white dark:border-stone-900'
                 }`}
                 style={{ backgroundColor: color.hex, boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}
