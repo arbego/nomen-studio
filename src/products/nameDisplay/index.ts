@@ -3,6 +3,7 @@ import { NameDisplayControls } from './Controls';
 import { NameDisplaySceneContent } from './SceneContent';
 import { NameDisplayExport } from './ExportAction';
 import { NameDisplayProvider } from './Provider';
+import { NameDisplayWarnings } from './Warnings';
 import { NameDisplayThumbnail } from './Thumbnail';
 import { nameDisplayProjectIO } from './project';
 
@@ -14,6 +15,7 @@ export const nameDisplayProduct: ProductDefinition = {
   Controls: NameDisplayControls,
   SceneContent: NameDisplaySceneContent,
   Export: NameDisplayExport,
+  Warnings: NameDisplayWarnings,
   Provider: NameDisplayProvider,
   project: nameDisplayProjectIO,
 };

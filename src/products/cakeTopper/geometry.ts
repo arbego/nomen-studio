@@ -141,14 +141,13 @@ export function sticksForBlock(block: TextBlock, config: CakeTopperConfig): THRE
 }
 
 /**
- * The final printable solid for one block — every letter of every line,
- * shifted to its current gap-adjusted and line-offset-shifted position,
- * merged with all its sticks. Used at export time; each letter's own
- * geometry is left untouched (cloned before shifting) since the live scene
- * still needs the natural-position original.
+ * Where each letter of each line actually is: its own solid, shifted to its
+ * current gap-adjusted and line-offset-shifted position. Each letter's own
+ * geometry is left untouched (cloned before shifting) since the live scene still
+ * needs the natural-position original.
  */
-export function mergedBlockGeometry(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry {
-  const letterParts = block.lines.flatMap((line, lineIndex) => {
+export function placedLetterGeometries(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry[] {
+  return block.lines.flatMap((line, lineIndex) => {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, config.letterGapsMm[lineIndex] ?? []));
     const offset = config.lineOffsets[lineIndex] ?? { x: 0, y: 0 };
     return line.letters.map((letter, i) => {
@@ -157,5 +156,17 @@ export function mergedBlockGeometry(block: TextBlock, config: CakeTopperConfig):
       return dx === 0 && dy === 0 ? letter.geometry : letter.geometry.clone().translate(dx, dy, 0);
     });
   });
-  return combineGeometries([...letterParts, ...sticksForBlock(block, config)]);
+}
+
+/** The lettering alone as one solid — every line's letters at their current positions, and nothing else. */
+export function letteringGeometry(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry {
+  return combineGeometries(placedLetterGeometries(block, config));
+}
+
+/**
+ * The lettering and its sticks as one solid — what the printed piece is when
+ * there is no backing card to carry the sticks instead (see export.ts).
+ */
+export function mergedBlockGeometry(block: TextBlock, config: CakeTopperConfig): THREE.BufferGeometry {
+  return combineGeometries([...placedLetterGeometries(block, config), ...sticksForBlock(block, config)]);
 }

@@ -53,6 +53,13 @@ export interface ProductDefinition {
    * geometry, and whether there is anything to export yet is part of that.
    */
   Export: ComponentType;
+  /**
+   * Anything wrong with the design that is about the thing on screen rather than
+   * about one control — above all, a part nothing holds (see ui/FloatWarning).
+   * Pinned over the preview's bottom-right corner. A component for the same
+   * reason `Export` is: only the product's own hooks reach its geometry.
+   */
+  Warnings?: ComponentType;
   /** Reading and writing this product's designs as project files. */
   project: ProductProject;
   /**

@@ -4,7 +4,8 @@ import { buildTextBlock } from '../../geometry/textGeometry';
 import { extrudeMmShapes } from '../../geometry/extrudeToMm';
 import { combineGeometries } from '../../geometry/combine';
 import { blockPivot, combinedBlockBounds, cumulativeGaps, normalizedLetterGaps } from '../../geometry/letterLayout';
-import { growRegion, intersectRegions, regionFromContours, regionIsEmpty, regionToShapes, subtractRegions, type Region } from '../../geometry/clipper';
+import { growRegion, regionFromContours, regionToShapes, subtractRegions, type Region } from '../../geometry/clipper';
+import { loosePieceIds, type SolidPiece } from '../../geometry/connectivity';
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
 import { degToRad, placeGeometry, type Placement2D } from '../../geometry/placement';
 import { buildIconBlock } from '../../icons/iconBlock';
@@ -247,16 +248,37 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     }
   }
 
+  // Every inlaid piece has to meet the initial itself: they are printed
+  // separately and assembled, each dropping into its own recess, so one resting
+  // against another holds nothing — which is what 'anchor' says, and why this is
+  // not the cake topper's transitive 'chain'.
+  const loose = new Set(
+    loosePieceIds(
+      [
+        { id: 'initial', region: face, zRange: [0, config.initialDepthMm], anchor: true },
+        { id: 'name', region: nameRegion, zRange: [backDepth, backDepth + config.nameDepthMm] },
+        ...blocks.decorators.map(
+          (decorator, i): SolidPiece => ({
+            id: decorator.id,
+            region: decoratorRegions[i],
+            zRange: [backDepth, backDepth + (config.decorators.find((d) => d.id === decorator.id)?.depthMm ?? 0)],
+          }),
+        ),
+      ],
+      'anchor',
+    ),
+  );
+
   return {
     initialGeometry: combineGeometries(parts),
     protrusionMm: config.nameDepthMm - pocketDepth,
     nameZMm: backDepth,
-    overlapsInitial: !regionIsEmpty(intersectRegions(face, nameRegion)),
+    overlapsInitial: !loose.has('name'),
     namePlacement: placement,
-    decorators: blocks.decorators.map((decorator, i) => ({
+    decorators: blocks.decorators.map((decorator) => ({
       id: decorator.id,
       placement: decoratorPlacement(decorator, config),
-      overlapsInitial: !regionIsEmpty(intersectRegions(face, decoratorRegions[i])),
+      overlapsInitial: !loose.has(decorator.id),
     })),
   };
 }

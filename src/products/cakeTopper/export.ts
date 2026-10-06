@@ -3,7 +3,8 @@ import type { TextBlock } from '../../geometry/types';
 import { buildOutlineGeometry } from '../../geometry/outline';
 import { threeMfBinary, type ThreeMfObject } from '../../export/threeMfExport';
 import { getIcon } from '../../icons/catalog';
-import { decoratorOutlineContours, mergedBlockGeometry, placedDecoratorGeometry, type DecoratorBlock } from './geometry';
+import { combineGeometries } from '../../geometry/combine';
+import { decoratorOutlineContours, letteringGeometry, mergedBlockGeometry, placedDecoratorGeometry, sticksForBlock, type DecoratorBlock } from './geometry';
 import { decoratorColor, type CakeTopperConfig } from './config';
 
 /** The outline card's own geometry under a block's current letters, or null when there's nothing to add (disabled, or not grown at all). */
@@ -26,16 +27,22 @@ function outlineGeometryFor(block: TextBlock, config: CakeTopperConfig, decorato
 /**
  * The topper's printable pieces, in the colors the preview shows them in.
  *
- * The lettering is one piece: its sticks are merged into it, since they print in
- * the same filament and are embedded in the letters rather than sitting beside
- * them. The backing card is the second, and only when there is one — without it
- * this is a one-piece design, and the file says so.
+ * The sticks belong to whichever piece they are actually sunk into, and are
+ * merged into it rather than being a part of their own: into the backing card
+ * when there is one — they are cut to the card's thickness and embedded in it,
+ * which is also the filament the preview already shows them in — and into the
+ * lettering when there is not. Left in the lettering while a card is present,
+ * each stick would be a lettering-colored part buried inside a card-colored one,
+ * for the slicer to resolve by part order: a stripe of the wrong filament
+ * through the card, for a piece that is plainly part of it.
  */
 export function printObjects(block: TextBlock, config: CakeTopperConfig, decorators: DecoratorBlock[] = []): ThreeMfObject[] {
-  const objects: ThreeMfObject[] = [{ name: 'Lettering', color: config.previewColor, geometry: mergedBlockGeometry(block, config) }];
   const outline = outlineGeometryFor(block, config, decorators);
+  const objects: ThreeMfObject[] = [
+    { name: 'Lettering', color: config.previewColor, geometry: outline ? letteringGeometry(block, config) : mergedBlockGeometry(block, config) },
+  ];
   if (outline) {
-    objects.push({ name: 'Backing card', color: config.outlineColor, geometry: outline });
+    objects.push({ name: 'Backing card', color: config.outlineColor, geometry: combineGeometries([outline, ...sticksForBlock(block, config)]) });
   }
   // Each ornament on its own, because each can be a filament of its own. They
   // are placed where they were dragged, so they meet the lettering or the card

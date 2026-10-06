@@ -3,6 +3,7 @@ import { CakeTopperControls } from './Controls';
 import { CakeTopperSceneContent } from './SceneContent';
 import { CakeTopperExport } from './ExportAction';
 import { CakeTopperProvider } from './Provider';
+import { CakeTopperWarnings } from './Warnings';
 import { CakeTopperThumbnail } from './Thumbnail';
 import { cakeTopperProjectIO } from './project';
 
@@ -14,6 +15,7 @@ export const cakeTopperProduct: ProductDefinition = {
   Controls: CakeTopperControls,
   SceneContent: CakeTopperSceneContent,
   Export: CakeTopperExport,
+  Warnings: CakeTopperWarnings,
   Provider: CakeTopperProvider,
   project: cakeTopperProjectIO,
 };

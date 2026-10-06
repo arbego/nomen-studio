@@ -34,7 +34,10 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   them as it does around the letters, so one placed off the end of the word is
   still held; a gap inside a symbol is part of the drawing and always prints
   solid. Exports one 3MF: the lettering, the backing card, and an ornament per
-  icon, each a named part in its own color.
+  icon, each a named part in its own color. The sticks go in with whichever piece
+  they are sunk into — the card when there is one, the lettering when there is
+  not — rather than being a part of their own in a filament the card would have
+  to be printed around.
 - **Name Display** — a big background initial with a script name stamped into
   its front face. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
@@ -98,7 +101,8 @@ src/
 
 Create `src/products/<id>/` with its own `config.ts`, `store.ts`, `geometry.ts`,
 `Controls.tsx`, `SceneContent.tsx`, `ExportAction.tsx` (which pieces go in the
-3MF) and `project.ts` (how its design is read back out of a file) — the two
+3MF), `project.ts` (how its design is read back out of a file) and, optionally,
+`Warnings.tsx` (what is wrong with the design as a whole) — the two
 existing products are the template — and add one entry
 to `products/registry.ts`. Nothing else in the app
 changes. A `ProductDefinition` exposes only what the shell has to mount, so the
@@ -159,6 +163,15 @@ format menu, because every product exports 3MF and nothing else. A product
 supplies only a thunk that builds the file (`ProductDefinition.Export`), since
 writing out every triangle for a file nobody has asked for would cost more than
 the preview itself.
+
+The bottom-right corner carries the view buttons and, above them, whatever is
+wrong with the design as a whole (`ProductDefinition.Warnings`, rendered through
+`ui/FloatWarning.tsx`) — today, that a part of it is touching nothing and would
+arrive as loose bits. It belongs over the preview rather than under a control
+because it is about the thing on screen and it is usually a drag that caused it,
+and the control it would otherwise sit under may be scrolled away or collapsed.
+The export is deliberately left working: printing the parts separately and gluing
+them is a real way to make one of these.
 
 ### How the geometry works
 
@@ -249,6 +262,17 @@ the preview itself.
   PrusaSlicer-derived slicers read part names and filament assignments. A 3MF is
   an OPC package, so `export/zip.ts` writes one with stored (undeflated)
   entries; that is the whole dependency.
+- **Holding together** (`geometry/connectivity.ts`): whether a design is one
+  piece. Every piece here is a planar prism, so two of them touch exactly when
+  their footprints meet and their depth bands do — two cheap tests, where a
+  mesh-level answer would be a solid intersection per pair. What counts as held
+  is a property of how the design is printed, not of its shapes, so the product
+  says which: a cake topper prints as one fused object, so touching anything that
+  is itself held is enough (`chain`), while a name display's name and ornaments
+  print separately and drop into their own recesses, so each has to meet the
+  initial itself (`anchor`). Granularity is the product's to choose, and is the
+  whole question: the cake topper passes a piece per letter, per card island and
+  per stick, because those are the parts that can come away from each other.
 - **Merging** (`geometry/combine.ts`): a plain buffer merge, not a CSG union —
   every part is already watertight with real volumetric overlap where parts meet,
   which slicers handle correctly.

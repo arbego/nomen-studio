@@ -21,6 +21,15 @@ interface StudioCanvasProps {
    * past the controls for one part of it.
    */
   actions?: ReactNode;
+  /**
+   * Pinned above the view buttons in the bottom-right corner: what is wrong with
+   * the design as a whole — see the product's own Warnings component.
+   *
+   * Over the preview because that is what it is about, and because the control
+   * that would otherwise carry it may be scrolled out of the panel or collapsed
+   * inside it.
+   */
+  warnings?: ReactNode;
 }
 
 // Fallback camera pose, only ever used before any geometry has loaded (so
@@ -43,7 +52,7 @@ const OVERLAY_BUTTON_CLASS =
  * whatever is currently on screen. Product-agnostic — it only renders whatever
  * scene content it's given, centered on the ground plane.
  */
-export function StudioCanvas({ children, actions }: StudioCanvasProps) {
+export function StudioCanvas({ children, actions, warnings }: StudioCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
@@ -112,6 +121,9 @@ export function StudioCanvas({ children, actions }: StudioCanvasProps) {
       </Canvas>
 
       {actions && <div className="absolute right-4 top-4">{actions}</div>}
+
+      {/* Just clear of the button row below it, and anchored by its bottom edge so it grows upward rather than over them. */}
+      {warnings && <div className="absolute bottom-16 right-4">{warnings}</div>}
 
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
         <button

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildCakeTopperBlocks, buildCakeTopperDecorators, decoratorOutlineContours, mergedBlockGeometry } from './geometry';
+import { buildCakeTopperBlocks, buildCakeTopperDecorators, decoratorOutlineContours, letteringGeometry, mergedBlockGeometry } from './geometry';
 import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import type { CakeTopperConfig } from './config';
 import { combined3mfBinary, printObjects } from './export';
@@ -59,6 +59,38 @@ describe('what the cake topper puts in the file', () => {
     // The card is grown out from under the letters, so it is wider than they are.
     objects.forEach((o) => o.geometry.computeBoundingBox());
     expect(objects[1].geometry.boundingBox!.min.x).toBeLessThan(objects[0].geometry.boundingBox!.min.x);
+  }, 30000);
+
+  it('hands the sticks to the backing card once there is one, and not to the lettering', async () => {
+    // A stick is cut to the card's thickness and sunk into it, and the preview
+    // already shows it in the card's filament. Left in the lettering it would be
+    // a lettering-colored part buried inside a card-colored one.
+    const { block: word, config: used } = await block({ outlineEnabled: true });
+    const [lettering, card] = printObjects(word, used);
+    [lettering, card].forEach((o) => o.geometry.computeBoundingBox());
+
+    // The lettering now stops where the letters do; the stick's 70mm reaches far
+    // below either of them, and it is the card that carries it.
+    const letters = letteringGeometry(word, used);
+    letters.computeBoundingBox();
+    expect(lettering.geometry.boundingBox!.min.y).toBeCloseTo(letters.boundingBox!.min.y, 5);
+    expect(card.geometry.boundingBox!.min.y).toBeLessThan(letters.boundingBox!.min.y - 40);
+    expect(triangleCount(lettering.geometry)).toBe(triangleCount(letters));
+    // And the stick's own triangles are in the card part: the same design with
+    // no picks on it writes a smaller card.
+    const [, pickless] = printObjects(word, { ...used, stickOffsets: { word: [] } });
+    expect(triangleCount(card.geometry)).toBeGreaterThan(triangleCount(pickless.geometry));
+  }, 30000);
+
+  it('still merges them into the lettering when there is no card to take them', async () => {
+    const { block: word, config: used } = await block();
+    const [lettering] = printObjects(word, used);
+    lettering.geometry.computeBoundingBox();
+    const letters = letteringGeometry(word, used);
+    letters.computeBoundingBox();
+    // Without a card the lettering is the only piece there is, so the sticks
+    // belong to it — and reach well below the letters.
+    expect(lettering.geometry.boundingBox!.min.y).toBeLessThan(letters.boundingBox!.min.y - 40);
   }, 30000);
 
   it('leaves the card out entirely when it is switched off, rather than exporting an empty part', async () => {
