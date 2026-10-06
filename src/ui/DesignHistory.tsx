@@ -68,24 +68,22 @@ export function DesignInput({ onChange, onBlur, onPointerDown, onKeyUp, ...props
   );
 }
 
-const BUTTON_CLASS = 'flex items-center gap-1.5 rounded-md border border-stone-200 px-2.5 py-1.5 text-xs text-stone-600 transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800';
+const BUTTON_CLASS = 'flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white/90 text-stone-600 shadow-md backdrop-blur transition-colors hover:border-stone-400 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-stone-700 dark:bg-stone-900/90 dark:text-stone-400 dark:hover:border-stone-500 dark:hover:text-stone-100';
 
 export function HistoryButtons({ history }: { history: DesignHistory }) {
   const canUndo = useStore(history, (state) => state.canUndo);
   const canRedo = useStore(history, (state) => state.canRedo);
   return (
     <div role="group" aria-label="Design history" className="flex gap-2">
-      <button type="button" onClick={history.undo} disabled={!canUndo} title="Undo (Ctrl+Z / ⌘Z)" aria-keyshortcuts="Control+z Meta+z" className={BUTTON_CLASS}>
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+      <button type="button" onClick={history.undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z / ⌘Z)" aria-keyshortcuts="Control+z Meta+z" className={BUTTON_CLASS}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <path d="M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12" transform="translate(0 -2)" />
         </svg>
-        Undo
       </button>
-      <button type="button" onClick={history.redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z / ⌘⇧Z / Ctrl+Y)" aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y" className={BUTTON_CLASS}>
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+      <button type="button" onClick={history.redo} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z / ⌘⇧Z / Ctrl+Y)" aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y" className={BUTTON_CLASS}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
           <path d="m15 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12" transform="translate(0 -2)" />
         </svg>
-        Redo
       </button>
     </div>
   );

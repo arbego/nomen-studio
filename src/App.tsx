@@ -5,7 +5,7 @@ import { AppShell } from './ui/AppShell';
 import { ProductPicker } from './ui/ProductPicker';
 import { ProductHeader } from './ui/ProductHeader';
 import { StudioCanvas } from './scene/StudioCanvas';
-import { DesignHistoryProvider } from './ui/DesignHistory';
+import { DesignHistoryProvider, HistoryButtons } from './ui/DesignHistory';
 
 /**
  * Either the product picker or one product's studio. The shell knows nothing
@@ -32,7 +32,7 @@ function App() {
           header={<ProductHeader product={product} onBack={clearProduct} onOpenProduct={selectProduct} />}
           sidebar={<product.Controls />}
           main={
-            <StudioCanvas actions={<product.Export />} warnings={product.Warnings && <product.Warnings />}>
+            <StudioCanvas actions={<product.Export />} historyActions={<HistoryButtons history={product.history} />} warnings={product.Warnings && <product.Warnings />}>
               <product.SceneContent />
             </StudioCanvas>
           }

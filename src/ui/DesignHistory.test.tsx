@@ -47,7 +47,7 @@ function input(label: string) {
   return container.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
 }
 function button(label: string) {
-  return [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
+  return container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 }
 function change(field: HTMLInputElement, value: string) {
   act(() => {
