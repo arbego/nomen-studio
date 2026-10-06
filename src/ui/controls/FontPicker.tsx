@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { FONT_REGISTRY, getFontDefinition } from '../../fonts/registry';
 import { searchCatalog, type CatalogFontEntry } from '../../fonts/catalog';
 import type { FontCategory } from '../../fonts/types';
@@ -72,6 +72,7 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
     <button
       type="button"
       onClick={onSelect}
+      data-font-id={entry.id}
       aria-pressed={selected}
       className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors ${
         selected ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900' : 'hover:bg-stone-100 dark:hover:bg-stone-800'
@@ -86,12 +87,35 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
 }
 
 export function FontPicker({ label, value, onChange, previewText, onDone }: FontPickerProps) {
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<FontCategory | ''>('');
 
   const results = searchCatalog(query, category || undefined);
   const selectedDefinition = getFontDefinition(value);
   const selectedIsCurated = FONT_REGISTRY.some((f) => f.id === value);
+
+  useEffect(() => {
+    const selected = [...(resultsRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((button) => button.dataset.fontId === value);
+    selected?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [value, query, category]);
+
+  function navigateFonts(event: KeyboardEvent<HTMLElement>, fonts: { id: string }[], container: HTMLElement | null, moveFocus: boolean) {
+    if (event.defaultPrevented || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    if (!fonts.length) return;
+    const selectedIndex = fonts.findIndex((font) => font.id === value);
+    const direction = event.key === 'ArrowDown' ? 1 : -1;
+    const nextIndex = selectedIndex < 0
+      ? (direction === 1 ? 0 : fonts.length - 1)
+      : Math.max(0, Math.min(fonts.length - 1, selectedIndex + direction));
+    const next = fonts[nextIndex]!;
+    if (next.id !== value) onChange(next.id);
+    const button = [...(container?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((candidate) => candidate.dataset.fontId === next.id);
+    if (moveFocus) button?.focus({ preventScroll: true });
+    button?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -107,12 +131,13 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" onKeyDown={(event) => navigateFonts(event, FONT_REGISTRY, event.currentTarget, true)}>
         {FONT_REGISTRY.map((font) => (
           <button
             key={font.id}
             type="button"
             onClick={() => onChange(font.id)}
+            data-font-id={font.id}
             aria-pressed={value === font.id}
             className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               value === font.id
@@ -132,6 +157,8 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(event) => navigateFonts(event, results, resultsRef.current, false)}
+          aria-label="Search Google Fonts"
           placeholder="Search Google Fonts…"
           className="min-w-0 flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none transition-colors focus:border-stone-500 dark:focus:border-stone-400"
         />
@@ -148,7 +175,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
         </select>
       </div>
 
-      <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
+      <div ref={resultsRef} onKeyDown={(event) => navigateFonts(event, results, event.currentTarget, true)} className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
         {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-400 dark:text-stone-500">No fonts match your search.</p>}
         {results.map((entry) => (
           <FontResultRow key={entry.id} entry={entry} previewText={previewText} selected={value === entry.id} onSelect={() => onChange(entry.id)} />
