@@ -1,9 +1,12 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { useAppStore } from './store/appStore';
 import { getProduct } from './products/registry';
 import { AppShell } from './ui/AppShell';
 import { ProductPicker } from './ui/ProductPicker';
 import { ProductHeader } from './ui/ProductHeader';
+import { SaveProjectButton } from './ui/ProjectButtons';
+import { hasUnsavedChanges } from './project/projectSession';
+import { SaveBeforeLeave } from './ui/SaveBeforeLeave';
 import { StudioCanvas } from './scene/StudioCanvas';
 import { DesignHistoryProvider, HistoryButtons } from './ui/DesignHistory';
 
@@ -13,6 +16,7 @@ import { DesignHistoryProvider, HistoryButtons } from './ui/DesignHistory';
  * products/types.ts.
  */
 function App() {
+  const [leaving, setLeaving] = useState(false);
   const selectedProductId = useAppStore((s) => s.selectedProductId);
   const selectProduct = useAppStore((s) => s.selectProduct);
   const clearProduct = useAppStore((s) => s.clearProduct);
@@ -29,13 +33,19 @@ function App() {
     <DesignHistoryProvider history={product.history}>
       <Provider>
         <AppShell
-          header={<ProductHeader product={product} onBack={clearProduct} onOpenProduct={selectProduct} />}
+          header={<ProductHeader product={product} onBack={() => { if (hasUnsavedChanges(product)) setLeaving(true); else clearProduct(); }} />}
           sidebar={<product.Controls />}
           main={
-            <StudioCanvas actions={<product.Export />} historyActions={<HistoryButtons history={product.history} />} warnings={product.Warnings && <product.Warnings />}>
+            <StudioCanvas actions={<div className="flex items-start gap-2"><SaveProjectButton product={product} /><product.Export /></div>} historyActions={<HistoryButtons history={product.history} />} warnings={product.Warnings && <product.Warnings />}>
               <product.SceneContent />
             </StudioCanvas>
           }
+        />
+        <SaveBeforeLeave
+          product={product}
+          open={leaving}
+          onCancel={() => setLeaving(false)}
+          onLeave={() => { setLeaving(false); clearProduct(); }}
         />
       </Provider>
     </DesignHistoryProvider>

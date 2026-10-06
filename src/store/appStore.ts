@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getProduct } from '../products/registry';
+import { startProjectSession } from '../project/projectSession';
 import { usePanelStore } from '../ui/panelStore';
 
 const STORAGE_KEY = 'studio.selectedProductId';
@@ -15,7 +16,10 @@ const STORAGE_KEY = 'studio.selectedProductId';
 function readStoredProductId(): string | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored && getProduct(stored) ? stored : null;
+    const product = stored ? getProduct(stored) : undefined;
+    if (!product) return null;
+    startProjectSession(product);
+    return product.id;
   } catch {
     // Private mode / blocked storage — the picker is a fine starting point.
     return null;
@@ -43,6 +47,9 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set) => ({
   selectedProductId: readStoredProductId(),
   selectProduct: (id) => {
+    const product = getProduct(id);
+    if (!product) return;
+    startProjectSession(product);
     // The next product's panel has sections of its own, with their own ids and
     // their own idea of which one a fresh panel opens on.
     usePanelStore.getState().reset();

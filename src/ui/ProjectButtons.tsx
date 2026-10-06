@@ -1,38 +1,40 @@
 import { useRef, useState } from 'react';
-import { saveAs } from 'file-saver';
-import { slugifyFilename } from '../export/filename';
 import { getProduct } from '../products/registry';
-import { parseProjectFile, ProjectFileError, serializeProject } from '../project/projectFile';
+import { parseProjectFile, ProjectFileError } from '../project/projectFile';
+import { saveProject } from '../project/saveProject';
 import type { ProductDefinition } from '../products/types';
 
-interface ProjectButtonsProps {
-  /** The product currently open — what Save writes. Open can load any product's file. */
-  product: ProductDefinition;
-  /** Called with the product a loaded file belongs to, so opening one can switch studios. */
-  onOpened: (productId: string) => void;
+const BUTTON_CLASS = 'inline-flex items-center justify-center gap-2 border border-stone-200 bg-white font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:bg-stone-800';
+
+function SaveIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z" />
+      <path d="M7 3v6h10V3M7 21v-8h10v8" />
+    </svg>
+  );
 }
 
-const LINK_CLASS = 'rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100';
+export function SaveProjectButton({ product }: { product: ProductDefinition }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <button type="button" onClick={() => {
+        setFailed(false);
+        try { saveProject(product); } catch { setFailed(true); }
+      }} className={`${BUTTON_CLASS} h-10 rounded-full px-4 text-sm shadow-md`}>
+        <SaveIcon />
+        Save project
+      </button>
+      {failed && <p role="alert" className="rounded-lg bg-white/95 px-3 py-2 text-xs text-red-600 dark:bg-stone-900/95 dark:text-red-400">That project couldn't be saved. Please try again.</p>}
+    </div>
+  );
+}
 
-/**
- * Saving the current design to a file and opening one back up.
- *
- * Lives in the shell rather than in either product's panel: a design is a
- * design whatever it is of, and the product definition's `project` hooks mean
- * this never has to know what is in one. Opening a file for a product you are
- * not in switches you to it, which is the only sensible reading of
- * double-clicking a cake topper while a name display is on screen.
- */
-export function ProjectButtons({ product, onOpened }: ProjectButtonsProps) {
+/** Open a file from the picker, then enter the studio it belongs to. */
+export function OpenProjectButton({ onOpened }: { onOpened: (productId: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [failure, setFailure] = useState<string | null>(null);
-
-  function handleSave() {
-    setFailure(null);
-    const { name, design } = product.project.snapshot();
-    const text = serializeProject(product.id, design);
-    saveAs(new Blob([text], { type: 'application/json' }), `${slugifyFilename(name, product.id)}.json`);
-  }
 
   async function handleFile(file: File) {
     setFailure(null);
@@ -48,11 +50,12 @@ export function ProjectButtons({ product, onOpened }: ProjectButtonsProps) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={handleSave} className={LINK_CLASS}>
-          Save project
-        </button>
-        <button type="button" onClick={() => inputRef.current?.click()} className={LINK_CLASS}>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => inputRef.current?.click()} className={`${BUTTON_CLASS} rounded-md px-3 py-2 text-xs`}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0">
+            <path d="M3 17V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2" />
+            <path d="M5 21h14a2 2 0 0 0 2-1.6l1-7A2 2 0 0 0 20 10H7a2 2 0 0 0-2 1.6l-2 7A2 2 0 0 0 5 21Z" />
+          </svg>
           Open project
         </button>
         <input
@@ -69,7 +72,7 @@ export function ProjectButtons({ product, onOpened }: ProjectButtonsProps) {
           }}
         />
       </div>
-      {failure && <p className="text-xs text-red-600 dark:text-red-400">{failure}</p>}
+      {failure && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{failure}</p>}
     </div>
   );
 }

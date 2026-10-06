@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cakeTopperHistory, selectCakeTopperConfig, useCakeTopperStore } from './cakeTopper/store';
 import { nameDisplayHistory, selectNameDisplayConfig, useNameDisplayStore } from './nameDisplay/store';
 import { PRODUCT_REGISTRY } from './registry';
+import { useAppStore } from '../store/appStore';
+import { hasUnsavedChanges } from '../project/projectSession';
 import type { DesignHistory } from '../store/designHistory';
 
 function reset() {
@@ -96,15 +98,26 @@ describe('product history integration', () => {
     expect(useNameDisplayStore.getState().name).toBe('Liam');
   });
 
-  it.each(PRODUCT_REGISTRY)('makes opening a $label project one reversible step', (product) => {
-    const before = product.project.snapshot().design;
-    product.project.load(product.id === 'cake-topper' ? { lines: ['Mia'], decorators: [] } : { name: 'Mia', decorators: [] });
-    const opened = product.project.snapshot().design;
-    expect(opened).not.toEqual(before);
+  it.each(PRODUCT_REGISTRY)('starts a fresh history when opening a $label project', (product) => {
+    product.project.load(product.id === 'cake-topper' ? { lines: ['Old'] } : { name: 'Old' });
     product.history.undo();
-    expect(product.project.snapshot().design).toEqual(before);
-    expect(product.history.getState().canUndo).toBe(false);
+    expect(product.history.getState().canRedo).toBe(true);
+    product.project.load(product.id === 'cake-topper' ? { lines: ['Mia'], decorators: [] } : { name: 'Mia', decorators: [] });
+    useAppStore.getState().selectProduct(product.id);
+    const opened = product.project.snapshot().design;
+    expect(product.history.getState()).toEqual({ canUndo: false, canRedo: false });
+    expect(hasUnsavedChanges(product)).toBe(false);
+    product.history.undo();
     product.history.redo();
     expect(product.project.snapshot().design).toEqual(opened);
+    product.project.load(product.id === 'cake-topper' ? { lines: ['Edited'] } : { name: 'Edited' });
+    expect(hasUnsavedChanges(product)).toBe(true);
+    product.history.undo();
+    expect(hasUnsavedChanges(product)).toBe(false);
+    product.history.redo();
+    expect(hasUnsavedChanges(product)).toBe(true);
+    useAppStore.getState().clearProduct();
+    useAppStore.getState().selectProduct(product.id);
+    expect(product.history.getState()).toEqual({ canUndo: false, canRedo: false });
   });
 });

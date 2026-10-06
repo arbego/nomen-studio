@@ -1,4 +1,3 @@
-import { ProjectButtons } from './ProjectButtons';
 import { ThemeToggle } from './ThemeToggle';
 import { Logo } from './Logo';
 import type { ProductDefinition } from '../products/types';
@@ -6,12 +5,10 @@ import type { ProductDefinition } from '../products/types';
 interface ProductHeaderProps {
   product: ProductDefinition;
   onBack: () => void;
-  /** Opening a project file for another product switches to its studio. */
-  onOpenProduct: (productId: string) => void;
 }
 
-/** Names the product you're designing, gets you back to the picker to switch to another, and saves or opens a design. */
-export function ProductHeader({ product, onBack, onOpenProduct }: ProductHeaderProps) {
+/** Names the product you're designing, gets you back to the picker to switch to another, and offers a way to leave the editor. */
+export function ProductHeader({ product, onBack }: ProductHeaderProps) {
   return (
     <div className="shrink-0 border-b border-stone-100 dark:border-stone-800 px-6 pb-4 pt-5">
       {/* The toggle shares the back link's row, which has room to spare — beside
@@ -34,9 +31,6 @@ export function ProductHeader({ product, onBack, onOpenProduct }: ProductHeaderP
       </div>
       <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">{product.label}</h1>
       <p className="text-sm text-stone-500 dark:text-stone-400">{product.tagline}</p>
-      <div className="mt-3">
-        <ProjectButtons product={product} onOpened={onOpenProduct} />
-      </div>
     </div>
   );
 }

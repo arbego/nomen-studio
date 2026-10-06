@@ -1,6 +1,7 @@
 import { PRODUCT_REGISTRY } from '../products/registry';
 import { ThemeToggle } from './ThemeToggle';
 import { Logo } from './Logo';
+import { OpenProjectButton } from './ProjectButtons';
 
 interface ProductPickerProps {
   onSelect: (productId: string) => void;
@@ -21,6 +22,8 @@ export function ProductPicker({ onSelect }: ProductPickerProps) {
           </div>
           <ThemeToggle className="shrink-0" />
         </div>
+
+        <OpenProjectButton onOpened={onSelect} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           {PRODUCT_REGISTRY.map((product) => (
