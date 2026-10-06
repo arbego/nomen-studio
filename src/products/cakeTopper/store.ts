@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createDesignHistory } from '../../store/designHistory';
 import type { Offset2D } from '../../geometry/types';
 import { presetColor } from '../../ui/presets';
 import { iconDefaultWidthMm } from '../../icons/catalog';
@@ -325,3 +326,5 @@ export function selectCakeTopperConfig(state: CakeTopperStore): CakeTopperConfig
     decoratorColors,
   };
 }
+
+export const cakeTopperHistory = createDesignHistory(useCakeTopperStore, selectCakeTopperConfig);

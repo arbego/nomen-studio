@@ -6,6 +6,7 @@ import { NameDisplayProvider } from './Provider';
 import { NameDisplayWarnings } from './Warnings';
 import { NameDisplayThumbnail } from './Thumbnail';
 import { nameDisplayProjectIO } from './project';
+import { nameDisplayHistory } from './store';
 
 export const nameDisplayProduct: ProductDefinition = {
   id: 'name-display',
@@ -18,4 +19,5 @@ export const nameDisplayProduct: ProductDefinition = {
   Warnings: NameDisplayWarnings,
   Provider: NameDisplayProvider,
   project: nameDisplayProjectIO,
+  history: nameDisplayHistory,
 };

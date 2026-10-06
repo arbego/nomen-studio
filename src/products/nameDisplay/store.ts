@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createDesignHistory } from '../../store/designHistory';
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { presetColor } from '../../ui/presets';
@@ -274,3 +275,5 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     standColor,
   };
 }
+
+export const nameDisplayHistory = createDesignHistory(useNameDisplayStore, selectNameDisplayConfig);

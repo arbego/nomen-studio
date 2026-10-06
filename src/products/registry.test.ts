@@ -17,6 +17,8 @@ describe('PRODUCT_REGISTRY', () => {
       expect(typeof product.Controls, product.id).toBe('function');
       expect(typeof product.SceneContent, product.id).toBe('function');
       expect(typeof product.Export, product.id).toBe('function');
+      expect(typeof product.history.undo, product.id).toBe('function');
+      expect(typeof product.history.redo, product.id).toBe('function');
     }
   });
 });

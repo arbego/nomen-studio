@@ -1,3 +1,5 @@
+import { DesignInput } from '../DesignHistory';
+
 interface SliderFieldProps {
   label: string;
   value: number;
@@ -20,7 +22,7 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
           {value} {unit}
         </span>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+      <DesignInput type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
       {hint && <span className="text-xs text-stone-400 dark:text-stone-500">{hint}</span>}
     </label>
   );

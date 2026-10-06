@@ -1,3 +1,4 @@
+import { DesignInput } from '../DesignHistory';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { MODES } from './standModes';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
@@ -69,7 +70,7 @@ export function StandControls({
               <span>Rail height</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{railHeightMm} mm</span>
             </div>
-            <input type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+            <DesignInput type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
             <span className="text-xs text-stone-400 dark:text-stone-500">Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it.</span>
           </label>
           <label className="flex flex-col gap-1.5">
@@ -77,7 +78,7 @@ export function StandControls({
               <span>Rail depth</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{railDepthMm} mm</span>
             </div>
-            <input type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+            <DesignInput type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
           </label>
           {railSocketDepthMm !== undefined && onChangeRailSocketDepth && (
             <label className="flex flex-col gap-1.5">
@@ -85,7 +86,7 @@ export function StandControls({
                 <span>Socket depth</span>
                 <span className="tabular-nums text-stone-400 dark:text-stone-500">{railSocketDepthMm} mm</span>
               </div>
-              <input
+              <DesignInput
                 type="range"
                 min={0}
                 max={20}
@@ -114,7 +115,7 @@ export function StandControls({
               {trimOffsetMm} mm
             </span>
           </div>
-          <input type="range" min={-10} max={15} step={0.5} value={trimOffsetMm} onChange={(e) => onChangeTrimOffset(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+          <DesignInput type="range" min={-10} max={15} step={0.5} value={trimOffsetMm} onChange={(e) => onChangeTrimOffset(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
           <span className="text-xs text-stone-400 dark:text-stone-500">Relative to the text's baseline. 0 removes just the descenders.</span>
         </label>
       )}

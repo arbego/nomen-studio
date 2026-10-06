@@ -1,3 +1,5 @@
+import { DesignInput } from '../DesignHistory';
+
 interface TextFieldProps {
   label: string;
   value: string;
@@ -10,7 +12,7 @@ export function TextField({ label, value, onChange, maxLength, placeholder }: Te
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">{label}</span>
-      <input
+      <DesignInput
         type="text"
         value={value}
         maxLength={maxLength}

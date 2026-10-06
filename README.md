@@ -66,6 +66,18 @@ printed.
 
 ## Saving your work
 
+Every studio has **Undo** and **Redo** in its header. Use **Ctrl/Cmd+Z** to undo,
+**Ctrl/Cmd+Shift+Z** to redo, or **Ctrl+Y** on Windows/Linux. Design text fields
+use the same history as the preview; font and icon searches keep native text undo.
+Each drag or slider gesture is one step, and typing is grouped until a short pause
+or you leave the field. Adding/removing pieces and opening a project are undoable
+too. A new edit after undo starts a new branch and clears redo.
+
+The last 100 steps are kept separately for each product while the app is open,
+including when you switch studios. History resets on page reload and is not
+included in project files. Camera movement, theme and panel state are not design
+edits.
+
 Every studio has **Save project** and **Open project** in its header. A project
 file is plain JSON — an envelope naming the format, its version and the product,
 wrapping that product's config exactly as its store holds it — so it is readable,
@@ -113,6 +125,16 @@ one registry entry.)
 Because a product's controls and its scene are mounted in separate subtrees
 (sidebar and canvas), anything they share — above all the one async geometry
 build that feeds both — goes in the definition's optional `Provider`.
+
+Each product also exposes a required `history` controller. Create it once beside
+the store with `createDesignHistory(store, selectFullConfig)` from
+`store/designHistory.ts`, and pass it through the product definition. The selector
+must include the complete JSON-safe design and exclude actions and transient UI
+state. All store changes are then recorded automatically, including file loads;
+restoring snapshots preserves related fields without re-running edit corrections.
+Use the shared controls (or `DesignInput` for custom text/range inputs) to group
+continuous input. Commit preview drags once on release. The shared shell supplies
+the buttons, shortcuts and active history context for every product.
 
 ### The preview
 

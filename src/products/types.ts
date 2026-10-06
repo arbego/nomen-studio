@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
+import type { DesignHistory } from '../store/designHistory';
 
 /**
  * One designable product — a cake topper, a name display, whatever comes next.
@@ -62,6 +63,8 @@ export interface ProductDefinition {
   Warnings?: ComponentType;
   /** Reading and writing this product's designs as project files. */
   project: ProductProject;
+  /** Shared undo/redo controller, attached once to the product's config store. */
+  history: DesignHistory;
   /**
    * Optional wrapper placed around *both* Controls and SceneContent. They are
    * mounted in separate subtrees (sidebar and canvas), so anything they must

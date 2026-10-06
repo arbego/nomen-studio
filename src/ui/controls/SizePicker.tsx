@@ -1,3 +1,4 @@
+import { DesignInput } from '../DesignHistory';
 import { SIZE_PRESETS_MM } from '../presets';
 
 interface SizePickerProps {
@@ -39,7 +40,7 @@ export function SizePicker({ label = 'Size (word width)', value, onChange, depth
         ))}
       </div>
       <div className="flex items-center gap-3 pt-1">
-        <input
+        <DesignInput
           type="range"
           min={MIN_MM}
           max={MAX_MM}
@@ -55,7 +56,7 @@ export function SizePicker({ label = 'Size (word width)', value, onChange, depth
           <span>Height</span>
           <span className="tabular-nums text-stone-400 dark:text-stone-500">{depthMm} mm</span>
         </div>
-        <input
+        <DesignInput
           type="range"
           min={MIN_DEPTH_MM}
           max={MAX_DEPTH_MM}

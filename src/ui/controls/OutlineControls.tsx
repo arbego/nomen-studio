@@ -1,3 +1,4 @@
+import { DesignInput } from '../DesignHistory';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import type { OutlineHoleCandidate } from '../../geometry/outline';
 import { usePanelStore } from '../panelStore';
@@ -80,7 +81,7 @@ export function OutlineControls({
               <span>Grow</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{growMm} mm</span>
             </div>
-            <input
+            <DesignInput
               type="range"
               min={GROW_RANGE.min}
               max={GROW_RANGE.max}
@@ -95,7 +96,7 @@ export function OutlineControls({
               <span>Height</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{depthMm} mm</span>
             </div>
-            <input
+            <DesignInput
               type="range"
               min={MIN_DEPTH_MM}
               max={maxDepthMm}

@@ -1,3 +1,4 @@
+import { DesignInput } from '../../ui/DesignHistory';
 import type { CakeTopperBlockId } from './config';
 
 interface StickControlsProps {
@@ -84,7 +85,7 @@ export function StickControls({
               <span>Width</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{widthMm} mm</span>
             </div>
-            <input
+            <DesignInput
               type="range"
               min={WIDTH_RANGE.min}
               max={WIDTH_RANGE.max}
@@ -100,7 +101,7 @@ export function StickControls({
               <span>Length</span>
               <span className="tabular-nums text-stone-400 dark:text-stone-500">{lengthMm} mm</span>
             </div>
-            <input
+            <DesignInput
               type="range"
               min={LENGTH_RANGE.min}
               max={LENGTH_RANGE.max}

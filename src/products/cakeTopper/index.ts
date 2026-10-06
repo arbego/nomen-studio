@@ -6,6 +6,7 @@ import { CakeTopperProvider } from './Provider';
 import { CakeTopperWarnings } from './Warnings';
 import { CakeTopperThumbnail } from './Thumbnail';
 import { cakeTopperProjectIO } from './project';
+import { cakeTopperHistory } from './store';
 
 export const cakeTopperProduct: ProductDefinition = {
   id: 'cake-topper',
@@ -18,4 +19,5 @@ export const cakeTopperProduct: ProductDefinition = {
   Warnings: CakeTopperWarnings,
   Provider: CakeTopperProvider,
   project: cakeTopperProjectIO,
+  history: cakeTopperHistory,
 };

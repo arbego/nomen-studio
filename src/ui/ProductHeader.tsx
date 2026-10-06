@@ -1,6 +1,7 @@
 import { ProjectButtons } from './ProjectButtons';
 import { ThemeToggle } from './ThemeToggle';
 import { Logo } from './Logo';
+import { HistoryButtons } from './DesignHistory';
 import type { ProductDefinition } from '../products/types';
 
 interface ProductHeaderProps {
@@ -36,6 +37,9 @@ export function ProductHeader({ product, onBack, onOpenProduct }: ProductHeaderP
       <p className="text-sm text-stone-500 dark:text-stone-400">{product.tagline}</p>
       <div className="mt-3">
         <ProjectButtons product={product} onOpened={onOpenProduct} />
+      </div>
+      <div className="mt-3">
+        <HistoryButtons history={product.history} />
       </div>
     </div>
   );
