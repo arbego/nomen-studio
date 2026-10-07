@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { getProduct } from '../products/registry';
 import { parseProjectFile, ProjectFileError } from '../project/projectFile';
+import { hasUnsavedChanges, subscribeProjectChanges } from '../project/projectSession';
 import { saveProject } from '../project/saveProject';
 import type { ProductDefinition } from '../products/types';
 
@@ -16,11 +17,14 @@ function SaveIcon() {
 }
 
 export function SaveProjectButton({ product }: { product: ProductDefinition }) {
+  const subscribe = useCallback((listener: () => void) => subscribeProjectChanges(product, listener), [product]);
+  const getSnapshot = useCallback(() => hasUnsavedChanges(product), [product]);
+  const unsaved = useSyncExternalStore(subscribe, getSnapshot);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
     <div className="flex flex-col items-end gap-2">
-      <button type="button" disabled={busy} onClick={async () => {
+      <button type="button" disabled={busy || !unsaved} onClick={async () => {
         setFailed(false);
         setBusy(true);
         try { await saveProject(product); } catch { setFailed(true); } finally { setBusy(false); }

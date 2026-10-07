@@ -7,7 +7,13 @@ import App from './App';
 import { useAppStore } from './store/appStore';
 import { serializeProject } from './project/projectFile';
 
-const history = vi.hoisted(() => ({ clear: vi.fn() }));
+const history = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  return {
+    clear: vi.fn(), listeners,
+    subscribeDesign: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+});
 const project = vi.hoisted(() => ({
   snapshot: vi.fn(() => ({ name: 'My cake', design: { text: 'Hello' } })),
   load: vi.fn(),
@@ -36,7 +42,10 @@ function enterEditor() {
   act(() => useAppStore.getState().selectProduct('cake'));
 }
 function editProject() {
-  project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Edited' } });
+  act(() => {
+    project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Edited' } });
+    history.listeners.forEach((listener) => listener());
+  });
 }
 async function click(label: string) {
   await act(async () => button(label).click());
@@ -81,7 +90,11 @@ describe('project navigation', () => {
     expect(history.clear).toHaveBeenCalledOnce();
     const actions = container.querySelector('[data-testid="view-actions"]')!;
     expect([...actions.querySelectorAll('button')].map((element) => element.textContent?.trim())).toEqual(['Save project', 'Export']);
+    expect(button('Save project').disabled).toBe(true);
+    editProject();
+    expect(button('Save project').disabled).toBe(false);
     await click('Save project');
+    expect(button('Save project').disabled).toBe(true);
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), 'my-cake.json');
   });
 
@@ -139,8 +152,12 @@ describe('project navigation', () => {
 
   it('prompts again after editing a saved design', async () => {
     enterEditor();
-    await click('Save project');
     editProject();
+    await click('Save project');
+    act(() => {
+      project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Another edit' } });
+      history.listeners.forEach((listener) => listener());
+    });
     await click('All products');
     expect(leaveDialog().open).toBe(true);
   });

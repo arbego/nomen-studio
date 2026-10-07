@@ -7,6 +7,8 @@ export interface HistoryState {
 
 /** Product-independent history exposed to the studio shell. */
 export interface DesignHistory extends Pick<StoreApi<HistoryState>, 'getState' | 'getInitialState' | 'subscribe'> {
+  /** Observe store writes, including edits that leave undo/redo availability unchanged. */
+  subscribeDesign: (listener: () => void) => () => void;
   undo: () => void;
   redo: () => void;
   clear: () => void;
@@ -79,6 +81,7 @@ export function createDesignHistory<State, Config extends Partial<State>>(
     getState: status.getState,
     getInitialState: status.getInitialState,
     subscribe: status.subscribe,
+    subscribeDesign: (listener) => store.subscribe(listener),
     undo: () => restore(past, future),
     redo: () => restore(future, past),
     clear: () => {
