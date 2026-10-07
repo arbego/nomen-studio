@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import { FloatWarning } from '../../ui/FloatWarning';
+import { PreviewWarning } from '../../ui/PreviewWarning';
 import { getIcon } from '../../icons/catalog';
 import { useNameDisplayGeometry } from './geometryContext';
 import { selectNameDisplayConfig, useNameDisplayStore } from './store';
@@ -15,7 +16,7 @@ function decoratorLabel(decorator: DecoratorConfig): string {
 }
 
 /**
- * Whether every inlaid piece is actually sitting on the initial.
+ * Loose inlays and cable-hole placement problems in the preview.
  *
  * Read straight off the assembly, which settled it while cutting the pocket from
  * those same regions — so this costs nothing beyond the lookup, and cannot
@@ -34,5 +35,13 @@ export function NameDisplayWarnings() {
     ...config.decorators.filter((decorator) => adrift.has(decorator.id)).map(decoratorLabel),
   ];
 
-  return <FloatWarning parts={parts} remedy="Drag them back over the initial — the recess cut into it is what holds them." />;
+  const holeWarning = assembly.cableHole?.warning;
+  if (parts.length === 0 && !holeWarning) return null;
+
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <FloatWarning parts={parts} remedy="Drag them back over the initial — the recess cut into it is what holds them." />
+      {holeWarning && <PreviewWarning message="Cable hole needs adjustment." remedy={holeWarning} />}
+    </div>
+  );
 }

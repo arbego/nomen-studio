@@ -34,8 +34,6 @@ export function NameDisplayControls() {
   const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
   const showLid = useNameDisplayStore((s) => s.showLid);
   const setShowLid = useNameDisplayStore((s) => s.setShowLid);
-  const editingCableHole = useNameDisplayStore((s) => s.editingCableHole);
-  const setEditingCableHole = useNameDisplayStore((s) => s.setEditingCableHole);
   const { assembly, loading, error } = useNameDisplayGeometry();
 
   const hasName = config.name.trim().length > 0;
@@ -103,19 +101,14 @@ export function NameDisplayControls() {
                   <span>Cable hole</span>
                   <DesignInput type="checkbox" checked={config.cableHoleEnabled} onChange={(event) => {
                     onChange({ cableHoleEnabled: event.target.checked });
-                    setEditingCableHole(event.target.checked);
+                    if (event.target.checked) setShowLid(false);
                   }} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
                 </label>
                 {config.cableHoleEnabled && (
                   <>
                     <SliderField label="Hole diameter" value={config.cableHoleDiameterMm} onChange={(cableHoleDiameterMm) => onChange({ cableHoleDiameterMm })} min={2} max={30} step={0.5} hint="Make room for the cable or connector you plan to pass through." />
-                    <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
-                      <span>Move cable hole in preview</span>
-                      <input type="checkbox" checked={editingCableHole} onChange={(event) => setEditingCableHole(event.target.checked)} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
-                    </label>
-                    <p className="text-xs text-stone-400 dark:text-stone-500">Drag the orange ring or click the bowl to place the hole. Orbit the view to reach the back or side walls. Moving it hides the lid in the preview.</p>
+                    <p className="text-xs text-stone-400 dark:text-stone-500">Click the hole to highlight it, then drag it to move it. Hide the lid or orbit to the back to reach the hole. Orbit the view to reach the side walls.</p>
                     <button type="button" onClick={() => onChange({ cableHolePlacement: null })} className="self-start text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200">Reset hole position</button>
-                    {assembly?.cableHole?.warning && <p role="status" className="text-xs text-amber-700 dark:text-amber-400">{assembly.cableHole.warning}</p>}
                   </>
                 )}
               </FocusTarget>

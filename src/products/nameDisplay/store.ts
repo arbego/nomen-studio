@@ -126,8 +126,6 @@ interface NameDisplayStore extends NameDisplayConfig {
   /** Preview only: never changes the saved design or the assembled export. */
   showLid: boolean;
   setShowLid: (show: boolean) => void;
-  editingCableHole: boolean;
-  setEditingCableHole: (editing: boolean) => void;
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
   setNameOffset: (offset: Offset2D) => void;
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
@@ -148,9 +146,7 @@ interface NameDisplayStore extends NameDisplayConfig {
 export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   ...DEFAULT_NAME_DISPLAY_CONFIG,
   showLid: true,
-  editingCableHole: false,
-  setShowLid: (showLid) => set(showLid ? { showLid, editingCableHole: false } : { showLid }),
-  setEditingCableHole: (editingCableHole) => set(editingCableHole ? { editingCableHole, showLid: false } : { editingCableHole }),
+  setShowLid: (showLid) => set({ showLid }),
   setConfig: (partial) =>
     set((state) => {
       // Both corrections below have to compose, not pick one: a single call can
@@ -255,9 +251,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
     reserveDecoratorIds(config.decorators);
-    set({ ...config, showLid: true, editingCableHole: false });
+    set({ ...config, showLid: true });
   },
-  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true, editingCableHole: false }),
+  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true }),
 }));
 
 /** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */

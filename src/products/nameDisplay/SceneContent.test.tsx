@@ -1,10 +1,13 @@
-import { DEFAULT_NAME_DISPLAY_CONFIG } from './store';
+import { DEFAULT_NAME_DISPLAY_CONFIG, useNameDisplayStore } from './store';
 import { describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import ReactThreeTestRenderer from '@react-three/test-renderer';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
-import { NameDisplayScene } from './SceneContent';
+import { NameDisplayScene, NameDisplaySceneContent } from './SceneContent';
+import { NameDisplayGeometryContext } from './geometryContext';
+import { usePanelStore } from '../../ui/panelStore';
+import { CABLE_HOLE_FOCUS_KEY, SECTIONS } from './focus';
 import { GroundCenter } from '../../scene/GroundCenter';
 import { assembleNameDisplay, buildNameDisplayBlocks, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
 import { placePoint } from '../../geometry/placement';
@@ -102,6 +105,41 @@ function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY:
 }
 
 describe('NameDisplayScene (React Three Fiber wiring)', () => {
+  it('flashes cable-hole controls on selection and leaves the flash alone after dragging', async () => {
+    const merged = { ...config, name: '', hollowEnabled: true, cableHoleEnabled: true, initialDepthMm: 30 };
+    const blocks = await buildNameDisplayBlocks(merged);
+    const assembly = assembleNameDisplay(blocks, merged);
+    useNameDisplayStore.getState().loadConfig(merged);
+    useNameDisplayStore.getState().setShowLid(false);
+    usePanelStore.getState().reset();
+    const renderer = await ReactThreeTestRenderer.create(
+      <NameDisplayGeometryContext.Provider value={{ blocks, assembly, loading: false, error: null }}>
+        <NameDisplaySceneContent />
+      </NameDisplayGeometryContext.Provider>,
+    );
+    try {
+      const group = renderer.scene.findByProps({ name: 'cable-hole-editor' }).instance as THREE.Group;
+      const handle = renderer.scene.findByProps({ name: 'cable-hole-handle-0' });
+      const { x, y } = assembly.cableHole!.placement.point;
+      const down = pointerEventAt(group, x, y, { x: 100, y: 100 });
+      await renderer.fireEvent(handle, 'pointerDown', down);
+      await renderer.fireEvent(handle, 'pointerUp', down);
+      const request = usePanelStore.getState().request;
+      expect(request).toEqual({ section: SECTIONS.hollow, target: CABLE_HOLE_FOCUS_KEY });
+      expect(useNameDisplayStore.getState().cableHolePlacement).toBeNull();
+      await renderer.fireEvent(handle, 'pointerDown', down);
+      const moved = pointerEventAt(group, x, y + 10, { x: 100, y: 130 });
+      await renderer.fireEvent(handle, 'pointerMove', moved);
+      await renderer.fireEvent(handle, 'pointerUp', moved);
+      expect(useNameDisplayStore.getState().cableHolePlacement).toEqual({ point: { x, y: y + 10, z: 0 }, normal: { x: 0, y: 0, z: -1 } });
+      expect(usePanelStore.getState().request).toBe(request);
+    } finally {
+      await renderer.unmount();
+      useNameDisplayStore.getState().reset();
+      usePanelStore.getState().reset();
+    }
+  }, 30000);
+
   it('renders the hollow bowl and fitted lid in their own colors', async () => {
     const { renderer, assembly } = await renderScene({ hollowEnabled: true, initialDepthMm: 30, lidColor: '#b7c4ac' });
     const meshes = directMeshes(root(renderer));

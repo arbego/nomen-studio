@@ -52,11 +52,10 @@ describe('name display round trip', () => {
     resetWithoutDecorators();
     const store = useNameDisplayStore.getState();
     store.setConfig({ hollowEnabled: true, cableHoleEnabled: true, cableHoleDiameterMm: 8.5, cableHolePlacement: placement });
-    store.setEditingCableHole(true);
+    store.setShowLid(false);
     const { saved, loaded } = roundTrip('name-display');
     expect(loaded).toEqual(saved);
-    expect(loaded).not.toHaveProperty('editingCableHole');
-    expect(useNameDisplayStore.getState().editingCableHole).toBe(false);
+    expect(loaded).not.toHaveProperty('showLid');
   });
 
   it('keeps legacy bowls without a cable hole and validates malformed hole settings', () => {

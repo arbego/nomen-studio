@@ -9,6 +9,7 @@ import { usePanelStore } from '../../ui/panelStore';
 import { NameDisplayControls } from './Controls';
 import { NameDisplayExport } from './ExportAction';
 import { NameDisplayProvider } from './Provider';
+import { NameDisplayWarnings } from './Warnings';
 import { selectNameDisplayConfig, useNameDisplayStore } from './store';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
@@ -64,7 +65,8 @@ async function waitForExport() {
 async function mountEditor() {
   await act(async () => root.render(
     <NameDisplayProvider>
-      <NameDisplayControls />
+      <div data-testid="controls"><NameDisplayControls /></div>
+      <div data-testid="preview-warnings"><NameDisplayWarnings /></div>
       <NameDisplayExport />
     </NameDisplayProvider>,
   ));
@@ -85,13 +87,14 @@ function blobText(blob: Blob): Promise<string> {
 }
 
 describe('hollow initial in the editor', () => {
-  it('enables a cable hole, adjusts its diameter, resets placement, and keeps editing out of the saved design', async () => {
+  it('enables a cable hole without a movement toggle, adjusts its diameter, and resets placement', async () => {
     await mountEditor();
     act(() => checkbox('Hollow initial with lid').click());
     act(() => checkbox('Cable hole').click());
     await waitForExport();
-    expect(useNameDisplayStore.getState().editingCableHole).toBe(true);
     expect(useNameDisplayStore.getState().showLid).toBe(false);
+    expect(container.textContent).not.toContain('Move cable hole in preview');
+    expect(container.textContent).toContain('Click the hole to highlight it, then drag it');
     expect(container.textContent).toContain('Hole diameter');
     const diameter = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Hole diameter'))!.querySelector('input')!;
     act(() => {
@@ -100,15 +103,17 @@ describe('hollow initial in the editor', () => {
     });
     expect(useNameDisplayStore.getState().cableHoleDiameterMm).toBe(8);
     const snapshot = selectNameDisplayConfig(useNameDisplayStore.getState());
-    act(() => checkbox('Move cable hole in preview').click());
+    act(() => checkbox('Show lid in preview').click());
     expect(selectNameDisplayConfig(useNameDisplayStore.getState())).toEqual(snapshot);
-    expect(snapshot).not.toHaveProperty('editingCableHole');
+    expect(snapshot).not.toHaveProperty('showLid');
     act(() => useNameDisplayStore.getState().setConfig({ cableHolePlacement: { point: { x: 999, y: 999, z: 0 }, normal: { x: 0, y: 0, z: -1 } } }));
-    expect(container.textContent).toContain('does not open into the cavity');
+    const warnings = container.querySelector('[data-testid="preview-warnings"]')!;
+    expect(warnings.querySelector('[role="status"]')?.textContent).toContain('does not open into the cavity');
+    expect(container.querySelector('[data-testid="controls"]')!.textContent).not.toContain('does not open into the cavity');
     const reset = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Reset hole position')!;
     act(() => reset.click());
     expect(useNameDisplayStore.getState().cableHolePlacement).toBeNull();
-    expect(container.textContent).not.toContain('does not open into the cavity');
+    expect(warnings.textContent).not.toContain('does not open into the cavity');
   });
 
   it('enables the bowl and lid, exposes their controls, and exports the lid even when hidden', async () => {

@@ -1,3 +1,5 @@
+import { PreviewWarning } from './PreviewWarning';
+
 /** Past this many, the list stops naming parts and starts counting them — a warning you have to read twice is one you stop reading. */
 const NAMED_LIMIT = 3;
 
@@ -30,19 +32,5 @@ export function FloatWarning({ parts, remedy }: FloatWarningProps) {
   if (parts.length === 0) {
     return null;
   }
-  return (
-    // Polite rather than assertive: this comes and goes as the design is dragged
-    // about, and an alert would interrupt a screen reader on every crossing.
-    <div role="status" className="max-w-72 rounded-lg border border-amber-300 dark:border-amber-700/70 bg-amber-50/95 dark:bg-amber-950/90 px-3 py-2 text-left shadow-md backdrop-blur">
-      <p className="flex items-start gap-2 text-xs font-medium text-amber-900 dark:text-amber-200">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="mt-px h-4 w-4 shrink-0">
-          <path d="M10.3 3.9 1.8 18.4A2 2 0 0 0 3.5 21.4h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-          <path d="M12 9v4" />
-          <path d="M12 17h.01" />
-        </svg>
-        <span>Nothing holds {listParts(parts)}.</span>
-      </p>
-      <p className="mt-1 pl-6 text-xs text-amber-800/80 dark:text-amber-200/70">{remedy}</p>
-    </div>
-  );
+  return <PreviewWarning message={`Nothing holds ${listParts(parts)}.`} remedy={remedy} />;
 }
