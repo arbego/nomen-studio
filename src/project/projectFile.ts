@@ -54,7 +54,7 @@ export function parseProjectFile(text: string, knownProduct: (id: string) => boo
   }
 
   if (!isPlainObject(parsed) || field(parsed, 'format') !== PROJECT_FORMAT) {
-    throw new ProjectFileError("That doesn't look like a Name Studio project file.");
+    throw new ProjectFileError("That doesn't look like a Nomen Studio project file.");
   }
 
   const version = field(parsed, 'version');
@@ -62,7 +62,7 @@ export function parseProjectFile(text: string, knownProduct: (id: string) => boo
     throw new ProjectFileError("That project file doesn't say which version it is.");
   }
   if (version > PROJECT_VERSION) {
-    throw new ProjectFileError('That project was saved by a newer version of Name Studio.');
+    throw new ProjectFileError('That project was saved by a newer version of Nomen Studio.');
   }
 
   const product = field(parsed, 'product');

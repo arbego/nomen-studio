@@ -131,7 +131,7 @@ function modelXml(objects: ThreeMfObject[], title: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
 <metadata name="Title">${escapeXml(title)}</metadata>
-<metadata name="Application">Name Studio</metadata>
+<metadata name="Application">Nomen Studio</metadata>
 <resources><basematerials id="${MATERIALS_ID}">${bases}</basematerials>${parts}<object id="${assemblyId(objects.length)}" type="model" name="${escapeXml(title)}"><components>${components}</components></object></resources>
 <build><item objectid="${assemblyId(objects.length)}"/></build>
 </model>`;

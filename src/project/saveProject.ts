@@ -24,7 +24,7 @@ export async function saveProject(product: ProductDefinition): Promise<boolean> 
       // Called directly from the button gesture, before any asynchronous work.
       handle = await pickerWindow.showSaveFilePicker({
         suggestedName,
-        types: [{ description: 'Name Studio project', accept: { 'application/json': ['.json'] } }],
+        types: [{ description: 'Nomen Studio project', accept: { 'application/json': ['.json'] } }],
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return false;

@@ -41,7 +41,7 @@ describe('project file saving', () => {
     expect(await saveProject(product)).toBe(true);
     expect(picker).toHaveBeenCalledWith({
       suggestedName: 'my-cake.json',
-      types: [{ description: 'Name Studio project', accept: { 'application/json': ['.json'] } }],
+      types: [{ description: 'Nomen Studio project', accept: { 'application/json': ['.json'] } }],
     });
     expect(JSON.parse(write.mock.calls[0]![0])).toMatchObject({ product: 'cake', design: { text: 'Edited' } });
     expect(close).toHaveBeenCalledOnce();

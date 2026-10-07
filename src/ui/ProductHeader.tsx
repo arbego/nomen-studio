@@ -15,7 +15,7 @@ export function ProductHeader({ product, onBack }: ProductHeaderProps) {
           the heading it would squeeze the tagline onto two lines. */}
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Logo className="h-4 w-auto text-stone-700 dark:text-stone-300" label="Name Studio" />
+          <Logo className="h-4 w-auto text-stone-700 dark:text-stone-300" label="Nomen Studio" />
           <button
             type="button"
             onClick={onBack}

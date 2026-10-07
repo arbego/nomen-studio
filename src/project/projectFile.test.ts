@@ -41,7 +41,7 @@ describe('parseProjectFile', () => {
     ['null', 'null'],
     ['someone else’s JSON', '{"name":"package.json"}'],
   ])('rejects %s rather than loading a pile of defaults from it', (_label, text) => {
-    expect(() => parseProjectFile(text, known)).toThrow(/Name Studio project file/);
+    expect(() => parseProjectFile(text, known)).toThrow(/Nomen Studio project file/);
   });
 
   it('refuses a file from a version that knows things this one does not', () => {

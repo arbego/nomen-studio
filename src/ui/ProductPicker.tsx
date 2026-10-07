@@ -16,7 +16,7 @@ export function ProductPicker({ onSelect }: ProductPickerProps) {
           <div>
             <div className="flex items-center gap-3">
               <Logo className="h-9 w-auto text-stone-900 dark:text-stone-100" />
-              <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Name Studio</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Nomen Studio</h1>
             </div>
             <p className="mt-1 text-stone-500 dark:text-stone-400">Design a personalized piece and export it print-ready. Pick what you're making.</p>
           </div>

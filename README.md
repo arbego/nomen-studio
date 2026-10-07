@@ -1,4 +1,4 @@
-# Name Studio
+# Nomen Studio
 
 Design personalized 3D-printable lettering — preview it live in 3D and export
 print-ready files. Pick a product on the landing screen, then design in that
