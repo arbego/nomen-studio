@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useAppStore } from './store/appStore';
 import { getProduct } from './products/registry';
 import { AppShell } from './ui/AppShell';
@@ -6,6 +6,7 @@ import { ProductPicker } from './ui/ProductPicker';
 import { ProductHeader } from './ui/ProductHeader';
 import { SaveProjectButton } from './ui/ProjectButtons';
 import { hasUnsavedChanges } from './project/projectSession';
+import { StudioTips, TipButton, type StudioTipsHandle } from './ui/StudioTips';
 import { SaveBeforeLeave } from './ui/SaveBeforeLeave';
 import { StudioCanvas } from './scene/StudioCanvas';
 import { DesignHistoryProvider, HistoryButtons } from './ui/DesignHistory';
@@ -16,6 +17,8 @@ import { DesignHistoryProvider, HistoryButtons } from './ui/DesignHistory';
  * products/types.ts.
  */
 function App() {
+  const tipsRef = useRef<StudioTipsHandle>(null);
+  const [tipActive, setTipActive] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const selectedProductId = useAppStore((s) => s.selectedProductId);
   const selectProduct = useAppStore((s) => s.selectProduct);
@@ -36,7 +39,7 @@ function App() {
           header={<ProductHeader product={product} onBack={() => { if (hasUnsavedChanges(product)) setLeaving(true); else clearProduct(); }} />}
           sidebar={<product.Controls />}
           main={
-            <StudioCanvas actions={<div className="flex items-start gap-2"><SaveProjectButton product={product} /><product.Export /></div>} historyActions={<HistoryButtons history={product.history} />} warnings={product.Warnings && <product.Warnings />}>
+            <StudioCanvas actions={<div className="flex items-start gap-2"><SaveProjectButton product={product} /><product.Export /></div>} tips={<StudioTips key={product.id} ref={tipsRef} productId={product.id} onActiveChange={setTipActive} />} historyActions={<div className="flex items-center gap-2"><TipButton active={tipActive} onClick={() => tipsRef.current?.showTip()} /><HistoryButtons history={product.history} /></div>} warnings={product.Warnings && <product.Warnings />}>
               <product.SceneContent />
             </StudioCanvas>
           }

@@ -64,6 +64,22 @@ lights: those exist to show what a filament will actually look like, and a desig
 whose colour shifted with the UI theme would be lying about the thing being
 printed.
 
+## Editor tips
+
+Short “Did you know?” messages occasionally appear above the preview controls.
+They cover shortcuts, saving and exporting, and tips specific to the current
+product. The first appears after 3 seconds, stays for 12 seconds, and is followed
+by at least two minutes without a tip. Hints wait during typing, dragging,
+scrolling, dialogs, and background tabs. Tips continue cycling throughout editing,
+and the first tip appears again whenever an editor opens. The lightbulb button to
+the left of Undo shows a fresh tip immediately and glows orange while a tip is visible.
+Hovering pauses the dismissal timer; it resumes when the pointer leaves. The
+close button dismisses the current message. There is no disable setting yet,
+and tips do not write to browser storage.
+
+The app uses no cookies. It remembers the chosen theme and last selected product
+in `localStorage`; designs and undo history stay in memory until saved to a file.
+
 ## Saving your work
 
 Every studio has **Undo** and **Redo** in its header. Use **Ctrl/Cmd+Z** to undo,

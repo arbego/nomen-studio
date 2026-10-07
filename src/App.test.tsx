@@ -27,10 +27,14 @@ vi.mock('./products/registry', () => {
   };
   return { PRODUCT_REGISTRY: [product], getProduct: (id: string) => id === 'cake' ? product : undefined };
 });
-vi.mock('./scene/StudioCanvas', () => ({ StudioCanvas: ({ actions }: { actions: React.ReactNode }) => <div data-testid="view-actions">{actions}</div> }));
+vi.mock('./scene/StudioCanvas', () => ({
+  StudioCanvas: ({ actions, historyActions, tips }: { actions: React.ReactNode; historyActions: React.ReactNode; tips: React.ReactNode }) => (
+    <div><div data-testid="view-actions">{actions}</div><div data-testid="history-actions">{historyActions}</div>{tips}</div>
+  ),
+}));
 vi.mock('./ui/DesignHistory', () => ({
   DesignHistoryProvider: ({ children }: { children: React.ReactNode }) => children,
-  HistoryButtons: () => null,
+  HistoryButtons: () => <><button aria-label="Undo">Undo</button><button aria-label="Redo">Redo</button></>,
 }));
 
 let container: HTMLDivElement;
@@ -96,6 +100,19 @@ describe('project navigation', () => {
     await click('Save project');
     expect(button('Save project').disabled).toBe(true);
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), 'my-cake.json');
+  });
+
+  it('places the manual tip button before undo and shows a tip immediately', async () => {
+    enterEditor();
+    expect([...container.querySelectorAll('[data-testid="history-actions"] button')].map((element) => element.getAttribute('aria-label'))).toEqual(['Show a tip', 'Undo', 'Redo']);
+    const tipButton = container.querySelector<HTMLButtonElement>('[aria-label="Show a tip"]')!;
+    await act(async () => tipButton.click());
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Did you know?');
+    expect(container.querySelector('[aria-label="Dismiss tip"]')).not.toBeNull();
+    expect(tipButton.getAttribute('aria-expanded')).toBe('true');
+    expect(tipButton.className).toContain('text-orange-300');
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Dismiss tip"]')!.click());
+    expect(tipButton.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('shows invalid-file errors without entering the editor', async () => {

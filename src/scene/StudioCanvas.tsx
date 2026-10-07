@@ -23,6 +23,8 @@ interface StudioCanvasProps {
   actions?: ReactNode;
   /** Undo/redo controls pinned over the preview's bottom-left corner. */
   historyActions?: ReactNode;
+  /** Occasional hints above the bottom controls, sharing space with warnings. */
+  tips?: ReactNode;
   /**
    * Pinned above the view buttons in the bottom-right corner: what is wrong with
    * the design as a whole — see the product's own Warnings component.
@@ -54,7 +56,7 @@ const OVERLAY_BUTTON_CLASS =
  * whatever is currently on screen. Product-agnostic — it only renders whatever
  * scene content it's given, centered on the ground plane.
  */
-export function StudioCanvas({ children, actions, historyActions, warnings }: StudioCanvasProps) {
+export function StudioCanvas({ children, actions, historyActions, warnings, tips }: StudioCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
@@ -125,8 +127,11 @@ export function StudioCanvas({ children, actions, historyActions, warnings }: St
       {actions && <div className="absolute right-4 top-4">{actions}</div>}
       {historyActions && <div className="absolute bottom-4 left-4">{historyActions}</div>}
 
-      {/* Just clear of the button row below it, and anchored by its bottom edge so it grows upward rather than over them. */}
-      {warnings && <div className="absolute bottom-16 right-4">{warnings}</div>}
+      {/* Both messages keep their bottom edge above the controls as warnings appear. */}
+      <div className="pointer-events-none absolute bottom-16 left-4 right-4 flex items-end justify-between gap-4">
+        {tips}
+        {warnings && <div className="pointer-events-auto ml-auto max-w-[50%] shrink-0">{warnings}</div>}
+      </div>
 
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
         <button
