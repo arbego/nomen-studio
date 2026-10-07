@@ -119,9 +119,9 @@ including when you switch studios. History resets on page reload and is not
 included in project files. Camera movement, theme and panel state are not design
 edits.
 
-Every studio has **Save project** and **Open project** in its header. A project
-file is plain JSON — an envelope naming the format, its version and the product,
-wrapping that product's config exactly as its store holds it — so it is readable,
+Use **Save** at the top right of the preview and **Open project** on the start
+page. A project file is plain JSON — an envelope naming the format, its version
+and the product, wrapping that product's config exactly as its store holds it — so it is readable,
 diffable, and editable by hand if you want to.
 
 Opening a file for a product you are not currently in switches you to its studio.
@@ -130,7 +130,7 @@ Every field is read back through a coercion against the defaults
 keep working: a field added since it was saved simply loads as its default, and
 one that has been damaged falls back instead of reaching the geometry as a NaN.
 
-**Share**, immediately to the right of **Save project**, creates a link to the
+**Share**, immediately to the right of **Save**, creates a link to the
 current design. Copy it from the dialog or use **Copy link**. The link contains
 compact project JSON compressed with raw DEFLATE and encoded as URL-safe base64 in a
 `#share=` fragment; no upload or server storage is involved. Opening it restores

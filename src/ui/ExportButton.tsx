@@ -59,10 +59,9 @@ export function ExportButton({ build, failureMessage }: ExportButtonProps) {
         // The accent color is the same in both themes: it sits over the 3D
         // scene, whose lighting never changes with the UI theme, so it is paint
         // on the model's world rather than part of the surrounding chrome.
-        // min-w keeps the pill from resizing under itself when the label changes.
-        className="flex h-10 min-w-32 items-center justify-center gap-2 rounded-full bg-orange-300 px-4 text-sm font-semibold text-stone-900 shadow-md transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-300"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent bg-orange-300 px-4 text-sm font-semibold text-stone-900 shadow-md transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-orange-300"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0">
           <path d="M12 3v11" />
           <path d="M7.5 9.5 12 14l4.5-4.5" />
           <path d="M4.5 19.5h15" />

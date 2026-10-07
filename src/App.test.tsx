@@ -127,12 +127,12 @@ describe('project navigation', () => {
     expect(button('Open project')).toBeUndefined();
     expect(history.clear).toHaveBeenCalledOnce();
     const actions = container.querySelector('[data-testid="view-actions"]')!;
-    expect([...actions.querySelectorAll('button')].filter((element) => !element.closest('dialog')).map((element) => element.textContent?.trim())).toEqual(['Save project', 'Share', 'Export']);
-    expect(button('Save project').disabled).toBe(true);
+    expect([...actions.querySelectorAll('button')].filter((element) => !element.closest('dialog')).map((element) => element.textContent?.trim())).toEqual(['Save', 'Share', 'Export']);
+    expect(button('Save').disabled).toBe(true);
     editProject();
-    expect(button('Save project').disabled).toBe(false);
-    await click('Save project');
-    expect(button('Save project').disabled).toBe(true);
+    expect(button('Save').disabled).toBe(false);
+    await click('Save');
+    expect(button('Save').disabled).toBe(true);
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), 'my-cake.json');
   });
 
@@ -149,7 +149,7 @@ describe('project navigation', () => {
     await click('Copy link');
     expect(writeText).toHaveBeenCalledWith(input.value);
     expect(container.querySelector('[role="status"]')?.textContent).toBe('Link copied.');
-    expect(button('Save project').disabled).toBe(false);
+    expect(button('Save').disabled).toBe(false);
     await click('Close');
     expect(container.querySelector<HTMLDialogElement>('[aria-labelledby="share-project-title"]')?.open).toBe(false);
   });
@@ -183,7 +183,7 @@ describe('project navigation', () => {
     expect(project.load).toHaveBeenCalledWith({ text: 'Hello' });
     expect(useAppStore.getState().selectedProductId).toBe('cake');
     expect(history.clear).toHaveBeenCalledOnce();
-    expect(button('Save project').disabled).toBe(true);
+    expect(button('Save').disabled).toBe(true);
     expect(window.location.hash).toBe('');
   });
 
@@ -286,7 +286,7 @@ describe('project navigation', () => {
     expect(useAppStore.getState().selectedProductId).toBeNull();
     enterEditor();
     editProject();
-    await click('Save project');
+    await click('Save');
     const event = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(false);
@@ -297,7 +297,7 @@ describe('project navigation', () => {
   it('prompts again after editing a saved design', async () => {
     enterEditor();
     editProject();
-    await click('Save project');
+    await click('Save');
     act(() => {
       project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Another edit' } });
       history.listeners.forEach((listener) => listener());
