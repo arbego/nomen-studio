@@ -105,6 +105,27 @@ Every field is read back through a coercion against the defaults
 keep working: a field added since it was saved simply loads as its default, and
 one that has been damaged falls back instead of reaching the geometry as a NaN.
 
+**Share**, immediately to the right of **Save project**, creates a link to the
+current design. Copy it from the dialog or use **Copy link**. The link contains
+compact project JSON compressed with raw DEFLATE and encoded as URL-safe base64 in a
+`#share=` fragment; no upload or server storage is involved. Opening it restores
+the design and selects its product's studio, using the same validation and
+defaults as opening a project file. A link captures a snapshot: later edits do
+not change it. Sharing does not mark the project as saved. This uses the browser's
+native Compression Streams API with the `deflate-raw` format.
+
+After a shared design opens successfully, its `share` fragment parameter is
+removed from the address bar with `history.replaceState`, without reloading or
+adding a history entry. The design stays in memory; reloading the cleaned URL
+requires reopening the original share link or a saved project file to restore it.
+
+Links include the complete design explicitly, including values that match today's
+defaults, empty arrays and removed ornaments. A compact envelope omits the save
+timestamp and redundant file metadata. Changing defaults therefore does not change
+the values stored in a link. The pipeline is `JSON.stringify([version, productId,
+design])` → UTF-8 → raw DEFLATE → URL-safe base64 → `#share=`. Downloaded project
+files keep their readable JSON format.
+
 ## Architecture
 
 Everything outside `src/products/` is shared, product-agnostic core. A product

@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
-import { act } from 'react';
+import { act, StrictMode } from 'react';
+import { Blob as NodeBlob } from 'node:buffer';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveAs } from 'file-saver';
 import App from './App';
 import { useAppStore } from './store/appStore';
 import { serializeProject } from './project/projectFile';
+import { createShareUrl, readSharedProject } from './project/shareProject';
+import { getProduct } from './products/registry';
+import * as sharing from './project/shareProject';
+
+const generateShareUrl = createShareUrl;
+const parseShareUrl = readSharedProject;
 
 const history = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -52,16 +59,42 @@ function editProject() {
   });
 }
 async function click(label: string) {
-  await act(async () => button(label).click());
+  let pending: Promise<string> | undefined;
+  const spy = label === 'Share' ? vi.spyOn(sharing, 'createShareUrl').mockImplementationOnce((product, url) => {
+    pending = generateShareUrl(product, url);
+    return pending;
+  }) : undefined;
+  await act(async () => {
+    button(label).click();
+    await pending?.catch(() => {});
+  });
+  spy?.mockRestore();
 }
 function leaveDialog() {
-  return container.querySelector('dialog')!;
+  return container.querySelector<HTMLDialogElement>('[aria-labelledby="leave-project-title"]')!;
+}
+async function renderShareUrl(url: string, strict = false, historyState: unknown = null) {
+  act(() => root.unmount());
+  useAppStore.getState().clearProduct();
+  window.history.replaceState(historyState, '', url);
+  const pending: ReturnType<typeof readSharedProject>[] = [];
+  const spy = vi.spyOn(sharing, 'readSharedProject').mockImplementation((...args) => {
+    const promise = parseShareUrl(...args);
+    pending.push(promise);
+    return promise;
+  });
+  root = createRoot(container);
+  act(() => root.render(strict ? <StrictMode><App /></StrictMode> : <App />));
+  await act(async () => { await Promise.allSettled(pending); });
+  spy.mockRestore();
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   project.snapshot.mockReturnValue({ name: 'My cake', design: { text: 'Hello' } });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('Blob', NodeBlob);
+  window.history.replaceState(null, '', '/');
   vi.spyOn(window, 'prompt').mockImplementation((_message, suggestedName) => suggestedName ?? null);
   Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute('open', ''); } });
   Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute('open'); } });
@@ -78,6 +111,7 @@ afterEach(() => {
   Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  window.history.replaceState(null, '', '/');
 });
 
 describe('project navigation', () => {
@@ -93,13 +127,106 @@ describe('project navigation', () => {
     expect(button('Open project')).toBeUndefined();
     expect(history.clear).toHaveBeenCalledOnce();
     const actions = container.querySelector('[data-testid="view-actions"]')!;
-    expect([...actions.querySelectorAll('button')].map((element) => element.textContent?.trim())).toEqual(['Save project', 'Export']);
+    expect([...actions.querySelectorAll('button')].filter((element) => !element.closest('dialog')).map((element) => element.textContent?.trim())).toEqual(['Save project', 'Share', 'Export']);
     expect(button('Save project').disabled).toBe(true);
     editProject();
     expect(button('Save project').disabled).toBe(false);
     await click('Save project');
     expect(button('Save project').disabled).toBe(true);
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), 'my-cake.json');
+  });
+
+  it('shares the current design next to Save and copies the generated link without marking edits saved', async () => {
+    enterEditor();
+    editProject();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    await click('Share');
+    const input = container.querySelector<HTMLInputElement>('#share-project-url')!;
+    expect(input.readOnly).toBe(true);
+    expect((await readSharedProject(input.value, (id) => id === 'cake'))?.design).toEqual({ text: 'Edited' });
+    expect(container.querySelector<HTMLDialogElement>('[aria-labelledby="share-project-title"]')?.open).toBe(true);
+    await click('Copy link');
+    expect(writeText).toHaveBeenCalledWith(input.value);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Link copied.');
+    expect(button('Save project').disabled).toBe(false);
+    await click('Close');
+    expect(container.querySelector<HTMLDialogElement>('[aria-labelledby="share-project-title"]')?.open).toBe(false);
+  });
+
+  it('keeps the link available for manual copying when clipboard access fails', async () => {
+    enterEditor();
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('Denied')) } });
+    await click('Share');
+    await click('Copy link');
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('copy it manually');
+    expect(container.querySelector<HTMLInputElement>('#share-project-url')?.value).toContain('#share=');
+  });
+
+  it('reports compression failure and permits a retry', async () => {
+    enterEditor();
+    const compression = globalThis.CompressionStream;
+    vi.stubGlobal('CompressionStream', undefined);
+    await click('Share');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("couldn't be created");
+    expect(button('Share').disabled).toBe(false);
+    vi.stubGlobal('CompressionStream', compression);
+    await click('Share');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.querySelector<HTMLInputElement>('#share-project-url')?.value).toContain('#share=');
+  });
+
+  it('restores a shared design into its studio on startup, including under StrictMode', async () => {
+    const url = await createShareUrl(getProduct('cake')!, window.location.href);
+    await renderShareUrl(url, true);
+    expect(project.load).toHaveBeenCalledOnce();
+    expect(project.load).toHaveBeenCalledWith({ text: 'Hello' });
+    expect(useAppStore.getState().selectedProductId).toBe('cake');
+    expect(history.clear).toHaveBeenCalledOnce();
+    expect(button('Save project').disabled).toBe(true);
+    expect(window.location.hash).toBe('');
+  });
+
+  it('removes the loaded share parameter while preserving the rest of the URL and history entry', async () => {
+    const url = await createShareUrl(getProduct('cake')!, `${window.location.origin}/studio/?theme=dark`);
+    const historyState = { source: 'studio' };
+    const historyLength = window.history.length;
+    await renderShareUrl(`${url}&view=front`, false, historyState);
+    expect(project.load).toHaveBeenCalledWith({ text: 'Hello' });
+    expect(window.location.pathname).toBe('/studio/');
+    expect(window.location.search).toBe('?theme=dark');
+    expect(window.location.hash).toBe('#view=front');
+    expect(window.history.state).toEqual(historyState);
+    expect(window.history.length).toBe(historyLength);
+  });
+
+  it('shows a damaged-link error without loading a design and lets the user continue', async () => {
+    await renderShareUrl(`${window.location.origin}/#share=broken`);
+    expect(project.load).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('incomplete or damaged');
+    expect(window.location.hash).toBe('#share=broken');
+    await click('Continue to studio');
+    expect(button('Open project')).toBeDefined();
+  });
+
+  it('opens a share link when only the URL fragment changes in an existing tab', async () => {
+    enterEditor();
+    editProject();
+    const url = await createShareUrl(getProduct('cake')!, window.location.href);
+    let pending: ReturnType<typeof readSharedProject> | undefined;
+    vi.spyOn(sharing, 'readSharedProject').mockImplementationOnce((...args) => {
+      pending = parseShareUrl(...args);
+      return pending;
+    });
+    window.history.replaceState(null, '', url);
+    await act(async () => {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await pending;
+    });
+    expect(project.load).toHaveBeenCalledWith({ text: 'Edited' });
+    expect(useAppStore.getState().selectedProductId).toBe('cake');
+    expect(button('Share')).toBeDefined();
+    expect(window.location.hash).toBe('');
   });
 
   it('places the manual tip button before undo and shows a tip immediately', async () => {
