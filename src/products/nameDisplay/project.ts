@@ -1,4 +1,4 @@
-import { asArray, asBoolean, asNumber, asNumberArray, asOffset, asOneOf, asString, field } from '../../project/coerce';
+import { asArray, asBoolean, asNumber, asNumberArray, asOffset, asOneOf, asString, field, isPlainObject } from '../../project/coerce';
 import { STAND_MODES } from '../../geometry/baseGeometry';
 import { getIcon } from '../../icons/catalog';
 import type { ProductProject, ProjectSnapshot } from '../types';
@@ -10,9 +10,25 @@ import {
   useNameDisplayStore,
   selectNameDisplayConfig,
 } from './store';
-import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, inlayDepthsMm, minimumHollowDepthMm, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
+import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, inlayDepthsMm, minimumHollowDepthMm, type CableHolePlacement, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
 
 const ORIGIN = { x: 0, y: 0 };
+
+function parseCableHolePlacement(raw: unknown): CableHolePlacement | null {
+  if (!isPlainObject(raw)) return null;
+  const point = field(raw, 'point');
+  const normal = field(raw, 'normal');
+  if (!isPlainObject(point) || !isPlainObject(normal)) return null;
+  const x = asNumber(field(normal, 'x'), 0);
+  const y = asNumber(field(normal, 'y'), 0);
+  const length = Math.hypot(x, y);
+  const scale = Math.abs(length - 1) < 1e-9 ? 1 : length;
+  const back = asNumber(field(normal, 'z'), -1) < -0.5 || length === 0;
+  return {
+    point: { x: asNumber(field(point, 'x'), 0, { min: -2000, max: 2000 }), y: asNumber(field(point, 'y'), 0, { min: -2000, max: 2000 }), z: back ? 0 : asNumber(field(point, 'z'), 0, { min: 0, max: 100 }) },
+    normal: back ? { x: 0, y: 0, z: -1 } : { x: x / scale, y: y / scale, z: 0 },
+  };
+}
 
 /**
  * One ornament out of a file, or null if there is nothing usable left of it.
@@ -102,6 +118,9 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
     lidThicknessMm,
     lidClearanceMm: asNumber(field(raw, 'lidClearanceMm'), defaults.lidClearanceMm, { min: 0, max: 1 }),
     lidColor: asString(field(raw, 'lidColor'), defaults.lidColor, 32),
+    cableHoleEnabled: asBoolean(field(raw, 'cableHoleEnabled'), defaults.cableHoleEnabled),
+    cableHoleDiameterMm: asNumber(field(raw, 'cableHoleDiameterMm'), defaults.cableHoleDiameterMm, { min: 2, max: 30 }),
+    cableHolePlacement: parseCableHolePlacement(field(raw, 'cableHolePlacement')),
 
     name,
     nameFontId: asString(field(raw, 'nameFontId'), defaults.nameFontId, 100),

@@ -60,6 +60,14 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   the 3MF always exports the fitted bowl, lid and inlays as separate colored
   parts. Counters stay open, and narrow strokes can stay solid or divide the
   cavity into separate compartments and lids.
+  Enable **Cable hole** inside the hollow controls for a passage into the
+  cavity, starting near the bottom of the letter's back. Set its diameter and
+  use **Move cable hole in preview** to drag the orange ring or click the bowl;
+  orbit to reach the back or side walls. The lid hides while placing the hole.
+  **Reset hole position** returns to a suitable lower-back position. Warnings
+  identify holes that miss the cavity or overlap its floor, walls or lid seat.
+  The hole is part of the exported bowl mesh, and its size and placement are
+  preserved in saved projects and share links.
 
 ## Dark mode
 

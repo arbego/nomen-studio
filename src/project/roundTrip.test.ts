@@ -44,6 +44,28 @@ function resetWithoutDecorators() {
 }
 
 describe('name display round trip', () => {
+  it.each([
+    { point: { x: -20, y: 15, z: 0 }, normal: { x: 0, y: 0, z: -1 } },
+    { point: { x: -25, y: 45, z: 10 }, normal: { x: -1, y: 0, z: 0 } },
+    { point: { x: -22.45, y: 45.75, z: 10 }, normal: { x: -Math.SQRT1_2, y: Math.SQRT1_2, z: 0 } },
+  ])('preserves the cable hole diameter and back or side placement ($normal)', (placement) => {
+    resetWithoutDecorators();
+    const store = useNameDisplayStore.getState();
+    store.setConfig({ hollowEnabled: true, cableHoleEnabled: true, cableHoleDiameterMm: 8.5, cableHolePlacement: placement });
+    store.setEditingCableHole(true);
+    const { saved, loaded } = roundTrip('name-display');
+    expect(loaded).toEqual(saved);
+    expect(loaded).not.toHaveProperty('editingCableHole');
+    expect(useNameDisplayStore.getState().editingCableHole).toBe(false);
+  });
+
+  it('keeps legacy bowls without a cable hole and validates malformed hole settings', () => {
+    expect(parseNameDisplayConfig({ hollowEnabled: true })).toMatchObject({ cableHoleEnabled: false, cableHolePlacement: null });
+    expect(parseNameDisplayConfig({ cableHoleDiameterMm: 999, cableHolePlacement: { point: { x: NaN, y: 20, z: 999 }, normal: { x: -3, y: 4, z: 0 } } }))
+      .toMatchObject({ cableHoleDiameterMm: 30, cableHolePlacement: { point: { x: 0, y: 20, z: 100 }, normal: { x: -0.6, y: 0.8, z: 0 } } });
+    expect(parseNameDisplayConfig({ cableHolePlacement: { point: {}, normal: {} } }).cableHolePlacement!.normal).toEqual({ x: 0, y: 0, z: -1 });
+  });
+
   it('preserves the hollow bowl and lid settings while excluding the open-lid preview', () => {
     resetWithoutDecorators();
     const store = useNameDisplayStore.getState();

@@ -114,6 +114,17 @@ describe('placing the name for export', () => {
 });
 
 describe('what the name display puts in the file', () => {
+  it('exports the cable passage in the bowl mesh while keeping the lid intact', async () => {
+    const built = await build({ hollowEnabled: true, initialDepthMm: 30, cableHoleEnabled: true });
+    const objects = printObjects(built.blocks, built.assembly, built.config);
+    const { point } = built.assembly.cableHole!.placement;
+    expect(pointIsInsideSolid(objects[0].geometry, point.x, point.y, 1)).toBe(false);
+    expect(pointIsInsideSolid(objects[1].geometry, point.x, point.y, 29)).toBe(true);
+    const text = new TextDecoder().decode(combined3mfBinary(built.blocks, built.assembly, built.config));
+    expect(text).toContain('value="M (bowl)"');
+    expect(text).toContain('value="M (lid)"');
+    expect(objects.map((object) => object.name)).toEqual(['M (bowl)', 'M (lid)', 'Matilde (name)']);
+  }, 30000);
   it('exports the hollow bowl and fitted lid as separate, colored parts', async () => {
     const built = await build({ hollowEnabled: true, initialDepthMm: 30, lidColor: '#b7c4ac' });
     const objects = printObjects(built.blocks, built.assembly, built.config);

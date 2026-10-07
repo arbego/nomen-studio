@@ -107,6 +107,16 @@ describe('share URLs', () => {
     expect(product.project.snapshot().design).toEqual(design);
   });
 
+  it('shares the cable hole diameter and side-wall placement', async () => {
+    const product = getProduct('name-display')!;
+    const design = { ...DEFAULT_NAME_DISPLAY_CONFIG, hollowEnabled: true, cableHoleEnabled: true, cableHoleDiameterMm: 7.5, cableHolePlacement: { point: { x: -20, y: 40, z: 5 }, normal: { x: -1, y: 0, z: 0 } } };
+    product.project.load(design);
+    const url = await createShareUrl(product, 'https://studio.example/');
+    const shared = await readSharedProject(url, known);
+    product.project.load(shared!.design);
+    expect(product.project.snapshot().design).toEqual(design);
+  });
+
   it('opens an older shared display as a solid initial', async () => {
     const shared = await readSharedProject(urlForJson([PROJECT_VERSION, 'name-display', LIAM_DESIGN]), known);
     const product = getProduct('name-display')!;

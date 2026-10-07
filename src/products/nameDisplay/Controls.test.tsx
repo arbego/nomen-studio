@@ -85,6 +85,32 @@ function blobText(blob: Blob): Promise<string> {
 }
 
 describe('hollow initial in the editor', () => {
+  it('enables a cable hole, adjusts its diameter, resets placement, and keeps editing out of the saved design', async () => {
+    await mountEditor();
+    act(() => checkbox('Hollow initial with lid').click());
+    act(() => checkbox('Cable hole').click());
+    await waitForExport();
+    expect(useNameDisplayStore.getState().editingCableHole).toBe(true);
+    expect(useNameDisplayStore.getState().showLid).toBe(false);
+    expect(container.textContent).toContain('Hole diameter');
+    const diameter = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Hole diameter'))!.querySelector('input')!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(diameter, '8');
+      diameter.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(useNameDisplayStore.getState().cableHoleDiameterMm).toBe(8);
+    const snapshot = selectNameDisplayConfig(useNameDisplayStore.getState());
+    act(() => checkbox('Move cable hole in preview').click());
+    expect(selectNameDisplayConfig(useNameDisplayStore.getState())).toEqual(snapshot);
+    expect(snapshot).not.toHaveProperty('editingCableHole');
+    act(() => useNameDisplayStore.getState().setConfig({ cableHolePlacement: { point: { x: 999, y: 999, z: 0 }, normal: { x: 0, y: 0, z: -1 } } }));
+    expect(container.textContent).toContain('does not open into the cavity');
+    const reset = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Reset hole position')!;
+    act(() => reset.click());
+    expect(useNameDisplayStore.getState().cableHolePlacement).toBeNull();
+    expect(container.textContent).not.toContain('does not open into the cavity');
+  });
+
   it('enables the bowl and lid, exposes their controls, and exports the lid even when hidden', async () => {
     await mountEditor();
     act(() => checkbox('Hollow initial with lid').click());

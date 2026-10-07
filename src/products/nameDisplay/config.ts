@@ -50,6 +50,12 @@ export interface TextDecoratorConfig extends DecoratorConfigBase {
 
 export type DecoratorConfig = IconDecoratorConfig | TextDecoratorConfig;
 
+/** A hole centered on the bowl's exterior, drilled opposite its outward normal. */
+export interface CableHolePlacement {
+  point: { x: number; y: number; z: number };
+  normal: { x: number; y: number; z: number };
+}
+
 /** Where one ornament ended up on the initial — the cheap half of a decorator, re-applied on every drag without touching a font. */
 export interface DecoratorPlacementConfig {
   /** In the initial's own local mm space. */
@@ -104,6 +110,10 @@ export interface NameDisplayAssemblyConfig {
   lidThicknessMm: number;
   /** Clearance all round the lid, independent of the lettering's fit. */
   lidClearanceMm: number;
+  cableHoleEnabled: boolean;
+  cableHoleDiameterMm: number;
+  /** Null selects a suitable position near the bottom of the back face. */
+  cableHolePlacement: CableHolePlacement | null;
   /** Where the name sits on the initial, in the initial's own local mm space — draggable in the preview. */
   nameOffset: Offset2D;
   /** Extra per-letter-gap shift within the name, exactly as the cake topper's letterGapsMm works (one array, since the name is a single line). */

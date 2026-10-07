@@ -8,7 +8,7 @@ import { StandControls } from '../../ui/controls/StandControls';
 import { FocusTarget } from '../../ui/FocusTarget';
 import { DecoratorControls } from './DecoratorControls';
 import { CollapsibleSection } from '../../ui/controls/CollapsibleSection';
-import { INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
+import { CABLE_HOLE_FOCUS_KEY, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
 import { getFontDefinition } from '../../fonts/registry';
 import { STAND_MODE_LABELS } from '../../ui/controls/standModes';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
@@ -34,6 +34,8 @@ export function NameDisplayControls() {
   const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
   const showLid = useNameDisplayStore((s) => s.showLid);
   const setShowLid = useNameDisplayStore((s) => s.setShowLid);
+  const editingCableHole = useNameDisplayStore((s) => s.editingCableHole);
+  const setEditingCableHole = useNameDisplayStore((s) => s.setEditingCableHole);
   const { assembly, loading, error } = useNameDisplayGeometry();
 
   const hasName = config.name.trim().length > 0;
@@ -96,6 +98,27 @@ export function NameDisplayControls() {
                 <input type="checkbox" checked={showLid} onChange={(event) => setShowLid(event.target.checked)} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
               </label>
               {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Hiding the lid also hides its lettering in the preview; export includes every part.</p>}
+              <FocusTarget focusKey={CABLE_HOLE_FOCUS_KEY} className="flex flex-col gap-4 border-t border-stone-100 pt-4 dark:border-stone-800">
+                <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
+                  <span>Cable hole</span>
+                  <DesignInput type="checkbox" checked={config.cableHoleEnabled} onChange={(event) => {
+                    onChange({ cableHoleEnabled: event.target.checked });
+                    setEditingCableHole(event.target.checked);
+                  }} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
+                </label>
+                {config.cableHoleEnabled && (
+                  <>
+                    <SliderField label="Hole diameter" value={config.cableHoleDiameterMm} onChange={(cableHoleDiameterMm) => onChange({ cableHoleDiameterMm })} min={2} max={30} step={0.5} hint="Make room for the cable or connector you plan to pass through." />
+                    <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
+                      <span>Move cable hole in preview</span>
+                      <input type="checkbox" checked={editingCableHole} onChange={(event) => setEditingCableHole(event.target.checked)} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
+                    </label>
+                    <p className="text-xs text-stone-400 dark:text-stone-500">Drag the orange ring or click the bowl to place the hole. Orbit the view to reach the back or side walls. Moving it hides the lid in the preview.</p>
+                    <button type="button" onClick={() => onChange({ cableHolePlacement: null })} className="self-start text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200">Reset hole position</button>
+                    {assembly?.cableHole?.warning && <p role="status" className="text-xs text-amber-700 dark:text-amber-400">{assembly.cableHole.warning}</p>}
+                  </>
+                )}
+              </FocusTarget>
             </>
           )}
         </CollapsibleSection>

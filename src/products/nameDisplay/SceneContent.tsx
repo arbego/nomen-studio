@@ -1,21 +1,26 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { extrudeMmShapes } from '../../geometry/extrudeToMm';
+import { regionToShapes } from '../../geometry/clipper';
 import { useShallow } from 'zustand/react/shallow';
 import { TextBlockMesh } from '../../scene/TextBlockMesh';
 import { StandMesh } from '../../scene/StandMesh';
 import { useTapGesture } from '../../scene/tapGesture';
 import { rotateOffset } from '../../geometry/placement';
 import { usePanelStore } from '../../ui/panelStore';
-import { decoratorFocusKey, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
+import { CABLE_HOLE_FOCUS_KEY, decoratorFocusKey, INITIAL_FOCUS_KEY, NAME_FOCUS_KEY, SECTIONS } from './focus';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
-import { initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
-import { decoratorColor, type NameDisplayConfig } from './config';
+import { blockRegion, initialRailGeometry, type NameDisplayAssembly, type NameDisplayBlocks } from './geometry';
+import { decoratorColor, type CableHolePlacement, type NameDisplayConfig } from './config';
+import { CableHoleEditor } from './CableHoleEditor';
 
 interface NameDisplaySceneProps {
   blocks: NameDisplayBlocks;
   assembly: NameDisplayAssembly;
   config: NameDisplayConfig;
   showLid?: boolean;
+  editingCableHole?: boolean;
+  onCableHoleCommit?: (placement: CableHolePlacement) => void;
   onNameOffsetCommit: (offset: { x: number; y: number }) => void;
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void;
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void;
@@ -38,6 +43,8 @@ export function NameDisplayScene({
   assembly,
   config,
   showLid = true,
+  editingCableHole = false,
+  onCableHoleCommit,
   onNameOffsetCommit,
   onNameLetterGapCommit,
   onDecoratorOffsetCommit,
@@ -56,6 +63,10 @@ export function NameDisplayScene({
   // (a slider drag is dozens per second) would leak GPU buffers. Only the
   // initial has a rail — the name is held by the pocket.
   const initialRail = useMemo(() => initialRailGeometry(blocks, config), [blocks, config]);
+  const cableHoleSurface = useMemo(() => config.hollowEnabled && config.cableHoleEnabled && editingCableHole
+    ? extrudeMmShapes(regionToShapes(blockRegion(blocks.initial, [])), config.initialDepthMm)
+    : null, [blocks.initial, config.hollowEnabled, config.cableHoleEnabled, config.initialDepthMm, editingCableHole]);
+  useEffect(() => () => { cableHoleSurface?.dispose(); }, [cableHoleSurface]);
 
   // The exact placement the pocket was cut from, re-expressed as a Three
   // transform: this group turns about the name's pivot and lands at the name's
@@ -82,6 +93,7 @@ export function NameDisplayScene({
         <meshStandardMaterial color={config.initialColor} roughness={0.55} metalness={0.05} />
       </mesh>
       {initialRail && <StandMesh geometry={initialRail} color={config.standColor} />}
+      {cableHoleSurface && assembly.cableHole && onCableHoleCommit && <CableHoleEditor surface={cableHoleSurface} hole={assembly.cableHole} floorZ={config.wallThicknessMm} onCommit={onCableHoleCommit} />}
       {assembly.lidGeometry && showLid && (
         <mesh
           geometry={assembly.lidGeometry}
@@ -155,6 +167,8 @@ export function NameDisplayScene({
 export function NameDisplaySceneContent() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
   const showLid = useNameDisplayStore((s) => s.showLid);
+  const editingCableHole = useNameDisplayStore((s) => s.editingCableHole);
+  const setConfig = useNameDisplayStore((s) => s.setConfig);
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
   const setDecoratorOffset = useNameDisplayStore((s) => s.setDecoratorOffset);
@@ -171,6 +185,11 @@ export function NameDisplaySceneContent() {
       assembly={assembly}
       config={config}
       showLid={showLid}
+      editingCableHole={editingCableHole}
+      onCableHoleCommit={(cableHolePlacement) => {
+        setConfig({ cableHolePlacement });
+        focus(SECTIONS.hollow, CABLE_HOLE_FOCUS_KEY);
+      }}
       onNameOffsetCommit={setNameOffset}
       onNameLetterGapCommit={setNameLetterGap}
       onDecoratorOffsetCommit={setDecoratorOffset}

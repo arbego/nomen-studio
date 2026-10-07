@@ -11,6 +11,7 @@ import { degToRad, placeGeometry, type Placement2D } from '../../geometry/placem
 import { buildIconBlock } from '../../icons/iconBlock';
 import { inlayDepthsMm, type DecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type NameDisplayAssemblyConfig } from './config';
 import { buildHollowInitial, initializeHollowGeometry } from './hollowGeometry';
+import type { CableHole } from './cableHole';
 
 const ORIGIN: Offset2D = { x: 0, y: 0 };
 
@@ -65,6 +66,7 @@ export interface NameDisplayAssembly {
   /** Present only when the initial is hollow; fitted in the same coordinate frame. */
   lidGeometry: THREE.BufferGeometry | null;
   cavityDepthMm: number;
+  cableHole: CableHole | null;
   /** How far the name stands proud of the initial's front face, in mm. */
   protrusionMm: number;
   /** The z at which the name's own extrusion starts — the pocket floor. */
@@ -297,6 +299,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     initialGeometry: hollow?.bowlGeometry ?? combineGeometries(parts),
     lidGeometry: hollow?.lidGeometry ?? null,
     cavityDepthMm: hollow?.cavityDepthMm ?? 0,
+    cableHole: hollow?.cableHole ?? null,
     protrusionMm: blocks.name ? config.nameDepthMm - pocketDepth : 0,
     nameZMm: backDepth,
     heldByInitial: !loose.has('name'),

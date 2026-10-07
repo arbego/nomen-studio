@@ -81,6 +81,9 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   lidThicknessMm: 3,
   lidClearanceMm: 0.25,
   lidColor: presetColor('altrosa'),
+  cableHoleEnabled: false,
+  cableHoleDiameterMm: 6,
+  cableHolePlacement: null,
 
   name: 'Liam',
   nameFontId: 'dancing-script',
@@ -123,6 +126,8 @@ interface NameDisplayStore extends NameDisplayConfig {
   /** Preview only: never changes the saved design or the assembled export. */
   showLid: boolean;
   setShowLid: (show: boolean) => void;
+  editingCableHole: boolean;
+  setEditingCableHole: (editing: boolean) => void;
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
   setNameOffset: (offset: Offset2D) => void;
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
@@ -143,12 +148,21 @@ interface NameDisplayStore extends NameDisplayConfig {
 export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   ...DEFAULT_NAME_DISPLAY_CONFIG,
   showLid: true,
-  setShowLid: (showLid) => set({ showLid }),
+  editingCableHole: false,
+  setShowLid: (showLid) => set(showLid ? { showLid, editingCableHole: false } : { showLid }),
+  setEditingCableHole: (editingCableHole) => set(editingCableHole ? { editingCableHole, showLid: false } : { editingCableHole }),
   setConfig: (partial) =>
     set((state) => {
       // Both corrections below have to compose, not pick one: a single call can
       // change the name *and* its thickness.
       const next: Partial<NameDisplayConfig> = { ...partial };
+      if (partial.cableHolePlacement === undefined && (
+        (partial.initial !== undefined && partial.initial !== state.initial) ||
+        (partial.initialFontId !== undefined && partial.initialFontId !== state.initialFontId) ||
+        (partial.initialHeightMm !== undefined && partial.initialHeightMm !== state.initialHeightMm) ||
+        (partial.trimOffsetMm !== undefined && partial.trimOffsetMm !== state.trimOffsetMm) ||
+        (partial.standMode !== undefined && partial.standMode !== state.standMode && (partial.standMode === 'trim' || state.standMode === 'trim'))
+      )) next.cableHolePlacement = null;
       const proposed = { ...state, ...partial };
       if (proposed.hollowEnabled) {
         next.initialDepthMm = Math.max(proposed.initialDepthMm, Math.ceil(minimumHollowDepthMm(proposed)));
@@ -184,7 +198,7 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
       nameLetterGapsMm: state.nameLetterGapsMm.map((existing, i) => (i === gapIndex ? gapMm : existing)),
     })),
   resetNameLetterGaps: () => set((state) => ({ nameLetterGapsMm: defaultLetterGaps(state.name) })),
-  setStandMode: (standMode) => set({ standMode }),
+  setStandMode: (standMode) => set((state) => ({ standMode, ...(standMode !== state.standMode && (standMode === 'trim' || state.standMode === 'trim') ? { cableHolePlacement: null } : {}) })),
   addDecorator: (source) => {
     // Minted outside the updater so it can be returned: the caller needs to know
     // which ornament this was, and an updater's return value is the next state.
@@ -241,9 +255,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
     reserveDecoratorIds(config.decorators);
-    set({ ...config, showLid: true });
+    set({ ...config, showLid: true, editingCableHole: false });
   },
-  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true }),
+  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true, editingCableHole: false }),
 }));
 
 /** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */
@@ -272,6 +286,9 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     lidThicknessMm,
     lidClearanceMm,
     lidColor,
+    cableHoleEnabled,
+    cableHoleDiameterMm,
+    cableHolePlacement,
     nameColor,
     standColor,
   } = state;
@@ -294,6 +311,9 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     lidThicknessMm,
     lidClearanceMm,
     lidColor,
+    cableHoleEnabled,
+    cableHoleDiameterMm,
+    cableHolePlacement,
     nameColor,
     standColor,
   };

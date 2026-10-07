@@ -23,6 +23,7 @@ export const SECTIONS = {
  */
 export const INITIAL_FOCUS_KEY = 'initial-text';
 export const NAME_FOCUS_KEY = 'name-text';
+export const CABLE_HOLE_FOCUS_KEY = 'cable-hole';
 
 /** An ornament points at its own card, which is also the card that gets expanded — with several on the piece, which one you clicked is the answer. */
 export function decoratorFocusKey(id: string): string {

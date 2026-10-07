@@ -1,78 +1,26 @@
 import * as THREE from 'three';
 import * as ClipperLib from 'clipper-lib';
-import type { Manifold, ManifoldToplevel, Vec2 } from 'manifold-3d';
+import type { Vec2 } from 'manifold-3d';
+import { withSolidGeometry } from './solidGeometry';
+import { cutCableHole, defaultCableHolePlacement, type CableHole } from './cableHole';
+export { initializeHollowGeometry } from './solidGeometry';
 import { CLIPPER_SCALE, fromClipperPath, growRegion, regionIsEmpty, splitRegion, subtractRegions, type Region } from '../../geometry/clipper';
 import { HOLLOW_LEDGE_WIDTH_MM, HOLLOW_LEDGE_WEB_MM, minimumHollowDepthMm, type NameDisplayConfig } from './config';
 
 /** Small bands also handle a cavity splitting or disappearing at a narrow stroke. */
 const RAMP_BAND_MM = 0.2;
-const wasmUrl = new URL('../../../node_modules/manifold-3d/manifold.wasm', import.meta.url).href;
-
-let manifold: ManifoldToplevel | undefined;
-let initialization: Promise<void> | undefined;
-
-/** Load once with the fonts, leaving placement and pocket updates synchronous. */
-export function initializeHollowGeometry(): Promise<void> {
-  initialization ??= (async () => {
-    const [{ default: Module }, response] = await Promise.all([
-      import('manifold-3d'),
-      fetch(wasmUrl),
-    ]);
-    if (!response.ok) throw new Error('Could not load the hollow geometry engine.');
-    const options = { locateFile: () => wasmUrl, wasmBinary: await response.arrayBuffer() };
-    manifold = await Module(options);
-    manifold.setup();
-  })().catch((error: unknown) => {
-    initialization = undefined;
-    throw error;
-  });
-  return initialization;
-}
-
 function cutPockets(bowl: THREE.BufferGeometry, lid: THREE.BufferGeometry, pocket: Region, top: number, depth: number): [THREE.BufferGeometry, THREE.BufferGeometry] {
-  if (!manifold) throw new Error('The hollow geometry engine is still loading.');
-  const engine = manifold;
-  const solids: Manifold[] = [];
-  const crossSection = new engine.CrossSection(pocket.map((path) => path.map((p): Vec2 => [p.X / CLIPPER_SCALE, p.Y / CLIPPER_SCALE])), 'NonZero');
-  const track = (solid: Manifold) => { solids.push(solid); return solid; };
-  const fromGeometry = (geometry: THREE.BufferGeometry) => {
-    const position = geometry.getAttribute('position');
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const unique = new Map<string, number>();
-    for (let i = 0; i < position.count; i++) {
-      const point = [position.getX(i), position.getY(i), position.getZ(i)];
-      const key = point.join(',');
-      let index = unique.get(key);
-      if (index === undefined) {
-        index = vertices.length / 3;
-        vertices.push(...point);
-        unique.set(key, index);
-      }
-      indices.push(index);
+  return withSolidGeometry((engine, track, fromGeometry, toGeometry) => {
+    const crossSection = new engine.CrossSection(pocket.map((path) => path.map((p): Vec2 => [p.X / CLIPPER_SCALE, p.Y / CLIPPER_SCALE])), 'NonZero');
+    try {
+      // Extend beyond the top face so the subtraction has no coincident cap.
+      const cutter = track(track(crossSection.extrude(depth + 0.01)).translate([0, 0, top - depth]));
+      const cut = (geometry: THREE.BufferGeometry) => toGeometry(track(fromGeometry(geometry).subtract(cutter)));
+      return [cut(bowl), cut(lid)];
+    } finally {
+      crossSection.delete();
     }
-    return track(new engine.Manifold(new engine.Mesh({ numProp: 3, vertProperties: new Float32Array(vertices), triVerts: new Uint32Array(indices) })));
-  };
-  const toGeometry = (solid: Manifold) => {
-    const mesh = solid.getMesh();
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(mesh.vertProperties, 3));
-    geometry.setIndex(new THREE.BufferAttribute(mesh.triVerts, 1));
-    const result = geometry.toNonIndexed();
-    geometry.dispose();
-    result.computeVertexNormals();
-    result.computeBoundingBox();
-    return result;
-  };
-  try {
-    // Extend beyond the top face so the subtraction has no coincident cap.
-    const cutter = track(track(crossSection.extrude(depth + 0.01)).translate([0, 0, top - depth]));
-    const cut = (geometry: THREE.BufferGeometry) => toGeometry(track(fromGeometry(geometry).subtract(cutter)));
-    return [cut(bowl), cut(lid)];
-  } finally {
-    for (const solid of solids.reverse()) solid.delete();
-    crossSection.delete();
-  }
+  });
 }
 
 /** Recover nesting without re-running a boolean that could simplify a shared edge. */
@@ -250,6 +198,7 @@ export interface HollowInitial {
   /** The closed front face, with the lid's clearance gap left out. */
   supportRegion: Region;
   cavityDepthMm: number;
+  cableHole: CableHole | null;
 }
 
 /**
@@ -315,10 +264,19 @@ export function buildHollowInitial(face: Region, inlays: Region, config: NameDis
     lidGeometry.dispose();
     [bowlGeometry, lidGeometry] = cut;
   }
+  let cableHole: CableHole | null = null;
+  if (config.cableHoleEnabled) {
+    const placement = config.cableHolePlacement ?? defaultCableHolePlacement(cavity, config.cableHoleDiameterMm);
+    const cut = cutCableHole(bowlGeometry, cavity, placement, config.cableHoleDiameterMm, config.wallThicknessMm, seatZ);
+    if (cut.geometry !== bowlGeometry) bowlGeometry.dispose();
+    bowlGeometry = cut.geometry;
+    cableHole = cut.hole;
+  }
   return {
     bowlGeometry,
     lidGeometry,
     supportRegion: [...rim, ...lidFace],
     cavityDepthMm: seatZ - config.wallThicknessMm,
+    cableHole,
   };
 }
