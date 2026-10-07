@@ -2,9 +2,17 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { tipsForProduct, type StudioTip } from './tipCatalog';
 
 export const FIRST_TIP_DELAY_MS = 3000;
-export const TIP_INTERVAL_MS = 120_000;
 export const TIP_VISIBLE_MS = 12_000;
 const QUIET_TIME_MS = 4_000;
+const AUTOMATIC_TIPS_DISABLED_KEY = 'studio.automaticTipsDisabled';
+
+function readAutomaticTipsDisabled(): boolean {
+  try {
+    return localStorage.getItem(AUTOMATIC_TIPS_DISABLED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 export interface StudioTipsHandle {
   showTip: () => void;
@@ -31,18 +39,30 @@ export function TipButton({ onClick, active = false }: { onClick: () => void; ac
   );
 }
 
-/** Brief editor hints, cycling continuously with all timing kept in memory. */
+/** One automatic hint per editor opening, with more available on request. */
 export function StudioTips({ productId, ref, onActiveChange }: { productId: string; ref?: Ref<StudioTipsHandle>; onActiveChange?: (active: boolean) => void }) {
   const showTipRef = useRef<(() => void) | null>(null);
   useImperativeHandle(ref, () => ({ showTip: () => showTipRef.current?.() }), []);
   const messageRef = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<StudioTip | null>(null);
+  const [automatic, setAutomatic] = useState(false);
+  const [automaticTipsDisabled, setAutomaticTipsDisabled] = useState(readAutomaticTipsDisabled);
+  const automaticTipsDisabledRef = useRef(automaticTipsDisabled);
   const schedule = useRef({ nextAt: 0, expiresAt: 0, visible: false, hoveredAt: null as number | null });
+
+  function changeAutomaticTipsDisabled(disabled: boolean) {
+    automaticTipsDisabledRef.current = disabled;
+    setAutomaticTipsDisabled(disabled);
+    try {
+      localStorage.setItem(AUTOMATIC_TIPS_DISABLED_KEY, String(disabled));
+    } catch {
+      // Keep the preference for this editor even when browser storage is blocked.
+    }
+  }
 
   function dismiss() {
     schedule.current.visible = false;
     schedule.current.hoveredAt = null;
-    schedule.current.nextAt = Date.now() + TIP_INTERVAL_MS;
     setTip(null);
     onActiveChange?.(false);
   }
@@ -66,13 +86,15 @@ export function StudioTips({ productId, ref, onActiveChange }: { productId: stri
     const pointers = new Set<number>();
     let lastActivity = Date.now() - QUIET_TIME_MS;
     let foreground = true;
+    let initialTipPending = !automaticTipsDisabledRef.current;
     const timing = schedule.current;
     timing.nextAt = Date.now() + FIRST_TIP_DELAY_MS;
     timing.visible = false;
     timing.hoveredAt = null;
 
-    function showTip() {
+    function showTip(isAutomatic = false) {
       if (!available.length || !foreground || document.hidden || document.querySelector('dialog[open]')) return;
+      initialTipPending = false;
       if (!remaining.length) remaining.push(...available);
       // Cycle through the catalogue and avoid the same hint twice in a row at a cycle boundary.
       const candidates = remaining.filter((candidate) => candidate.id !== lastTipId || remaining.length === 1);
@@ -80,6 +102,7 @@ export function StudioTips({ productId, ref, onActiveChange }: { productId: stri
       remaining.splice(remaining.indexOf(next), 1);
       lastTipId = next.id;
       setTip(next);
+      setAutomatic(isAutomatic);
       onActiveChange?.(true);
       timing.visible = true;
       timing.expiresAt = Date.now() + TIP_VISIBLE_MS;
@@ -94,24 +117,35 @@ export function StudioTips({ productId, ref, onActiveChange }: { productId: stri
       if (timing.visible) {
         timing.visible = false;
         timing.hoveredAt = null;
-        timing.nextAt = Date.now() + TIP_INTERVAL_MS;
         setTip(null);
         onActiveChange?.(false);
       }
     }
     function visibilityChanged() {
-      hide();
-      pointers.clear();
-      timing.nextAt = Math.max(timing.nextAt, Date.now() + FIRST_TIP_DELAY_MS);
+      if (document.hidden) {
+        initialTipPending = false;
+        hide();
+        pointers.clear();
+      }
     }
 
-    function blurred() { foreground = false; visibilityChanged(); }
-    function focused() { foreground = true; timing.nextAt = Math.max(timing.nextAt, Date.now() + FIRST_TIP_DELAY_MS); }
+    function blurred() {
+      foreground = false;
+      initialTipPending = false;
+      hide();
+      pointers.clear();
+    }
+    function focused() { foreground = true; }
 
     const timer = window.setInterval(() => {
       const now = Date.now();
-      // Never queue hints behind a dialog or return to a burst from a background tab.
-      if (!foreground || document.hidden || document.querySelector('dialog[open]')) {
+      // Returning to the app never schedules an automatic hint.
+      if (!foreground || document.hidden) {
+        initialTipPending = false;
+        hide();
+        return;
+      }
+      if (document.querySelector('dialog[open]')) {
         hide();
         timing.nextAt = Math.max(timing.nextAt, now + FIRST_TIP_DELAY_MS);
         return;
@@ -120,12 +154,11 @@ export function StudioTips({ productId, ref, onActiveChange }: { productId: stri
         if (timing.hoveredAt !== null || messageRef.current?.contains(document.activeElement)) return;
         if (now >= timing.expiresAt) {
           hide();
-          timing.nextAt = now + TIP_INTERVAL_MS;
         }
         return;
       }
-      if (now < timing.nextAt || pointers.size || now - lastActivity < QUIET_TIME_MS) return;
-      showTip();
+      if (!initialTipPending || automaticTipsDisabledRef.current || now < timing.nextAt || pointers.size || now - lastActivity < QUIET_TIME_MS) return;
+      showTip(true);
     }, 1000);
 
     document.addEventListener('pointerdown', pointerDown, true);
@@ -163,6 +196,12 @@ export function StudioTips({ productId, ref, onActiveChange }: { productId: stri
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-stone-800 dark:text-stone-200">Did you know?</p>
               <p className="mt-0.5 text-xs leading-relaxed">{tip.message}</p>
+              {automatic && (
+                <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-xs">
+                  <input type="checkbox" checked={automaticTipsDisabled} onChange={(event) => changeAutomaticTipsDisabled(event.target.checked)} className="h-3.5 w-3.5 accent-orange-300" />
+                  Disable automatic tips
+                </label>
+              )}
             </div>
             <button type="button" onClick={dismiss} aria-label="Dismiss tip" title="Dismiss this tip" className="pointer-events-auto -mr-1 -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-200">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-3.5 w-3.5"><path d="m6 6 12 12M6 18 18 6" /></svg>

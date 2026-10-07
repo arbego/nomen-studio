@@ -77,19 +77,21 @@ printed.
 
 ## Editor tips
 
-Short “Did you know?” messages occasionally appear above the preview controls.
-They cover shortcuts, saving and exporting, and tips specific to the current
-product. The first appears after 3 seconds, stays for 12 seconds, and is followed
-by at least two minutes without a tip. Hints wait during typing, dragging,
-scrolling, dialogs, and background tabs. Tips continue cycling throughout editing,
-and the first tip appears again whenever an editor opens. The lightbulb button to
-the left of Undo shows a fresh tip immediately and glows orange while a tip is visible.
+One “Did you know?” message appears above the preview controls when a project
+is started or opened. Tips cover shortcuts, saving and exporting, and the current
+product. The automatic tip appears after 3 seconds and stays for 12 seconds.
+It waits during typing, dragging, scrolling, and dialogs. Switching away from
+the app cancels any pending automatic tip; returning does not show another.
+The lightbulb button to the left of Undo shows a fresh tip immediately and glows
+orange while a tip is visible.
 Hovering pauses the dismissal timer; it resumes when the pointer leaves. The
-close button dismisses the current message. There is no disable setting yet,
-and tips do not write to browser storage.
+close button dismisses the current message. Automatic tips include a “Disable
+automatic tips” checkbox. This preference is remembered in `localStorage` and
+applies to future projects; the lightbulb button still works.
 
-The app uses no cookies. It remembers the chosen theme and last selected product
-in `localStorage`; designs and undo history stay in memory until saved to a file.
+The app uses no cookies. It remembers the chosen theme, last selected product,
+and automatic tip preference in `localStorage`; designs and undo history stay
+in memory until saved to a file.
 
 ## Saving your work
 

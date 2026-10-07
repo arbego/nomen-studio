@@ -2,7 +2,7 @@
 import { act, createRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FIRST_TIP_DELAY_MS, StudioTips, TipButton, TIP_INTERVAL_MS, TIP_VISIBLE_MS, type StudioTipsHandle } from './StudioTips';
+import { FIRST_TIP_DELAY_MS, StudioTips, TipButton, TIP_VISIBLE_MS, type StudioTipsHandle } from './StudioTips';
 import { STUDIO_TIPS, tipsForProduct } from './tipCatalog';
 
 let container: HTMLDivElement;
@@ -14,18 +14,21 @@ function TipControls() {
 }
 function advance(ms: number) { act(() => vi.advanceTimersByTime(ms)); }
 function shown() { return container.querySelector<HTMLButtonElement>('[aria-label="Dismiss tip"]'); }
-function message() { return container.querySelector('[role="status"]')!.textContent; }
+function message() { return container.querySelector('[role="status"] p + p')!.textContent; }
+function disableCheckbox() { return container.querySelector<HTMLInputElement>('input[type="checkbox"]'); }
 function pointer(type: string) {
   const event = new Event(type, { bubbles: true });
   Object.defineProperty(event, 'pointerId', { value: 1 });
   act(() => document.dispatchEvent(event));
 }
+const LONG_WAIT_MS = 600_000;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
   vi.spyOn(Math, 'random').mockReturnValue(0);
+  localStorage.removeItem('studio.automaticTipsDisabled');
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -36,27 +39,74 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.restoreAllMocks();
+  localStorage.removeItem('studio.automaticTipsDisabled');
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
-describe('occasional studio tips', () => {
-  it('waits before showing a tip, hides it automatically, and leaves a long gap before the next one', () => {
+describe('studio tips', () => {
+  it('offers the disable checkbox only on automatic tips', () => {
+    expect(disableCheckbox()).toBeNull();
+    advance(FIRST_TIP_DELAY_MS);
+    expect(disableCheckbox()!.checked).toBe(false);
+    expect(disableCheckbox()!.parentElement!.textContent).toBe('Disable automatic tips');
+    act(() => tipsRef.current!.showTip());
+    expect(shown()).not.toBeNull();
+    expect(disableCheckbox()).toBeNull();
+  });
+
+  it('remembers disabling automatic tips across project openings while keeping manual tips available', () => {
+    advance(FIRST_TIP_DELAY_MS);
+    act(() => disableCheckbox()!.click());
+    expect(disableCheckbox()!.checked).toBe(true);
+    expect(localStorage.getItem('studio.automaticTipsDisabled')).toBe('true');
+    act(() => root.render(null));
+    act(() => root.render(<StudioTips ref={tipsRef} productId="name-display" />));
+    advance(LONG_WAIT_MS);
+    expect(shown()).toBeNull();
+    act(() => tipsRef.current!.showTip());
+    expect(shown()).not.toBeNull();
+    expect(disableCheckbox()).toBeNull();
+  });
+
+  it('allows undoing the disable choice before the automatic tip is dismissed', () => {
+    advance(FIRST_TIP_DELAY_MS);
+    act(() => disableCheckbox()!.click());
+    act(() => disableCheckbox()!.click());
+    expect(disableCheckbox()!.checked).toBe(false);
+    expect(localStorage.getItem('studio.automaticTipsDisabled')).toBe('false');
+    act(() => root.render(null));
+    act(() => root.render(<TipControls />));
+    advance(FIRST_TIP_DELAY_MS);
+    expect(shown()).not.toBeNull();
+  });
+
+  it('keeps tips usable when browser storage is blocked', () => {
+    act(() => root.render(null));
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    act(() => root.render(<TipControls />));
+    advance(FIRST_TIP_DELAY_MS);
+    act(() => disableCheckbox()!.click());
+    expect(disableCheckbox()!.checked).toBe(true);
+    act(() => shown()!.click());
+    act(() => tipsRef.current!.showTip());
+    expect(shown()).not.toBeNull();
+    expect(disableCheckbox()).toBeNull();
+  });
+
+  it('shows one automatic tip after the initial delay and does not repeat it', () => {
     expect(shown()).toBeNull();
     advance(FIRST_TIP_DELAY_MS - 1000);
     expect(shown()).toBeNull();
     advance(1000);
     expect(shown()).not.toBeNull();
-    const first = message();
     expect(container.querySelector('[role="status"]')!.getAttribute('aria-live')).toBe('polite');
     expect(document.activeElement).toBe(document.body);
     advance(TIP_VISIBLE_MS);
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS - 1000);
+    advance(LONG_WAIT_MS);
     expect(shown()).toBeNull();
-    advance(1000);
-    expect(shown()).not.toBeNull();
-    expect(message()).not.toBe(first);
   });
 
   it('dismisses only the current tip and keeps a focused dismiss button available', () => {
@@ -66,7 +116,9 @@ describe('occasional studio tips', () => {
     expect(shown()).not.toBeNull();
     act(() => shown()!.click());
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS);
+    advance(LONG_WAIT_MS);
+    expect(shown()).toBeNull();
+    act(() => tipsRef.current!.showTip());
     expect(shown()).not.toBeNull();
   });
 
@@ -92,7 +144,7 @@ describe('occasional studio tips', () => {
     act(() => card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: document.body })));
     act(() => shown()!.click());
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS);
+    act(() => tipsRef.current!.showTip());
     expect(shown()).not.toBeNull();
     advance(TIP_VISIBLE_MS);
     expect(shown()).toBeNull();
@@ -126,7 +178,7 @@ describe('occasional studio tips', () => {
     expect(shown()).not.toBeNull();
   });
 
-  it('preserves the long interval when a dialog interrupts a visible tip', () => {
+  it('does not show another automatic tip after a dialog interrupts a visible tip', () => {
     advance(FIRST_TIP_DELAY_MS);
     expect(shown()).not.toBeNull();
     const dialog = document.createElement('dialog');
@@ -135,37 +187,46 @@ describe('occasional studio tips', () => {
     advance(1000);
     expect(shown()).toBeNull();
     dialog.remove();
-    advance(FIRST_TIP_DELAY_MS);
+    advance(LONG_WAIT_MS);
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS - FIRST_TIP_DELAY_MS);
-    expect(shown()).not.toBeNull();
   });
 
-  it('hides tips in background tabs and does not accumulate them while away', () => {
-    advance(FIRST_TIP_DELAY_MS);
-    expect(shown()).not.toBeNull();
+  it.each([1000, FIRST_TIP_DELAY_MS])('does not show a tip after returning to a background tab (away at %i ms)', (awayAt) => {
+    advance(awayAt);
     vi.mocked(Object.getOwnPropertyDescriptor(document, 'hidden')!.get!).mockReturnValue(true);
     act(() => document.dispatchEvent(new Event('visibilitychange')));
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS * 3);
+    advance(LONG_WAIT_MS);
     expect(shown()).toBeNull();
     vi.mocked(Object.getOwnPropertyDescriptor(document, 'hidden')!.get!).mockReturnValue(false);
     act(() => document.dispatchEvent(new Event('visibilitychange')));
-    advance(FIRST_TIP_DELAY_MS - 1000);
+    advance(LONG_WAIT_MS);
     expect(shown()).toBeNull();
-    advance(1000);
+    act(() => tipsRef.current!.showTip());
     expect(shown()).not.toBeNull();
   });
 
-  it('continues cycling after all tips have been shown and cleans up its timer', () => {
+  it.each([1000, FIRST_TIP_DELAY_MS])('does not show a tip after the window regains focus (blur at %i ms)', (blurAt) => {
+    advance(blurAt);
+    act(() => window.dispatchEvent(new Event('blur')));
+    expect(shown()).toBeNull();
+    expect(container.querySelector('[aria-label="Show a tip"]')!.getAttribute('aria-expanded')).toBe('false');
+    advance(LONG_WAIT_MS);
+    act(() => window.dispatchEvent(new Event('focus')));
+    advance(LONG_WAIT_MS);
+    expect(shown()).toBeNull();
+    act(() => tipsRef.current!.showTip());
+    expect(shown()).not.toBeNull();
+  });
+
+  it('cycles through all tips on manual request and cleans up its timer', () => {
     const count = tipsForProduct('cake-topper').length;
     const messages = new Set<string | null>();
     advance(FIRST_TIP_DELAY_MS);
     for (let i = 0; i < count; i++) {
       expect(shown()).not.toBeNull();
       messages.add(message());
-      advance(TIP_VISIBLE_MS);
-      advance(TIP_INTERVAL_MS);
+      act(() => tipsRef.current!.showTip());
     }
     expect(messages.size).toBe(count);
     expect(shown()).not.toBeNull();
@@ -181,16 +242,15 @@ describe('occasional studio tips', () => {
     expect(document.activeElement).toBe(button);
     const first = message();
     advance(TIP_VISIBLE_MS - 1000);
+    expect(message()).toBe(first);
     act(() => button.click());
     expect(message()).not.toBe(first);
     advance(1000);
     expect(shown()).not.toBeNull();
     advance(TIP_VISIBLE_MS - 1000);
     expect(shown()).toBeNull();
-    advance(TIP_INTERVAL_MS - 1000);
+    advance(LONG_WAIT_MS);
     expect(shown()).toBeNull();
-    advance(1000);
-    expect(shown()).not.toBeNull();
   });
 
   it('shows the initial tip again whenever the editor is reopened', () => {
