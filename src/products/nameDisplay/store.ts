@@ -123,9 +123,9 @@ reserveDecoratorIds(DEFAULT_NAME_DISPLAY_CONFIG.decorators);
 export type DecoratorPatch = Partial<Omit<IconDecoratorConfig, 'id' | 'kind'> & Omit<TextDecoratorConfig, 'id' | 'kind'>>;
 
 interface NameDisplayStore extends NameDisplayConfig {
-  /** Preview only: never changes the saved design or the assembled export. */
-  showLid: boolean;
-  setShowLid: (show: boolean) => void;
+  /** Preview only: fade the lid and inlays to see and interact with the bowl inside. */
+  lidTransparent: boolean;
+  setLidTransparent: (transparent: boolean) => void;
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
   setNameOffset: (offset: Offset2D) => void;
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
@@ -145,8 +145,8 @@ interface NameDisplayStore extends NameDisplayConfig {
 
 export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   ...DEFAULT_NAME_DISPLAY_CONFIG,
-  showLid: true,
-  setShowLid: (showLid) => set({ showLid }),
+  lidTransparent: false,
+  setLidTransparent: (lidTransparent) => set({ lidTransparent }),
   setConfig: (partial) =>
     set((state) => {
       // Both corrections below have to compose, not pick one: a single call can
@@ -251,9 +251,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
     reserveDecoratorIds(config.decorators);
-    set({ ...config, showLid: true });
+    set({ ...config, lidTransparent: false });
   },
-  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true }),
+  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, lidTransparent: false }),
 }));
 
 /** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */

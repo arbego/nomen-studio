@@ -9,6 +9,7 @@ import { GroundGrid } from './GroundGrid';
 import { ScaleReference } from './ScaleReference';
 import { StudioLights } from './StudioLights';
 import { useThemeStore } from '../ui/theme';
+import { PREVIEW_BUTTON_CLASS, PreviewToggleButton } from '../ui/PreviewToggleButton';
 
 interface StudioCanvasProps {
   /** The current product's scene content — see products/<id>/SceneContent.tsx. */
@@ -23,6 +24,8 @@ interface StudioCanvasProps {
   actions?: ReactNode;
   /** Undo/redo controls pinned over the preview's bottom-left corner. */
   historyActions?: ReactNode;
+  /** Product-specific toggles to the left of the shared bottom-right view buttons. */
+  viewControls?: ReactNode;
   /** Occasional hints above the bottom controls, sharing space with warnings. */
   tips?: ReactNode;
   /**
@@ -47,16 +50,13 @@ const BACKGROUND = { light: '#f3f1ec', dark: '#1b1917' } as const;
 /** The ground shadow needs less weight on a dark floor, where it has far less room to darken into before it disappears. */
 const SHADOW_OPACITY = { light: 0.35, dark: 0.5 } as const;
 
-const OVERLAY_BUTTON_CLASS =
-  'flex h-10 w-10 items-center justify-center rounded-full border bg-white/90 dark:bg-stone-900/90 shadow-md backdrop-blur transition-colors hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-100';
-
 /**
  * The shared 3D preview every product is designed in: lighting, ground shadow,
  * orbit controls, and a reset-to-front button that re-fits the camera to
  * whatever is currently on screen. Product-agnostic — it only renders whatever
  * scene content it's given, centered on the ground plane.
  */
-export function StudioCanvas({ children, actions, historyActions, warnings, tips }: StudioCanvasProps) {
+export function StudioCanvas({ children, actions, historyActions, warnings, tips, viewControls }: StudioCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
   const contentGroupRef = useRef<THREE.Group>(null);
@@ -134,41 +134,38 @@ export function StudioCanvas({ children, actions, historyActions, warnings, tips
       </div>
 
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
-        <button
-          type="button"
+        {viewControls}
+        <PreviewToggleButton
           onClick={() => setShowShadows((shown) => !shown)}
-          aria-pressed={showShadows}
-          aria-label={showShadows ? 'Turn shadows off' : 'Turn shadows on'}
+          active={showShadows}
+          label={showShadows ? 'Turn shadows off' : 'Turn shadows on'}
           title={showShadows ? 'Shadows on' : 'Shadows off'}
-          className={`${OVERLAY_BUTTON_CLASS} ${showShadows ? 'border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100' : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
         >
           {/* A shape and the shadow it throws, which is the thing being switched. */}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <rect x="3" y="3" width="12" height="12" rx="2.5" />
             <path d="M9 21h9.5a2.5 2.5 0 0 0 2.5-2.5V9" strokeDasharray="2.5 2.5" />
           </svg>
-        </button>
+        </PreviewToggleButton>
 
-        <button
-          type="button"
+        <PreviewToggleButton
           onClick={() => setShowScaleReference((shown) => !shown)}
-          aria-pressed={showScaleReference}
-          aria-label={showScaleReference ? 'Hide the 2 euro coin' : 'Show a 2 euro coin for scale'}
+          active={showScaleReference}
+          label={showScaleReference ? 'Hide the 2 euro coin' : 'Show a 2 euro coin for scale'}
           title={showScaleReference ? 'Hide the 2 € coin' : 'Compare with a 2 € coin'}
-          className={`${OVERLAY_BUTTON_CLASS} ${showScaleReference ? 'border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100' : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <circle cx="12" cy="12" r="8.5" />
             <circle cx="12" cy="12" r="4" />
           </svg>
-        </button>
+        </PreviewToggleButton>
 
         <button
           type="button"
           onClick={resetToFrontView}
           aria-label="Reset view to front"
           title="Reset view to front"
-          className={`${OVERLAY_BUTTON_CLASS} border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400`}
+          className={`${PREVIEW_BUTTON_CLASS} border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400`}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <path d="M3 11.5 12 4l9 7.5" />

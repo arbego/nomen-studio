@@ -4,6 +4,7 @@ import { NameDisplaySceneContent } from './SceneContent';
 import { NameDisplayExport } from './ExportAction';
 import { NameDisplayProvider } from './Provider';
 import { NameDisplayWarnings } from './Warnings';
+import { LidPreviewButton } from './LidPreviewButton';
 import { NameDisplayThumbnail } from './Thumbnail';
 import { nameDisplayProjectIO } from './project';
 import { nameDisplayHistory } from './store';
@@ -17,6 +18,7 @@ export const nameDisplayProduct: ProductDefinition = {
   SceneContent: NameDisplaySceneContent,
   Export: NameDisplayExport,
   Warnings: NameDisplayWarnings,
+  ViewControls: LidPreviewButton,
   Provider: NameDisplayProvider,
   project: nameDisplayProjectIO,
   history: nameDisplayHistory,

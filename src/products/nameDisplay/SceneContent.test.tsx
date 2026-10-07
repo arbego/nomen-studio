@@ -48,13 +48,13 @@ async function renderScene(
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void = () => {},
   taps: { onInitialTap?: () => void; onLidTap?: () => void; onNameTap?: () => void; onDecoratorTap?: (id: string) => void } = {},
-  showLid = true,
+  lidTransparent = false,
 ) {
   const merged = { ...config, ...overrides };
   const blocks = await buildNameDisplayBlocks(merged);
   const assembly = assembleNameDisplay(blocks, merged);
   const renderer = await ReactThreeTestRenderer.create(
-    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} showLid={showLid} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} {...taps} />,
+    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} lidTransparent={lidTransparent} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} {...taps} />,
   );
   return { renderer, blocks, assembly, config: merged };
 }
@@ -110,7 +110,7 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     const blocks = await buildNameDisplayBlocks(merged);
     const assembly = assembleNameDisplay(blocks, merged);
     useNameDisplayStore.getState().loadConfig(merged);
-    useNameDisplayStore.getState().setShowLid(false);
+    useNameDisplayStore.getState().setLidTransparent(true);
     usePanelStore.getState().reset();
     const renderer = await ReactThreeTestRenderer.create(
       <NameDisplayGeometryContext.Provider value={{ blocks, assembly, loading: false, error: null }}>
@@ -152,12 +152,56 @@ describe('NameDisplayScene (React Three Fiber wiring)', () => {
     expect(lid.material.color.getHexString()).toBe('b7c4ac');
   }, 30000);
 
-  it('reveals the bowl without the lid or its inlays when the preview is open', async () => {
-    const { renderer, assembly } = await renderScene({ hollowEnabled: true, initialDepthMm: 30 }, undefined, undefined, undefined, {}, false);
-    expect(directMeshes(root(renderer))).toHaveLength(1);
-    expect(root(renderer).children.filter((child) => child.type === 'Group')).toHaveLength(0);
-    // The lid still exists for export; this changes only what is drawn.
-    expect(assembly.lidGeometry).not.toBeNull();
+  it('fades the lid and inlays to 10% opacity while keeping the bowl opaque and allowing clicks through', async () => {
+    const { renderer, blocks, assembly, config: merged } = await renderScene({
+      hollowEnabled: true,
+      initialDepthMm: 30,
+      decorators: [{ kind: 'icon', id: 'd1', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
+      decoratorPlacements: { d1: { offset: { x: 20, y: 90 }, angleDeg: 0 } },
+    }, undefined, undefined, undefined, {}, true);
+    try {
+      const meshes = directMeshes(root(renderer));
+      expect(meshes).toHaveLength(2);
+      const bowl = meshes[0].instance as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+      expect(bowl.material.opacity).toBe(1);
+      const lid = meshes[1].instance as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+      expect(lid.geometry).toBe(assembly.lidGeometry);
+      const letters = nameGroup(root(renderer)).children.filter((child) => child.type === 'Mesh').map((child) => child.instance as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>);
+      expect(letters).toHaveLength(3);
+      const ornament = decoratorGroup(root(renderer)).children.find((child) => child.type === 'Mesh')!.instance as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+      const faded = [lid, ...letters, ornament];
+      (root(renderer).instance as THREE.Group).updateMatrixWorld(true);
+      // A ray through an actual front triangle must pass through the faded piece
+      // and hit it again when made opaque, without recreating the mesh.
+      const rays = faded.map((mesh) => {
+        const positions = mesh.geometry.getAttribute('position');
+        const indices = mesh.geometry.index;
+        for (let i = 0; i < (indices?.count ?? positions.count); i += 3) {
+          const [a, b, c] = [0, 1, 2].map((offset) => new THREE.Vector3().fromBufferAttribute(positions, indices ? indices.getX(i + offset) : i + offset));
+          if (b.clone().sub(a).cross(c.clone().sub(a)).z <= 1e-8) continue;
+          const point = mesh.localToWorld(a.add(b).add(c).divideScalar(3));
+          return new THREE.Raycaster(point.add(new THREE.Vector3(0, 0, 50)), new THREE.Vector3(0, 0, -1));
+        }
+        throw new Error('Expected a front-facing triangle');
+      });
+      for (const [index, mesh] of faded.entries()) {
+        expect(mesh.material.opacity).toBe(0.1);
+        expect(mesh.material.transparent).toBe(true);
+        expect(mesh.material.depthWrite).toBe(false);
+        expect(mesh.castShadow).toBe(false);
+        expect(rays[index].intersectObject(mesh)).toHaveLength(0);
+      }
+      await renderer.update(<NameDisplayScene blocks={blocks} assembly={assembly} config={merged} lidTransparent={false} onNameOffsetCommit={() => {}} onNameLetterGapCommit={() => {}} onDecoratorOffsetCommit={() => {}} />);
+      for (const [index, mesh] of faded.entries()) {
+        expect(mesh.material.opacity).toBe(1);
+        expect(mesh.material.transparent).toBe(false);
+        expect(mesh.material.depthWrite).toBe(true);
+        expect(mesh.castShadow).toBe(true);
+        expect(rays[index].intersectObject(mesh).length).toBeGreaterThan(0);
+      }
+    } finally {
+      await renderer.unmount();
+    }
   }, 30000);
 
   it.each(['', '  '])('renders the initial without a name group (%j)', async (name) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Mesh } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { LetterGeometry } from '../geometry/types';
 
@@ -11,6 +12,7 @@ function setCursor(cursor: string) {
 interface LetterMeshProps {
   letter: LetterGeometry;
   color: string;
+  opacity?: number;
   /** x offset (mm) from this letter's own natural, baked-in position — the cumulative effect of every gap override before it (0 for the first letter of a line, which has no gap before it). */
   xMm: number;
   /** y offset (mm) — this letter's line's own draggable position offset, shared by every letter in that line. */
@@ -36,7 +38,7 @@ interface LetterMeshProps {
 }
 
 /** One letter of a line — a static, pre-extruded solid positioned via a cheap (x, y) translation, draggable to either close/open the gap before it or (for a line's first letter) reposition the whole line. */
-export function LetterMesh({ letter, color, xMm, yMm, zMm = 0, draggable, dragging, anyDragActive, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
+export function LetterMesh({ letter, color, opacity = 1, xMm, yMm, zMm = 0, draggable, dragging, anyDragActive, onPointerDown, onPointerMove, onPointerUp }: LetterMeshProps) {
   const [hovered, setHovered] = useState(false);
   // Hovering lights this letter up, unless it's just being passed over while
   // something *else* is being dragged — but being dragged itself always
@@ -47,8 +49,9 @@ export function LetterMesh({ letter, color, xMm, yMm, zMm = 0, draggable, draggi
     <mesh
       geometry={letter.geometry}
       position={[xMm, yMm, zMm]}
-      castShadow
-      receiveShadow
+      castShadow={opacity === 1}
+      receiveShadow={opacity === 1}
+      raycast={opacity < 1 ? () => {} : Mesh.prototype.raycast}
       onPointerDown={draggable ? onPointerDown : undefined}
       onPointerMove={draggable ? onPointerMove : undefined}
       onPointerUp={draggable ? onPointerUp : undefined}
@@ -73,6 +76,10 @@ export function LetterMesh({ letter, color, xMm, yMm, zMm = 0, draggable, draggi
     >
       <meshStandardMaterial
         color={color}
+        opacity={opacity}
+        transparent={opacity < 1}
+        depthWrite={opacity === 1}
+        onUpdate={(material) => { material.needsUpdate = true; }}
         roughness={0.55}
         metalness={0.05}
         emissive={highlighted ? color : '#000000'}

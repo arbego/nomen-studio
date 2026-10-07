@@ -61,6 +61,8 @@ export interface ProductDefinition {
    * reason `Export` is: only the product's own hooks reach its geometry.
    */
   Warnings?: ComponentType;
+  /** Product-specific preview toggles, before the shared bottom-right view buttons. */
+  ViewControls?: ComponentType;
   /** Reading and writing this product's designs as project files. */
   project: ProductProject;
   /** Shared undo/redo controller, attached once to the product's config store. */

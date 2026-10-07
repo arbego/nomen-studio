@@ -52,10 +52,10 @@ describe('name display round trip', () => {
     resetWithoutDecorators();
     const store = useNameDisplayStore.getState();
     store.setConfig({ hollowEnabled: true, cableHoleEnabled: true, cableHoleDiameterMm: 8.5, cableHolePlacement: placement });
-    store.setShowLid(false);
+    store.setLidTransparent(true);
     const { saved, loaded } = roundTrip('name-display');
     expect(loaded).toEqual(saved);
-    expect(loaded).not.toHaveProperty('showLid');
+    expect(loaded).not.toHaveProperty('lidTransparent');
   });
 
   it('keeps legacy bowls without a cable hole and validates malformed hole settings', () => {
@@ -69,11 +69,11 @@ describe('name display round trip', () => {
     resetWithoutDecorators();
     const store = useNameDisplayStore.getState();
     store.setConfig({ hollowEnabled: true, initialDepthMm: 30, wallThicknessMm: 2.6, lidThicknessMm: 3.4, lidClearanceMm: 0.3, initialColor: '#f7f5f2', lidColor: '#d9a9ab' });
-    store.setShowLid(false);
+    store.setLidTransparent(true);
     const { saved, loaded } = roundTrip('name-display');
     expect(loaded).toEqual(saved);
-    expect(loaded).not.toHaveProperty('showLid');
-    expect(useNameDisplayStore.getState().showLid).toBe(true);
+    expect(loaded).not.toHaveProperty('lidTransparent');
+    expect(useNameDisplayStore.getState().lidTransparent).toBe(false);
   });
 
   it('keeps older projects solid and repairs impossible hollow dimensions', () => {

@@ -21,7 +21,7 @@ function rayEvent(x: number, y: number, side = false): ThreeEvent<PointerEvent> 
 
 const backPlacement = { point: { x: 20, y: 10, z: 0 }, normal: { x: 0, y: 0, z: -1 } };
 
-async function editor(position: [number, number, number] = [0, 0, 0], placement: CableHolePlacement = backPlacement, showLid = false) {
+async function editor(position: [number, number, number] = [0, 0, 0], placement: CableHolePlacement = backPlacement, lidTransparent = true) {
   const surface = extrudeMmShapes(regionToShapes(rectRegion(0, 0, 40, 60)), 20)!;
   const controls = { enabled: true };
   const onCommit = vi.fn();
@@ -34,7 +34,7 @@ async function editor(position: [number, number, number] = [0, 0, 0], placement:
   const renderer = await ReactThreeTestRenderer.create(
     <group position={position}>
       <SetControls />
-      <CableHoleEditor surface={surface} hole={{ diameterMm: 6, placement, warning: null }} floorZ={2} showLid={showLid} onSelect={onSelect} onCommit={onCommit} />
+      <CableHoleEditor surface={surface} hole={{ diameterMm: 6, placement, warning: null }} floorZ={2} lidTransparent={lidTransparent} onSelect={onSelect} onCommit={onCommit} />
     </group>,
   );
   const picking = renderer.scene.findByProps({ name: 'cable-hole-handle-0' });
@@ -125,8 +125,8 @@ describe('cable-hole placement in the preview', () => {
     expect(controls.enabled).toBe(true);
   });
 
-  it('only hit-tests the hole and does not expose a front-facing handle through the closed lid', async () => {
-    const { renderer, surface } = await editor([0, 0, 0], backPlacement, true);
+  it('only hit-tests the hole and does not expose a front-facing handle through the opaque lid', async () => {
+    const { renderer, surface } = await editor([0, 0, 0], backPlacement, false);
     expect(renderer.scene.findAllByProps({ geometry: surface })).toHaveLength(0);
     const handle = renderer.scene.findByProps({ name: 'cable-hole-handle-0' }).instance as THREE.Mesh;
     expect(renderer.scene.findAllByProps({ name: 'cable-hole-handle-1' })).toHaveLength(0);

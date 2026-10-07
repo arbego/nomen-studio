@@ -32,8 +32,7 @@ export function NameDisplayControls() {
   const removeDecorator = useNameDisplayStore((s) => s.removeDecorator);
   const setDecoratorAngle = useNameDisplayStore((s) => s.setDecoratorAngle);
   const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
-  const showLid = useNameDisplayStore((s) => s.showLid);
-  const setShowLid = useNameDisplayStore((s) => s.setShowLid);
+  const setLidTransparent = useNameDisplayStore((s) => s.setLidTransparent);
   const { assembly, loading, error } = useNameDisplayGeometry();
 
   const hasName = config.name.trim().length > 0;
@@ -91,23 +90,19 @@ export function NameDisplayControls() {
               <SliderField label="Lid clearance" value={config.lidClearanceMm} onChange={(lidClearanceMm) => onChange({ lidClearanceMm })} min={0} max={1} step={0.05} hint="The gap all round the lid. Increase it for an easier fit." />
               <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Bowl color" variant="field" />
               <ColorSwatchPicker value={config.lidColor} onChange={(lidColor) => onChange({ lidColor })} label="Lid color" variant="field" />
-              <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
-                <span>Show lid in preview</span>
-                <input type="checkbox" checked={showLid} onChange={(event) => setShowLid(event.target.checked)} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
-              </label>
-              {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Hiding the lid also hides its lettering in the preview; export includes every part.</p>}
+              {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Use the lid button beside the preview's shadow button to see inside.</p>}
               <FocusTarget focusKey={CABLE_HOLE_FOCUS_KEY} className="flex flex-col gap-4 border-t border-stone-100 pt-4 dark:border-stone-800">
                 <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
                   <span>Cable hole</span>
                   <DesignInput type="checkbox" checked={config.cableHoleEnabled} onChange={(event) => {
                     onChange({ cableHoleEnabled: event.target.checked });
-                    if (event.target.checked) setShowLid(false);
+                    if (event.target.checked) setLidTransparent(true);
                   }} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
                 </label>
                 {config.cableHoleEnabled && (
                   <>
                     <SliderField label="Hole diameter" value={config.cableHoleDiameterMm} onChange={(cableHoleDiameterMm) => onChange({ cableHoleDiameterMm })} min={2} max={30} step={0.5} hint="Make room for the cable or connector you plan to pass through." />
-                    <p className="text-xs text-stone-400 dark:text-stone-500">Click the hole to highlight it, then drag it to move it. Hide the lid or orbit to the back to reach the hole. Orbit the view to reach the side walls.</p>
+                    <p className="text-xs text-stone-400 dark:text-stone-500">Click the hole to highlight it, then drag it to move it. Make the lid transparent or orbit to the back to reach the hole. Orbit the view to reach the side walls.</p>
                     <button type="button" onClick={() => onChange({ cableHolePlacement: null })} className="self-start text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200">Reset hole position</button>
                   </>
                 )}

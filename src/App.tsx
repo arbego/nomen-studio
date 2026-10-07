@@ -84,7 +84,7 @@ function App() {
           header={<ProductHeader product={product} onBack={() => { if (hasUnsavedChanges(product)) setLeaving(true); else clearProduct(); }} />}
           sidebar={<product.Controls />}
           main={
-            <StudioCanvas actions={<div className="flex items-start gap-2"><SaveProjectButton product={product} /><ShareProjectButton key={product.id} product={product} /><product.Export /></div>} tips={<StudioTips key={product.id} ref={tipsRef} productId={product.id} onActiveChange={setTipActive} />} historyActions={<div className="flex items-center gap-2"><TipButton active={tipActive} onClick={() => tipsRef.current?.showTip()} /><HistoryButtons history={product.history} /></div>} warnings={product.Warnings && <product.Warnings />}>
+            <StudioCanvas actions={<div className="flex items-start gap-2"><SaveProjectButton product={product} /><ShareProjectButton key={product.id} product={product} /><product.Export /></div>} tips={<StudioTips key={product.id} ref={tipsRef} productId={product.id} onActiveChange={setTipActive} />} historyActions={<div className="flex items-center gap-2"><TipButton active={tipActive} onClick={() => tipsRef.current?.showTip()} /><HistoryButtons history={product.history} /></div>} warnings={product.Warnings && <product.Warnings />} viewControls={product.ViewControls && <product.ViewControls />}>
               <product.SceneContent />
             </StudioCanvas>
           }

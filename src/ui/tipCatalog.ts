@@ -43,7 +43,7 @@ export const STUDIO_TIPS: readonly StudioTip[] = [
   { id: 'display-text-decorators', productId: 'name-display', message: 'Text decorators let you add a date, surname or short phrase, each with its own font and position.' },
   { id: 'display-hollow', productId: 'name-display', message: 'Enable Hollow initial with lid to turn the initial into a storage bowl with a removable lid.' },
   { id: 'display-hollow-depth', productId: 'name-display', message: 'For more storage space in a hollow initial, increase the initial’s Thickness. Wall thickness also sets the back floor.' },
-  { id: 'display-lid-preview', productId: 'name-display', message: 'Turn off Show lid in preview to inspect the cavity. This also hides the inlays in the preview; export still includes every part.' },
+  { id: 'display-lid-preview', productId: 'name-display', message: 'The lid button beside the shadow button makes the lid and inlays 90% transparent so you can inspect the cavity. Export still includes every part.' },
   { id: 'display-lid-fit', productId: 'name-display', message: 'Lid clearance controls the gap around the lid. Increase it for an easier fit; it is separate from the inlays’ Fit clearance.' },
   { id: 'display-hollow-printing', productId: 'name-display', message: 'Print the hollow bowl back-down and the lid underside-down as separate pieces. The bowl’s 45° ramp supports the lid.' },
 ];

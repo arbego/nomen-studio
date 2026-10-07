@@ -42,12 +42,12 @@ describe('cable-hole design and preview state', () => {
     expect(useNameDisplayStore.getState().cableHolePlacement).toBeNull();
   });
 
-  it('does not add hiding or showing the lid to undo history', () => {
+  it('does not add lid transparency changes to undo history', () => {
     const store = useNameDisplayStore.getState();
-    store.setShowLid(false);
-    expect(useNameDisplayStore.getState().showLid).toBe(false);
-    store.setShowLid(true);
-    expect(useNameDisplayStore.getState().showLid).toBe(true);
+    store.setLidTransparent(true);
+    expect(useNameDisplayStore.getState().lidTransparent).toBe(true);
+    store.setLidTransparent(false);
+    expect(useNameDisplayStore.getState().lidTransparent).toBe(false);
     expect(nameDisplayHistory.getState().canUndo).toBe(false);
   });
 

@@ -31,6 +31,8 @@ type ToggleableControls = { enabled: boolean };
 interface TextBlockMeshProps {
   block: TextBlock;
   color: string;
+  /** Faded preview lettering lets pointer events through to parts behind it. */
+  opacity?: number;
   /** Where this block sits in its parent's space (mm). Z matters for products that stack blocks front-to-back, like the name display's inlay. */
   position: [number, number, number];
   /**
@@ -107,6 +109,7 @@ interface DraggingLine {
 export function TextBlockMesh({
   block,
   color,
+  opacity = 1,
   position,
   letterZMm = 0,
   stick,
@@ -272,10 +275,11 @@ export function TextBlockMesh({
               key={`${lineIndex}-${i}`}
               letter={letter}
               color={color}
+              opacity={opacity}
               xMm={cascadesByLine[lineIndex][i] + offset.x}
               yMm={offset.y}
               zMm={letterZMm}
-              draggable
+              draggable={opacity === 1}
               dragging={movesWholeLine(i) ? draggingLine?.lineIndex === lineIndex : draggingGap?.lineIndex === lineIndex && draggingGap?.gapIndex === i - 1}
               anyDragActive={anyDragActive}
               onPointerDown={(e) => handlePointerDown(lineIndex, i, e)}

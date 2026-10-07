@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { Mesh } from 'three';
 import { extrudeMmShapes } from '../../geometry/extrudeToMm';
 import { regionToShapes } from '../../geometry/clipper';
 import { useShallow } from 'zustand/react/shallow';
@@ -18,7 +19,7 @@ interface NameDisplaySceneProps {
   blocks: NameDisplayBlocks;
   assembly: NameDisplayAssembly;
   config: NameDisplayConfig;
-  showLid?: boolean;
+  lidTransparent?: boolean;
   onCableHoleSelect?: () => void;
   onCableHoleCommit?: (placement: CableHolePlacement) => void;
   onNameOffsetCommit: (offset: { x: number; y: number }) => void;
@@ -42,7 +43,7 @@ export function NameDisplayScene({
   blocks,
   assembly,
   config,
-  showLid = true,
+  lidTransparent = false,
   onCableHoleSelect,
   onCableHoleCommit,
   onNameOffsetCommit,
@@ -74,7 +75,7 @@ export function NameDisplayScene({
   // at `-pivot` reproduces `R(p - pivot) + pivot + offset` — placePoint's rule.
   const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.namePlacement;
   const nameAnchor: [number, number, number] = [translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm];
-  const showInlays = !assembly.lidGeometry || showLid;
+  const lidOpacity = assembly.lidGeometry && lidTransparent ? 0.1 : 1;
 
   return (
     <group>
@@ -93,25 +94,28 @@ export function NameDisplayScene({
         <meshStandardMaterial color={config.initialColor} roughness={0.55} metalness={0.05} />
       </mesh>
       {initialRail && <StandMesh geometry={initialRail} color={config.standColor} />}
-      {cableHoleSurface && assembly.cableHole && onCableHoleCommit && <CableHoleEditor surface={cableHoleSurface} hole={assembly.cableHole} floorZ={config.wallThicknessMm} showLid={showLid} onSelect={onCableHoleSelect} onCommit={onCableHoleCommit} />}
-      {assembly.lidGeometry && showLid && (
+      {cableHoleSurface && assembly.cableHole && onCableHoleCommit && <CableHoleEditor surface={cableHoleSurface} hole={assembly.cableHole} floorZ={config.wallThicknessMm} lidTransparent={lidTransparent} onSelect={onCableHoleSelect} onCommit={onCableHoleCommit} />}
+      {assembly.lidGeometry && (
         <mesh
+          name="initial-lid"
           geometry={assembly.lidGeometry}
-          castShadow
-          receiveShadow
-          onPointerDown={onLidTap && ((event) => lidTap.press(event))}
-          onPointerUp={onLidTap && ((event) => { if (lidTap.release(event)) onLidTap(); })}
+          castShadow={!lidTransparent}
+          receiveShadow={!lidTransparent}
+          raycast={lidTransparent ? () => {} : Mesh.prototype.raycast}
+          onPointerDown={!lidTransparent && onLidTap ? ((event) => lidTap.press(event)) : undefined}
+          onPointerUp={!lidTransparent && onLidTap ? ((event) => { if (lidTap.release(event)) onLidTap(); }) : undefined}
         >
-          <meshStandardMaterial color={config.lidColor} roughness={0.55} metalness={0.05} />
+          <meshStandardMaterial color={config.lidColor} roughness={0.55} metalness={0.05} transparent={lidTransparent} opacity={lidOpacity} depthWrite={!lidTransparent} onUpdate={(material) => { material.needsUpdate = true; }} />
         </mesh>
       )}
 
       {/* Seated at the pocket floor, so the name visibly sits *in* the initial and stands proud of it by exactly protrusionMm. */}
-      {showInlays && blocks.name && (
+      {blocks.name && (
         <group position={nameAnchor} rotation={[0, 0, rotationRad]}>
           <TextBlockMesh
             block={blocks.name}
             color={config.nameColor}
+            opacity={lidOpacity}
             position={[-pivot.x, -pivot.y, 0]}
             letterGapsMm={[config.nameLetterGapsMm]}
             onLetterGapCommit={(_lineIndex, gapIndex, gapMm) => onNameLetterGapCommit(gapIndex, gapMm)}
@@ -135,13 +139,14 @@ export function NameDisplayScene({
           and turned the same way, and drags the same way. dragMode="whole" is
           what makes a word ornament grabbable anywhere along it: an ornament is
           placed, not kerned, so it has no gaps of its own to retune. */}
-      {showInlays && blocks.decorators.map((decorator, i) => {
+      {blocks.decorators.map((decorator, i) => {
         const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.decorators[i].placement;
         return (
           <group key={decorator.id} position={[translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm]} rotation={[0, 0, rotationRad]}>
             <TextBlockMesh
               block={decorator.block}
               color={decoratorColor(config, decorator.id)}
+              opacity={lidOpacity}
               position={[-pivot.x, -pivot.y, 0]}
               letterGapsMm={[[]]}
               onLetterGapCommit={() => {}}
@@ -166,7 +171,7 @@ export function NameDisplayScene({
 /** The name display's scene as the product registry mounts it. */
 export function NameDisplaySceneContent() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
-  const showLid = useNameDisplayStore((s) => s.showLid);
+  const lidTransparent = useNameDisplayStore((s) => s.lidTransparent);
   const setConfig = useNameDisplayStore((s) => s.setConfig);
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
@@ -183,7 +188,7 @@ export function NameDisplaySceneContent() {
       blocks={blocks}
       assembly={assembly}
       config={config}
-      showLid={showLid}
+      lidTransparent={lidTransparent}
       onCableHoleSelect={() => focus(SECTIONS.hollow, CABLE_HOLE_FOCUS_KEY)}
       onCableHoleCommit={(cableHolePlacement) => setConfig({ cableHolePlacement })}
       onNameOffsetCommit={setNameOffset}

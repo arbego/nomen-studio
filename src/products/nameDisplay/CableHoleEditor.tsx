@@ -9,13 +9,13 @@ interface Props {
   surface: THREE.BufferGeometry;
   hole: CableHole;
   floorZ: number;
-  showLid?: boolean;
+  lidTransparent?: boolean;
   onSelect?: () => void;
   onCommit: (placement: CableHolePlacement) => void;
 }
 
 /** An uncut picking surface keeps a hole draggable even when the ray crosses its opening. */
-export function CableHoleEditor({ surface, hole, floorZ, showLid = false, onSelect, onCommit }: Props) {
+export function CableHoleEditor({ surface, hole, floorZ, lidTransparent = true, onSelect, onCommit }: Props) {
   const group = useRef<THREE.Group>(null);
   const controls = useThree((state) => state.controls) as { enabled: boolean } | null;
   const [live, setLive] = useState<CableHolePlacement | null>(null);
@@ -96,7 +96,7 @@ export function CableHoleEditor({ surface, hole, floorZ, showLid = false, onSele
 
   const isBack = current.normal.z < -0.5;
   const markers = isBack
-    ? [...(showLid ? [] : [{ point: { ...current.point, z: floorZ + 0.06 }, normal: { x: 0, y: 0, z: 1 } }]), { point: { ...current.point, z: -0.06 }, normal: current.normal }]
+    ? [...(lidTransparent ? [{ point: { ...current.point, z: floorZ + 0.06 }, normal: { x: 0, y: 0, z: 1 } }] : []), { point: { ...current.point, z: -0.06 }, normal: current.normal }]
     : [{ point: { x: current.point.x + current.normal.x * 0.06, y: current.point.y + current.normal.y * 0.06, z: current.point.z }, normal: current.normal }];
 
   return (

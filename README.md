@@ -56,16 +56,17 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   ledge rises inward at 45°, so the bowl can print back-down and the lid
   underside-down as separate pieces without support beneath the ledge. Name
   and decorator pockets continue across the closed front face, capped to leave
-  material beneath them in the lid. **Show lid in preview** reveals the cavity;
+  material beneath them in the lid. The lid button to the left of the preview's
+  shadow button makes the lid and inlays 90% transparent to reveal the cavity;
   the 3MF always exports the fitted bowl, lid and inlays as separate colored
   parts. Counters stay open, and narrow strokes can stay solid or divide the
   cavity into separate compartments and lids.
   Enable **Cable hole** inside the hollow controls for a passage into the
   cavity, starting near the bottom of the letter's back. Set its diameter,
   click the hole to highlight it, then drag it to move it onto the back or side
-  walls. Adding the hole hides the lid in the preview; hide it or orbit to the
-  back to reach an existing hole. Its controls flash on selection, while dragging
-  only changes the hole's position.
+  walls. Adding the hole makes the lid transparent in the preview; use the lid
+  button or orbit to the back to reach an existing hole. Its controls flash on
+  selection, while dragging only changes the hole's position.
   **Reset hole position** returns to a suitable lower-back position. Warnings
   in the preview's bottom-right corner identify holes that miss the cavity or
   overlap its floor, walls or lid seat.
