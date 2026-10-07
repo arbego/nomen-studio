@@ -30,7 +30,7 @@ export function NameDisplayWarnings() {
 
   const adrift = new Set(assembly.decorators.filter((decorator) => !decorator.heldByInitial).map((decorator) => decorator.id));
   const parts = [
-    ...(assembly.heldByInitial ? [] : [quote(config.name)]),
+    ...(config.name.trim() && !assembly.heldByInitial ? [quote(config.name)] : []),
     ...config.decorators.filter((decorator) => adrift.has(decorator.id)).map(decoratorLabel),
   ];
 

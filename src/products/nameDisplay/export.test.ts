@@ -53,7 +53,7 @@ function triangleCount(geometry: THREE.BufferGeometry): number {
 
 /** The XY footprint of the void cut into the initial — the grown name silhouette, where it was placed. */
 function pocketBounds(built: Built): THREE.Box2 {
-  const region = growRegion(blockRegion(built.blocks.name, [built.config.nameLetterGapsMm], built.assembly.namePlacement), built.config.pocketClearanceMm);
+  const region = growRegion(blockRegion(built.blocks.name!, [built.config.nameLetterGapsMm], built.assembly.namePlacement), built.config.pocketClearanceMm);
   const box = new THREE.Box2();
   for (const shape of regionToShapes(region)) {
     for (const point of shape.getPoints()) box.expandByPoint(point);
@@ -99,15 +99,42 @@ describe('placing the name for export', () => {
     expect(bounds(namePrintGeometry(built.blocks, built.config)).equals(nameBefore)).toBe(true);
   }, 30000);
 
-  it.each(['', '  '])('never reaches the exporter with a nameless design (%j)', async (name) => {
-    // Why the exporter needs no empty-name guard: a name with no lettering fails
-    // during the build, long before there is an assembly to export, and the
-    // button stays disabled on a design that never built.
-    await expect(build({ name })).rejects.toThrow();
+  it.each(['', '  '])('exports an initial without an empty name part (%j)', async (name) => {
+    const built = await build({ name });
+    const objects = printObjects(built.blocks, built.assembly, built.config);
+    expect(objects.map((object) => object.name)).toEqual(['M (initial)']);
+    const text = new TextDecoder().decode(combined3mfBinary(built.blocks, built.assembly, built.config));
+    expect(text.startsWith('PK')).toBe(true);
+    expect(text).toContain('value="M (initial)"');
+    expect(text).toContain('<triangle ');
+    expect(text).not.toContain('(name)');
   }, 30000);
 });
 
 describe('what the name display puts in the file', () => {
+  it('keeps the rail and decorated pockets when the name is absent', async () => {
+    const built = await build({
+      name: '',
+      nameDepthMm: 1,
+      pocketDepthMm: 4,
+      standMode: 'rail',
+      decorators: [{ kind: 'icon', id: 'heart', iconName: 'favorite', widthMm: 25, depthMm: 5 }],
+      decoratorPlacements: { heart: { offset: { x: 0, y: 90 }, angleDeg: 0 } },
+      decoratorColors: { heart: '#b7c4ac' },
+    });
+    const objects = printObjects(built.blocks, built.assembly, built.config);
+    expect(objects.map((object) => object.name)).toEqual(['M (initial)', 'Base rail', 'favorite (decorator)']);
+    expect(objects[2].color).toBe('#b7c4ac');
+    expect(bounds(objects[2].geometry).min.z).toBeCloseTo(config.initialDepthMm - 4, 4);
+    expect(built.assembly.decorators[0].heldByInitial).toBe(true);
+    const plain = await build({ name: '', pocketDepthMm: 0 });
+    expect(triangleCount(objects[0].geometry)).toBeGreaterThan(triangleCount(plain.assembly.initialGeometry));
+    const text = new TextDecoder().decode(combined3mfBinary(built.blocks, built.assembly, built.config));
+    expect(text).toContain('value="Base rail"');
+    expect(text).toContain('value="favorite (decorator)"');
+    expect(text).not.toContain('(name)');
+  }, 30000);
+
   it('keeps the initial and the name as two separate, named, colored pieces', async () => {
     // The reason this is a 3mf and not an stl: an stl is one anonymous bag of
     // triangles, and splitting it in a slicer splits by connected shell, which

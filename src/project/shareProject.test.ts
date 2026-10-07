@@ -86,6 +86,17 @@ describe('share URLs', () => {
     expect((await readSharedProject(url, known))?.design).toEqual(design);
   });
 
+  it('preserves a name display with no name', async () => {
+    const product = getProduct('name-display')!;
+    const design = { ...LIAM_DESIGN, name: '', nameLetterGapsMm: [] };
+    product.project.load(design);
+    const url = await createShareUrl(product, 'https://studio.example/');
+    const shared = await readSharedProject(url, known);
+    expect(shared?.design).toEqual(design);
+    product.project.load(shared!.design);
+    expect(product.project.snapshot().design).toEqual(design);
+  });
+
   it('preserves partial snapshots without inserting fields that were absent', async () => {
     const product = getProduct('name-display')!;
     const design = { name: 'Partial', decorators: [] };

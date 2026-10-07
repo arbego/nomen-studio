@@ -10,7 +10,7 @@ import {
   useNameDisplayStore,
   selectNameDisplayConfig,
 } from './store';
-import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
+import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, inlayDepthsMm, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -112,8 +112,7 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
     // drops into it.
     pocketDepthMm: Math.min(
       asNumber(field(raw, 'pocketDepthMm'), defaults.pocketDepthMm, { min: 0, max: 50 }),
-      nameDepthMm,
-      ...decorators.map((decorator) => decorator.depthMm),
+      ...inlayDepthsMm({ name, nameDepthMm, decorators }),
     ),
     pocketClearanceMm: asNumber(field(raw, 'pocketClearanceMm'), defaults.pocketClearanceMm, { min: 0, max: 5 }),
 
@@ -130,7 +129,7 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
 export const nameDisplayProjectIO: ProductProject = {
   snapshot: (): ProjectSnapshot => {
     const config = selectNameDisplayConfig(useNameDisplayStore.getState());
-    return { name: config.name, design: config };
+    return { name: config.name.trim() ? config.name : config.initial, design: config };
   },
   load: (raw) => useNameDisplayStore.getState().loadConfig(parseNameDisplayConfig(raw)),
 };

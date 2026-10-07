@@ -44,6 +44,20 @@ function resetWithoutDecorators() {
 }
 
 describe('name display round trip', () => {
+  it.each(['', '   '])('preserves a nameless design and names its project after the initial (%j)', (name) => {
+    resetWithoutDecorators();
+    const store = useNameDisplayStore.getState();
+    store.setConfig({ name, nameDepthMm: 1, pocketDepthMm: 4 });
+    store.addDecorator({ kind: 'icon', iconName: 'star' });
+    store.setStandMode('rail');
+    const { saved, loaded } = roundTrip('name-display');
+    expect(loaded).toEqual(saved);
+    expect(useNameDisplayStore.getState().name).toBe(name);
+    expect(useNameDisplayStore.getState().nameLetterGapsMm).toHaveLength(Math.max(name.length - 1, 0));
+    expect(useNameDisplayStore.getState().pocketDepthMm).toBe(4);
+    expect(getProduct('name-display')!.project.snapshot().name).toBe(useNameDisplayStore.getState().initial);
+  });
+
   it('brings back an edited design exactly, ornaments and all', () => {
     const store = useNameDisplayStore.getState();
     resetWithoutDecorators();

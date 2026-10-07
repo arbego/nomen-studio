@@ -39,7 +39,8 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   not — rather than being a part of their own in a filament the card would have
   to be printed around.
 - **Name Display** — a big background initial with a script name stamped into
-  its front face. The name is a real inlay: the initial gets a pocket milled
+  its front face. Leave the name field empty for an initial with optional
+  decorators only. The name is a real inlay: the initial gets a pocket milled
   where the name overlaps it, so the two pieces lock together. Drag the name to
   move it or tilt it to an angle, and the pocket follows. Decorators — icons
   from three libraries (plain Material symbols, solid Phosphor shapes, drawn

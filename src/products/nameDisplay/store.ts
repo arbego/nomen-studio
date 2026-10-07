@@ -4,7 +4,7 @@ import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { presetColor } from '../../ui/presets';
 import { iconDefaultWidthMm } from '../../icons/catalog';
-import type { DecoratorConfig, DecoratorPlacementConfig, IconDecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, TextDecoratorConfig } from './config';
+import { inlayDepthsMm, type DecoratorConfig, type DecoratorPlacementConfig, type IconDecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type TextDecoratorConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(name: string): number[] {
@@ -156,9 +156,8 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
       // since config can reach it from elsewhere too — but leaving it
       // uncorrected here would show a permanently "capped" slider the user
       // never asked for.)
-      const nameDepth = partial.nameDepthMm ?? state.nameDepthMm;
       const pocketDepth = partial.pocketDepthMm ?? state.pocketDepthMm;
-      const thinnestInlay = Math.min(nameDepth, ...state.decorators.map((decorator) => decorator.depthMm));
+      const thinnestInlay = Math.min(...inlayDepthsMm({ ...state, ...partial }));
       if (pocketDepth > thinnestInlay) {
         next.pocketDepthMm = thinnestInlay;
       }

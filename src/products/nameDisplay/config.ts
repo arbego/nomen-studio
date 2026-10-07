@@ -1,7 +1,7 @@
 import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 
-/** The two fixed pieces: a large background initial, and the script name inlaid into its face. Decorators are added on top of these and identified by their own ids. */
+/** The background initial and optional script name. Decorators are identified by their own ids. */
 export type NameDisplayBlockId = 'initial' | 'name';
 
 /** What an ornament is made of. An icon is a glyph and so is a letter, which is why both go down the one pipeline. */
@@ -80,7 +80,7 @@ export interface NameDisplayBlocksConfig {
   /** The initial is the structural piece and is deliberately thick — it is what holds the name and keeps the whole thing upright. */
   initialDepthMm: number;
 
-  /** The script name laid across the initial. Sized by width, since its length is what has to span the piece. */
+  /** The optional script name laid across the initial. Blank text omits it. Sized by width, since its length is what has to span the piece. */
   name: string;
   nameFontId: string;
   nameWidthMm: number;
@@ -167,6 +167,14 @@ export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayA
    * `decoratorColor`.
    */
   decoratorColors: Record<string, string>;
+}
+
+/** Thicknesses of the inlays that actually exist, excluding blank text. */
+export function inlayDepthsMm(config: Pick<NameDisplayBlocksConfig, 'name' | 'nameDepthMm' | 'decorators'>): number[] {
+  return [
+    ...(config.name.trim() ? [config.nameDepthMm] : []),
+    ...config.decorators.filter((decorator) => decorator.kind !== 'text' || decorator.text.trim()).map((decorator) => decorator.depthMm),
+  ];
 }
 
 /**

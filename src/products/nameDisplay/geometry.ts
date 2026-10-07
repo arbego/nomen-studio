@@ -9,7 +9,7 @@ import { loosePieceIds, type SolidPiece } from '../../geometry/connectivity';
 import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseGeometry';
 import { degToRad, placeGeometry, type Placement2D } from '../../geometry/placement';
 import { buildIconBlock } from '../../icons/iconBlock';
-import type { DecoratorConfig, NameDisplayBlocksConfig, NameDisplayConfig, NameDisplayAssemblyConfig } from './config';
+import { inlayDepthsMm, type DecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type NameDisplayAssemblyConfig } from './config';
 
 const ORIGIN: Offset2D = { x: 0, y: 0 };
 
@@ -40,7 +40,7 @@ export interface DecoratorBlock {
 /** The pieces, as built from fonts — the expensive, async part. */
 export interface NameDisplayBlocks {
   initial: TextBlock;
-  name: TextBlock;
+  name: TextBlock | null;
   decorators: DecoratorBlock[];
 }
 
@@ -79,8 +79,12 @@ export interface NameDisplayAssembly {
 }
 
 /** The pocket depth actually used, after capping (see MAX_POCKET_FRACTION). */
-export function effectivePocketDepthMm(config: NameDisplayAssemblyConfig & { initialDepthMm: number; nameDepthMm: number }): number {
-  const cap = Math.min(config.initialDepthMm * MAX_POCKET_FRACTION, config.nameDepthMm);
+export function effectivePocketDepthMm(config: NameDisplayConfig): number {
+  const depths = inlayDepthsMm(config);
+  if (depths.length === 0) {
+    return 0;
+  }
+  const cap = Math.min(config.initialDepthMm * MAX_POCKET_FRACTION, ...depths);
   return Math.max(0, Math.min(config.pocketDepthMm, cap));
 }
 
@@ -109,6 +113,9 @@ export function blockRegion(block: TextBlock, letterGapsMm: number[][], placemen
 
 /** How the name is placed onto the initial — the one description the preview transform and the pocket boolean both follow, so the recess can never drift from what's on screen. */
 export function namePlacement(blocks: NameDisplayBlocks, config: NameDisplayConfig): Placement2D {
+  if (!blocks.name) {
+    return {};
+  }
   return {
     translate: config.nameOffset,
     rotationRad: degToRad(config.nameAngleDeg),
@@ -164,8 +171,8 @@ export function decoratorHasInk(decorator: DecoratorConfig): boolean {
 }
 
 /**
- * Builds both pieces from their fonts. Everything that does *not* change the
- * glyphs themselves — where the name sits, its letter gaps, the pocket, the
+ * Builds the initial and any name from their fonts. Everything that does *not*
+ * change the glyphs themselves — where the name sits, its letter gaps, the pocket, the
  * base rail — is deliberately excluded and applied synchronously by
  * `assembleNameDisplay` below, so dragging the name never re-runs font
  * extrusion. (A flat-bottom trim does change the silhouette, so it belongs
@@ -181,14 +188,16 @@ export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): P
       fit: { mode: 'height', mm: config.initialHeightMm },
       extrudeDepthMm: config.initialDepthMm,
     }),
-    buildTextBlock({
-      id: 'name',
-      label: config.name,
-      lines: [config.name],
-      fontId: config.nameFontId,
-      fit: { mode: 'width', mm: config.nameWidthMm },
-      extrudeDepthMm: config.nameDepthMm,
-    }),
+    config.name.trim()
+      ? buildTextBlock({
+          id: 'name',
+          label: config.name,
+          lines: [config.name],
+          fontId: config.nameFontId,
+          fit: { mode: 'width', mm: config.nameWidthMm },
+          extrudeDepthMm: config.nameDepthMm,
+        })
+      : null,
     // However many ornaments are on the piece, each distinct face is parsed once
     // — loadFont caches by id, and all the icons share one font.
     Promise.all(
@@ -234,7 +243,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   const backDepth = config.initialDepthMm - pocketDepth;
   const face = blockRegion(blocks.initial, []);
   const placement = namePlacement(blocks, config);
-  const nameRegion = blockRegion(blocks.name, [config.nameLetterGapsMm], placement);
+  const nameRegion = blocks.name ? blockRegion(blocks.name, [config.nameLetterGapsMm], placement) : [];
 
   // Every inlaid piece cuts the same recess, at the same depth: they all seat on
   // the one pocket floor, so one subtraction covers the lot.
@@ -266,7 +275,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
     loosePieceIds(
       [
         { id: 'initial', region: face, zRange: [0, config.initialDepthMm], anchor: true },
-        { id: 'name', region: nameRegion, zRange: [backDepth, backDepth + config.nameDepthMm] },
+        ...(blocks.name ? [{ id: 'name', region: nameRegion, zRange: [backDepth, backDepth + config.nameDepthMm] } satisfies SolidPiece] : []),
         ...blocks.decorators.map(
           (decorator, i): SolidPiece => ({
             id: decorator.id,
@@ -281,7 +290,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
 
   return {
     initialGeometry: combineGeometries(parts),
-    protrusionMm: config.nameDepthMm - pocketDepth,
+    protrusionMm: blocks.name ? config.nameDepthMm - pocketDepth : 0,
     nameZMm: backDepth,
     heldByInitial: !loose.has('name'),
     namePlacement: placement,
@@ -333,6 +342,9 @@ export function initialRailGeometry(blocks: NameDisplayBlocks, config: NameDispl
  * pocket went.
  */
 export function namePrintGeometry(blocks: NameDisplayBlocks, config: NameDisplayConfig): THREE.BufferGeometry {
+  if (!blocks.name) {
+    throw new Error('This design has no name to print');
+  }
   const parts: THREE.BufferGeometry[] = [];
   for (const line of blocks.name.lines) {
     const cascade = cumulativeGaps(normalizedLetterGaps(line.letters.length, config.nameLetterGapsMm));
@@ -370,4 +382,3 @@ export function placedDecoratorGeometry(decorator: DecoratorBlock, assembly: Nam
 function placeInPocket(geometry: THREE.BufferGeometry, placement: Placement2D, zMm: number): THREE.BufferGeometry {
   return placeGeometry(geometry, placement, zMm);
 }
-

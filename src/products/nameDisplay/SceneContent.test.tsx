@@ -99,6 +99,17 @@ function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY:
 }
 
 describe('NameDisplayScene (React Three Fiber wiring)', () => {
+  it.each(['', '  '])('renders the initial without a name group (%j)', async (name) => {
+    const { renderer } = await renderScene({ name, standMode: 'rail' });
+    expect(directMeshes(root(renderer))).toHaveLength(2);
+    expect(root(renderer).children.filter((child) => child.type === 'Group')).toHaveLength(0);
+    const instance = root(renderer).instance as unknown as THREE.Object3D;
+    const bounds = new THREE.Box3().setFromObject(instance, true);
+    expect(bounds.isEmpty()).toBe(false);
+    expect(Number.isFinite(bounds.min.x)).toBe(true);
+    expect(Number.isFinite(bounds.max.x)).toBe(true);
+  }, 30000);
+
   it('renders the initial as one pocketed solid, in the initial color', async () => {
     const { renderer, assembly } = await renderScene();
     const meshes = directMeshes(root(renderer));

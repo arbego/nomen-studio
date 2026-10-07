@@ -14,6 +14,7 @@ import { STAND_MODE_LABELS } from '../../ui/controls/standModes';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
+import { inlayDepthsMm } from './config';
 
 const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
 
@@ -32,9 +33,11 @@ export function NameDisplayControls() {
   const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
   const { assembly, loading, error } = useNameDisplayGeometry();
 
+  const hasName = config.name.trim().length > 0;
+  const hasInlays = inlayDepthsMm(config).length > 0;
   const hasCustomGaps = config.nameLetterGapsMm.some((gap) => gap !== 0);
   const pocketDepth = effectivePocketDepthMm(config);
-  const pocketCapped = pocketDepth < config.pocketDepthMm;
+  const pocketCapped = hasInlays && pocketDepth < config.pocketDepthMm;
   // Computed once in the provider's assembly rather than re-running the
   // Clipper intersection on every render of this panel.
   const detached = assembly ? !assembly.heldByInitial : false;
@@ -72,43 +75,48 @@ export function NameDisplayControls() {
           <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />
         </CollapsibleSection>
 
-        <CollapsibleSection id={SECTIONS.name} title="Name" summary={config.name || 'Empty'} className={SECTION}>
+        <CollapsibleSection id={SECTIONS.name} title="Name" summary={hasName ? config.name : 'No name'} className={SECTION}>
           <FocusTarget focusKey={NAME_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
             <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
           </FocusTarget>
-          <FontField
-            label="Name font"
-            value={config.nameFontId}
-            onChange={(nameFontId) => onChange({ nameFontId })}
-            previewText={config.name || 'Liam'}
-            open={openFont === 'name'}
-            onOpenChange={(open) => setOpenFont(open ? 'name' : null)}
-          />
-          <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
-          <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
-          <SliderField
-            label="Angle"
-            value={config.nameAngleDeg}
-            onChange={(nameAngleDeg) => onChange({ nameAngleDeg })}
-            min={-45}
-            max={45}
-            unit="°"
-            hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
-          />
-          <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
-          <p className="flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
-            <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
-            {hasCustomGaps && (
-              <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
-                Reset spacing
-              </button>
-            )}
-          </p>
-          {detached && <p className="text-xs text-amber-700 dark:text-amber-400">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
+          <p className="text-xs text-stone-400 dark:text-stone-500">Leave empty for an initial with optional decorators only.</p>
+          {hasName && (
+            <>
+              <FontField
+                label="Name font"
+                value={config.nameFontId}
+                onChange={(nameFontId) => onChange({ nameFontId })}
+                previewText={config.name || 'Liam'}
+                open={openFont === 'name'}
+                onOpenChange={(open) => setOpenFont(open ? 'name' : null)}
+              />
+              <SliderField label="Width" value={config.nameWidthMm} onChange={(nameWidthMm) => onChange({ nameWidthMm })} min={60} max={300} />
+              <SliderField label="Thickness" value={config.nameDepthMm} onChange={(nameDepthMm) => onChange({ nameDepthMm })} min={2} max={15} step={0.5} />
+              <SliderField
+                label="Angle"
+                value={config.nameAngleDeg}
+                onChange={(nameAngleDeg) => onChange({ nameAngleDeg })}
+                min={-45}
+                max={45}
+                unit="°"
+                hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
+              />
+              <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
+              <p className="flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
+                <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
+                {hasCustomGaps && (
+                  <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+                    Reset spacing
+                  </button>
+                )}
+              </p>
+              {detached && <p className="text-xs text-amber-700 dark:text-amber-400">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
+            </>
+          )}
         </CollapsibleSection>
 
-        <CollapsibleSection id={SECTIONS.inlay} title="Inlay" summary={`${pocketDepth.toFixed(2)} mm deep`} className={SECTION}>
-          <p className="text-xs text-stone-400 dark:text-stone-500">The name is recessed into the initial's face, so the two pieces lock together. Print them in different filaments.</p>
+        <CollapsibleSection id={SECTIONS.inlay} title="Inlay" summary={hasInlays ? `${pocketDepth.toFixed(2)} mm deep` : 'No inlays'} className={SECTION}>
+          <p className="text-xs text-stone-400 dark:text-stone-500">Names and decorators are recessed into the initial's face, so the pieces lock together. Print them in different filaments.</p>
           <SliderField
             label="Pocket depth"
             value={config.pocketDepthMm}
@@ -118,8 +126,12 @@ export function NameDisplayControls() {
             step={0.25}
             hint={
               pocketCapped
-                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the name's thickness or cut through the initial.`
-                : `The name stands ${(config.nameDepthMm - pocketDepth).toFixed(2)} mm proud of the initial.`
+                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the thinnest inlay or cut through the initial.`
+                : hasName
+                  ? `The name stands ${(config.nameDepthMm - pocketDepth).toFixed(2)} mm proud of the initial.`
+                  : hasInlays
+                    ? 'Sets how deeply the decorators sit in the initial.'
+                    : 'Add a name or decorators to create inlay pockets.'
             }
           />
           <SliderField
@@ -129,7 +141,7 @@ export function NameDisplayControls() {
             min={0}
             max={1}
             step={0.05}
-            hint="How much larger the pocket is cut than the name, so the printed pieces actually go together."
+            hint="How much larger the inlay pockets and base socket are cut, so the printed pieces actually go together."
           />
         </CollapsibleSection>
 

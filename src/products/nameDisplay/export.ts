@@ -15,7 +15,7 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
     // drops into, so the two are printed separately and assembled, exactly as
     // the name and its pocket are. Hence its own part and its own color.
     ...(rail ? [{ name: 'Base rail', color: config.standColor, geometry: rail }] : []),
-    { name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) },
+    ...(blocks.name ? [{ name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) }] : []),
     // Each ornament prints as its own piece, dropping into its own recess, so
     // each is its own part rather than being merged into the name — and each
     // carries its own color, which is the whole point of being able to set one:
@@ -40,5 +40,5 @@ export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAss
  * printer does not, so it is worth a format that can carry it.
  */
 export function combined3mfBinary(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): Uint8Array {
-  return threeMfBinary(printObjects(blocks, assembly, config), `${config.initial} — ${config.name}`);
+  return threeMfBinary(printObjects(blocks, assembly, config), blocks.name ? `${config.initial} — ${config.name}` : config.initial);
 }

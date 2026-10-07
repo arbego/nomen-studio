@@ -15,7 +15,7 @@ export function NameDisplayExport() {
   const build = ready
     ? (): ExportFile => ({
         blob: threeMfBlob(combined3mfBinary(blocks, assembly, config)),
-        filename: `${slugifyFilename(config.name, 'name-display')}-display.3mf`,
+        filename: `${slugifyFilename(config.name.trim() || config.initial, 'name-display')}-display.3mf`,
       })
     : null;
 

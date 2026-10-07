@@ -54,7 +54,7 @@ describe('buildNameDisplay', () => {
     expect(initialBb.max.y - initialBb.min.y).toBeCloseTo(120, 0);
 
     const nameBb = new THREE.Box3();
-    for (const letter of built.blocks.name.lines[0].letters) {
+    for (const letter of built.blocks.name!.lines[0].letters) {
       nameBb.union(bounds(letter.geometry));
     }
     expect(nameBb.max.x - nameBb.min.x).toBeCloseTo(150, 0);
@@ -65,6 +65,19 @@ describe('buildNameDisplay', () => {
     const bb = bounds(built.initialGeometry);
     expect(bb.min.z).toBeCloseTo(0, 3);
     expect(bb.max.z).toBeCloseTo(12, 3);
+  }, 30000);
+
+  it.each(['', '   '])('builds a solid initial without a name or its font (%j)', async (name) => {
+    const built = await buildNameDisplay({ ...config, name, nameFontId: 'missing-name-font' });
+    expect(built.blocks.name).toBeNull();
+    expect(built.namePlacement).toEqual({});
+    expect(built.heldByInitial).toBe(true);
+    expect(built.protrusionMm).toBe(0);
+    expect(built.nameZMm).toBe(config.initialDepthMm);
+    expect(bounds(built.initialGeometry).max.z).toBeCloseTo(config.initialDepthMm, 3);
+    // The initial has no recess where the removed name used to sit.
+    const plain = await buildNameDisplay({ ...config, pocketDepthMm: 0 });
+    expect(built.initialGeometry.getAttribute('position').array).toEqual(plain.initialGeometry.getAttribute('position').array);
   }, 30000);
 
   it('seats the name in the pocket so it protrudes by depth minus pocket', async () => {
@@ -137,6 +150,15 @@ describe('effectivePocketDepthMm', () => {
 
   it('is never negative', () => {
     expect(effectivePocketDepthMm({ ...config, pocketDepthMm: -5 })).toBe(0);
+  });
+
+  it('cuts no pocket without inlays', () => {
+    expect(effectivePocketDepthMm({ ...config, name: '' })).toBe(0);
+  });
+
+  it('uses only decorator thicknesses when the name is absent', () => {
+    const decorated = { ...config, name: ' ', nameDepthMm: 1, pocketDepthMm: 4, decorators: [{ kind: 'icon' as const, id: 'star', iconName: 'star', widthMm: 25, depthMm: 5 }] };
+    expect(effectivePocketDepthMm(decorated)).toBe(4);
   });
 });
 
@@ -219,8 +241,8 @@ describe('print geometry', () => {
     const built = await buildNameDisplay(trimmed);
     const plain = await buildNameDisplay(withDescender);
 
-    const trimmedName = built.blocks.name.lines[0].letters.map((l) => bounds(l.geometry).min.y);
-    const plainName = plain.blocks.name.lines[0].letters.map((l) => bounds(l.geometry).min.y);
+    const trimmedName = built.blocks.name!.lines[0].letters.map((l) => bounds(l.geometry).min.y);
+    const plainName = plain.blocks.name!.lines[0].letters.map((l) => bounds(l.geometry).min.y);
     expect(trimmedName).toEqual(plainName);
 
     // The initial, which is the piece that actually stands, is cut.

@@ -78,27 +78,29 @@ export function NameDisplayScene({
       {initialRail && <StandMesh geometry={initialRail} color={config.standColor} />}
 
       {/* Seated at the pocket floor, so the name visibly sits *in* the initial and stands proud of it by exactly protrusionMm. */}
-      <group position={nameAnchor} rotation={[0, 0, rotationRad]}>
-        <TextBlockMesh
-          block={blocks.name}
-          color={config.nameColor}
-          position={[-pivot.x, -pivot.y, 0]}
-          letterGapsMm={[config.nameLetterGapsMm]}
-          onLetterGapCommit={(_lineIndex, gapIndex, gapMm) => onNameLetterGapCommit(gapIndex, gapMm)}
-          // The name is one line, so TextBlockMesh's own "drag the first letter to
-          // move the whole line" gesture is exactly "drag the name around".
-          lineOffsets={[{ x: 0, y: 0 }]}
-          // The drag delta is measured inside the rotated group, so it has to be
-          // turned back into the initial's frame before it can be added to the
-          // name's offset — otherwise dragging a tilted name would track the
-          // cursor at an angle.
-          onLineOffsetCommit={(_lineIndex, offset) => {
-            const delta = rotateOffset(offset, rotationRad);
-            onNameOffsetCommit({ x: config.nameOffset.x + delta.x, y: config.nameOffset.y + delta.y });
-          }}
-          onLetterTap={onNameTap && (() => onNameTap())}
-        />
-      </group>
+      {blocks.name && (
+        <group position={nameAnchor} rotation={[0, 0, rotationRad]}>
+          <TextBlockMesh
+            block={blocks.name}
+            color={config.nameColor}
+            position={[-pivot.x, -pivot.y, 0]}
+            letterGapsMm={[config.nameLetterGapsMm]}
+            onLetterGapCommit={(_lineIndex, gapIndex, gapMm) => onNameLetterGapCommit(gapIndex, gapMm)}
+            // The name is one line, so TextBlockMesh's own "drag the first letter to
+            // move the whole line" gesture is exactly "drag the name around".
+            lineOffsets={[{ x: 0, y: 0 }]}
+            // The drag delta is measured inside the rotated group, so it has to be
+            // turned back into the initial's frame before it can be added to the
+            // name's offset — otherwise dragging a tilted name would track the
+            // cursor at an angle.
+            onLineOffsetCommit={(_lineIndex, offset) => {
+              const delta = rotateOffset(offset, rotationRad);
+              onNameOffsetCommit({ x: config.nameOffset.x + delta.x, y: config.nameOffset.y + delta.y });
+            }}
+            onLetterTap={onNameTap && (() => onNameTap())}
+          />
+        </group>
+      )}
 
       {/* Each ornament seats on the same pocket floor as the name, is anchored
           and turned the same way, and drags the same way. dragMode="whole" is
