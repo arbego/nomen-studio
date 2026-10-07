@@ -1,3 +1,4 @@
+import { DEFAULT_NAME_DISPLAY_CONFIG } from './store';
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { assembleNameDisplay, buildNameDisplayBlocks, effectivePocketDepthMm, initialRailGeometry, namePrintGeometry } from './geometry';
@@ -5,6 +6,7 @@ import { pointIsInsideSolid } from '../../test-setup/pointInSolid';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
+  ...DEFAULT_NAME_DISPLAY_CONFIG,
   initial: 'M',
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,

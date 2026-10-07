@@ -4,7 +4,7 @@ import type { Offset2D } from '../../geometry/types';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { presetColor } from '../../ui/presets';
 import { iconDefaultWidthMm } from '../../icons/catalog';
-import { inlayDepthsMm, type DecoratorConfig, type DecoratorPlacementConfig, type IconDecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type TextDecoratorConfig } from './config';
+import { inlayDepthsMm, minimumHollowDepthMm, type DecoratorConfig, type DecoratorPlacementConfig, type IconDecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type TextDecoratorConfig } from './config';
 
 /** One gap slot per pair of adjacent letters, all starting untouched (0mm extra). */
 function defaultLetterGaps(name: string): number[] {
@@ -76,6 +76,11 @@ export const DEFAULT_NAME_DISPLAY_CONFIG: NameDisplayConfig = {
   initialHeightMm: 140,
   initialDepthMm: 12,
   initialColor: presetColor('sky'),
+  hollowEnabled: false,
+  wallThicknessMm: 2,
+  lidThicknessMm: 3,
+  lidClearanceMm: 0.25,
+  lidColor: presetColor('altrosa'),
 
   name: 'Liam',
   nameFontId: 'dancing-script',
@@ -115,6 +120,9 @@ reserveDecoratorIds(DEFAULT_NAME_DISPLAY_CONFIG.decorators);
 export type DecoratorPatch = Partial<Omit<IconDecoratorConfig, 'id' | 'kind'> & Omit<TextDecoratorConfig, 'id' | 'kind'>>;
 
 interface NameDisplayStore extends NameDisplayConfig {
+  /** Preview only: never changes the saved design or the assembled export. */
+  showLid: boolean;
+  setShowLid: (show: boolean) => void;
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
   setNameOffset: (offset: Offset2D) => void;
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
@@ -134,11 +142,17 @@ interface NameDisplayStore extends NameDisplayConfig {
 
 export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   ...DEFAULT_NAME_DISPLAY_CONFIG,
+  showLid: true,
+  setShowLid: (showLid) => set({ showLid }),
   setConfig: (partial) =>
     set((state) => {
       // Both corrections below have to compose, not pick one: a single call can
       // change the name *and* its thickness.
       const next: Partial<NameDisplayConfig> = { ...partial };
+      const proposed = { ...state, ...partial };
+      if (proposed.hollowEnabled) {
+        next.initialDepthMm = Math.max(proposed.initialDepthMm, Math.ceil(minimumHollowDepthMm(proposed)));
+      }
 
       // Per-letter gap tweaks are a fine-tuning pass over specific glyph shapes
       // at specific positions, so a different string or a different face makes
@@ -227,9 +241,9 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {
     reserveDecoratorIds(config.decorators);
-    set(config);
+    set({ ...config, showLid: true });
   },
-  reset: () => set(DEFAULT_NAME_DISPLAY_CONFIG),
+  reset: () => set({ ...DEFAULT_NAME_DISPLAY_CONFIG, showLid: true }),
 }));
 
 /** Only what changes the glyphs — the async build's key. Excludes the name's position and gaps on purpose, so dragging it never re-extrudes the fonts. */
@@ -253,6 +267,11 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railMarginMm,
     railSocketDepthMm,
     initialColor,
+    hollowEnabled,
+    wallThicknessMm,
+    lidThicknessMm,
+    lidClearanceMm,
+    lidColor,
     nameColor,
     standColor,
   } = state;
@@ -270,6 +289,11 @@ export function selectNameDisplayConfig(state: NameDisplayStore): NameDisplayCon
     railMarginMm,
     railSocketDepthMm,
     initialColor,
+    hollowEnabled,
+    wallThicknessMm,
+    lidThicknessMm,
+    lidClearanceMm,
+    lidColor,
     nameColor,
     standColor,
   };

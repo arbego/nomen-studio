@@ -50,6 +50,16 @@ the build: `npm run fonts:catalog` (every Google Fonts family) and
   icon is a glyph, so both kinds go down the one text pipeline. Exports one 3MF
   holding every piece as a separate, named, colored object, already fitted
   together — see below for why not an STL.
+  Enable **Hollow initial** to turn the letter into a storage bowl with a
+  removable lid, flush inside the rim. Wall thickness also sets the back floor;
+  the lid has its own thickness, fit clearance and color. Its internal support
+  ledge rises inward at 45°, so the bowl can print back-down and the lid
+  underside-down as separate pieces without support beneath the ledge. Name
+  and decorator pockets continue across the closed front face, capped to leave
+  material beneath them in the lid. **Show lid in preview** reveals the cavity;
+  the 3MF always exports the fitted bowl, lid and inlays as separate colored
+  parts. Counters stay open, and narrow strokes can stay solid or divide the
+  cavity into separate compartments and lids.
 
 ## Dark mode
 

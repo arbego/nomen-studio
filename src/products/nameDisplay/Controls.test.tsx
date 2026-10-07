@@ -9,7 +9,7 @@ import { usePanelStore } from '../../ui/panelStore';
 import { NameDisplayControls } from './Controls';
 import { NameDisplayExport } from './ExportAction';
 import { NameDisplayProvider } from './Provider';
-import { useNameDisplayStore } from './store';
+import { selectNameDisplayConfig, useNameDisplayStore } from './store';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -28,6 +28,7 @@ beforeEach(() => {
   useNameDisplayStore.getState().reset();
   usePanelStore.getState().reset();
   usePanelStore.getState().setOpen('name', true);
+  usePanelStore.getState().setOpen('hollow', true);
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -60,15 +61,66 @@ async function waitForExport() {
   });
 }
 
+async function mountEditor() {
+  await act(async () => root.render(
+    <NameDisplayProvider>
+      <NameDisplayControls />
+      <NameDisplayExport />
+    </NameDisplayProvider>,
+  ));
+  await waitForExport();
+}
+
+function checkbox(text: string): HTMLInputElement {
+  return [...container.querySelectorAll('label')].find((label) => label.textContent?.includes(text))!.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+}
+
+function blobText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+describe('hollow initial in the editor', () => {
+  it('enables the bowl and lid, exposes their controls, and exports the lid even when hidden', async () => {
+    await mountEditor();
+    act(() => checkbox('Hollow initial with lid').click());
+    await waitForExport();
+    expect(useNameDisplayStore.getState().hollowEnabled).toBe(true);
+    expect(container.textContent).toContain('Wall thickness');
+    expect(container.textContent).toContain('Bowl color');
+    expect(container.textContent).toContain('Lid color');
+    const before = selectNameDisplayConfig(useNameDisplayStore.getState());
+    act(() => checkbox('Show lid in preview').click());
+    expect(useNameDisplayStore.getState().showLid).toBe(false);
+    expect(selectNameDisplayConfig(useNameDisplayStore.getState())).toEqual(before);
+    act(() => exportButton().click());
+    const text = await blobText(vi.mocked(saveAs).mock.calls.at(-1)![0] as Blob);
+    expect(text).toContain('value="L (bowl)"');
+    expect(text).toContain('value="L (lid)"');
+    expect(text).toContain('value="Liam (name)"');
+  });
+
+  it('reports an unusably narrow cavity and recovers when hollowing is disabled', async () => {
+    await mountEditor();
+    act(() => useNameDisplayStore.getState().setConfig({ hollowEnabled: true, initial: 'I', initialFontId: 'dancing-script', initialHeightMm: 10, wallThicknessMm: 10 }));
+    await vi.waitFor(async () => {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+      expect(container.textContent).toContain('no room for a hollow initial');
+    });
+    expect(exportButton().disabled).toBe(true);
+    act(() => checkbox('Hollow initial with lid').click());
+    await waitForExport();
+    expect(container.textContent).not.toContain('no room for a hollow initial');
+  });
+});
+
 describe('optional name in the editor', () => {
   it.each(['', '   '])('can clear the name, export, and type a new name (%j)', async (name) => {
-    await act(async () => root.render(
-      <NameDisplayProvider>
-        <NameDisplayControls />
-        <NameDisplayExport />
-      </NameDisplayProvider>,
-    ));
-    await waitForExport();
+    await mountEditor();
     expect(container.textContent).toContain('Name font');
 
     changeName(name);

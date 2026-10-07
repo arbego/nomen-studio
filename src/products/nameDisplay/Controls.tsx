@@ -14,7 +14,8 @@ import { STAND_MODE_LABELS } from '../../ui/controls/standModes';
 import { useNameDisplayStore, selectNameDisplayConfig } from './store';
 import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
-import { inlayDepthsMm } from './config';
+import { inlayDepthsMm, minimumHollowDepthMm } from './config';
+import { DesignInput } from '../../ui/DesignHistory';
 
 const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
 
@@ -31,6 +32,8 @@ export function NameDisplayControls() {
   const removeDecorator = useNameDisplayStore((s) => s.removeDecorator);
   const setDecoratorAngle = useNameDisplayStore((s) => s.setDecoratorAngle);
   const setDecoratorColor = useNameDisplayStore((s) => s.setDecoratorColor);
+  const showLid = useNameDisplayStore((s) => s.showLid);
+  const setShowLid = useNameDisplayStore((s) => s.setShowLid);
   const { assembly, loading, error } = useNameDisplayGeometry();
 
   const hasName = config.name.trim().length > 0;
@@ -67,12 +70,34 @@ export function NameDisplayControls() {
             label="Thickness"
             value={config.initialDepthMm}
             onChange={(initialDepthMm) => onChange({ initialDepthMm })}
-            min={5}
+            min={config.hollowEnabled ? Math.ceil(minimumHollowDepthMm(config)) : 5}
             max={100}
             step={1}
-            hint="The initial is the structural piece — it holds the name and keeps the display upright."
+            hint={config.hollowEnabled ? 'Includes the floor, storage cavity and lid. Increase this for more space inside.' : 'The initial is the structural piece — it holds the name and keeps the display upright.'}
           />
-          <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />
+          {!config.hollowEnabled && <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Initial color" variant="field" />}
+        </CollapsibleSection>
+
+        <CollapsibleSection id={SECTIONS.hollow} title="Hollow initial" summary={config.hollowEnabled ? 'Bowl + lid' : 'Solid'} className={SECTION}>
+          <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
+            <span>Hollow initial with lid</span>
+            <DesignInput type="checkbox" checked={config.hollowEnabled} onChange={(event) => onChange({ hollowEnabled: event.target.checked })} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
+          </label>
+          {config.hollowEnabled && (
+            <>
+              <p className="text-xs text-stone-400 dark:text-stone-500">A removable lid sits flush inside the rim on a 45° support ramp. Print the bowl back-down and the lid underside-down as separate pieces.</p>
+              <SliderField label="Wall thickness" value={config.wallThicknessMm} onChange={(wallThicknessMm) => onChange({ wallThicknessMm })} min={0.8} max={10} step={0.2} hint="Applies to the bowl's walls and back floor. Narrow strokes stay solid." />
+              <SliderField label="Lid thickness" value={config.lidThicknessMm} onChange={(lidThicknessMm) => onChange({ lidThicknessMm })} min={1} max={10} step={0.2} hint="Name and decorator pockets are limited to leave a solid lid underneath." />
+              <SliderField label="Lid clearance" value={config.lidClearanceMm} onChange={(lidClearanceMm) => onChange({ lidClearanceMm })} min={0} max={1} step={0.05} hint="The gap all round the lid. Increase it for an easier fit." />
+              <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Bowl color" variant="field" />
+              <ColorSwatchPicker value={config.lidColor} onChange={(lidColor) => onChange({ lidColor })} label="Lid color" variant="field" />
+              <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
+                <span>Show lid in preview</span>
+                <input type="checkbox" checked={showLid} onChange={(event) => setShowLid(event.target.checked)} className="h-4 w-4 accent-stone-800 dark:accent-stone-300" />
+              </label>
+              {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Hiding the lid also hides its lettering in the preview; export includes every part.</p>}
+            </>
+          )}
         </CollapsibleSection>
 
         <CollapsibleSection id={SECTIONS.name} title="Name" summary={hasName ? config.name : 'No name'} className={SECTION}>
@@ -126,7 +151,7 @@ export function NameDisplayControls() {
             step={0.25}
             hint={
               pocketCapped
-                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the thinnest inlay or cut through the initial.`
+                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the thinnest inlay or cut through the ${config.hollowEnabled ? 'lid' : 'initial'}.`
                 : hasName
                   ? `The name stands ${(config.nameDepthMm - pocketDepth).toFixed(2)} mm proud of the initial.`
                   : hasInlays

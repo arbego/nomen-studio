@@ -97,6 +97,13 @@ export interface NameDisplayBlocksConfig {
 
 /** The fields applied synchronously on top of the built blocks — all cheap enough to re-run on every drag commit. */
 export interface NameDisplayAssemblyConfig {
+  /** Turns the initial into a bowl with a separate, flush-fitting lid. */
+  hollowEnabled: boolean;
+  /** Thickness of the bowl's perimeter walls and back floor. */
+  wallThicknessMm: number;
+  lidThicknessMm: number;
+  /** Clearance all round the lid, independent of the lettering's fit. */
+  lidClearanceMm: number;
   /** Where the name sits on the initial, in the initial's own local mm space — draggable in the preview. */
   nameOffset: Offset2D;
   /** Extra per-letter-gap shift within the name, exactly as the cake topper's letterGapsMm works (one array, since the name is a single line). */
@@ -150,6 +157,7 @@ export interface NameDisplayAssemblyConfig {
 export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayAssemblyConfig {
   /** Cosmetic only — the physical colors come from the filaments. */
   initialColor: string;
+  lidColor: string;
   nameColor: string;
   /**
    * The base rail's own color. It prints as a piece of its own, with a socket
@@ -167,6 +175,17 @@ export interface NameDisplayConfig extends NameDisplayBlocksConfig, NameDisplayA
    * `decoratorColor`.
    */
   decoratorColors: Record<string, string>;
+}
+
+/** The ledge extends this far inward, rising by the same amount for a 45° ramp. */
+export const HOLLOW_LEDGE_WIDTH_MM = 1.2;
+/** Solid material above the ramp, avoiding a fragile knife edge at the seat. */
+export const HOLLOW_LEDGE_WEB_MM = 0.4;
+export const MIN_HOLLOW_CAVITY_DEPTH_MM = 1;
+
+/** Leaves room for the floor, cavity, support ramp and lid within the initial. */
+export function minimumHollowDepthMm(config: Pick<NameDisplayConfig, 'wallThicknessMm' | 'lidThicknessMm'>): number {
+  return config.wallThicknessMm + MIN_HOLLOW_CAVITY_DEPTH_MM + HOLLOW_LEDGE_WIDTH_MM + HOLLOW_LEDGE_WEB_MM + config.lidThicknessMm;
 }
 
 /** Thicknesses of the inlays that actually exist, excluding blank text. */

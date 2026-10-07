@@ -10,11 +10,12 @@ import { decoratorColor, type NameDisplayConfig } from './config';
 export function printObjects(blocks: NameDisplayBlocks, assembly: NameDisplayAssembly, config: NameDisplayConfig): ThreeMfObject[] {
   const rail = initialRailGeometry(blocks, config);
   return [
-    { name: `${config.initial} (initial)`, color: config.initialColor, geometry: assembly.initialGeometry },
+    { name: `${config.initial} (${assembly.lidGeometry ? 'bowl' : 'initial'})`, color: config.initialColor, geometry: assembly.initialGeometry },
     // A piece in its own right: it has a socket cut into it that the initial
     // drops into, so the two are printed separately and assembled, exactly as
     // the name and its pocket are. Hence its own part and its own color.
     ...(rail ? [{ name: 'Base rail', color: config.standColor, geometry: rail }] : []),
+    ...(assembly.lidGeometry ? [{ name: `${config.initial} (lid)`, color: config.lidColor, geometry: assembly.lidGeometry }] : []),
     ...(blocks.name ? [{ name: `${config.name} (name)`, color: config.nameColor, geometry: placedNameGeometry(blocks, assembly, config) }] : []),
     // Each ornament prints as its own piece, dropping into its own recess, so
     // each is its own part rather than being merged into the name — and each

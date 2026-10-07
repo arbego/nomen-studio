@@ -18,8 +18,14 @@ export function NameDisplayProvider({ children }: { children: ReactNode }) {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
   const { result: blocks, loading, error } = useAsyncGeometry(blocksConfig, buildNameDisplayBlocks);
 
-  const assembly = useMemo(() => (blocks ? assembleNameDisplay(blocks, config) : null), [blocks, config]);
-  const value = useMemo(() => ({ blocks, assembly, loading, error }), [blocks, assembly, loading, error]);
+  const built = useMemo(() => {
+    try {
+      return { assembly: blocks ? assembleNameDisplay(blocks, config) : null, error: null };
+    } catch (failure) {
+      return { assembly: null, error: failure instanceof Error ? failure.message : 'Failed to build the initial.' };
+    }
+  }, [blocks, config]);
+  const value = useMemo(() => ({ blocks, assembly: built.assembly, loading, error: error ?? built.error }), [blocks, built, loading, error]);
 
   return <NameDisplayGeometryContext.Provider value={value}>{children}</NameDisplayGeometryContext.Provider>;
 }

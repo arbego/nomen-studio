@@ -10,6 +10,7 @@ import { baseRailGeometry, trimBlockBelow, trimCutY } from '../../geometry/baseG
 import { degToRad, placeGeometry, type Placement2D } from '../../geometry/placement';
 import { buildIconBlock } from '../../icons/iconBlock';
 import { inlayDepthsMm, type DecoratorConfig, type NameDisplayBlocksConfig, type NameDisplayConfig, type NameDisplayAssemblyConfig } from './config';
+import { buildHollowInitial, initializeHollowGeometry } from './hollowGeometry';
 
 const ORIGIN: Offset2D = { x: 0, y: 0 };
 
@@ -61,6 +62,9 @@ export interface DecoratorPlacement {
 export interface NameDisplayAssembly {
   /** The initial's full solid, pocket included. */
   initialGeometry: THREE.BufferGeometry;
+  /** Present only when the initial is hollow; fitted in the same coordinate frame. */
+  lidGeometry: THREE.BufferGeometry | null;
+  cavityDepthMm: number;
   /** How far the name stands proud of the initial's front face, in mm. */
   protrusionMm: number;
   /** The z at which the name's own extrusion starts — the pocket floor. */
@@ -84,7 +88,8 @@ export function effectivePocketDepthMm(config: NameDisplayConfig): number {
   if (depths.length === 0) {
     return 0;
   }
-  const cap = Math.min(config.initialDepthMm * MAX_POCKET_FRACTION, ...depths);
+  const faceThickness = config.hollowEnabled ? config.lidThicknessMm : config.initialDepthMm;
+  const cap = Math.min(faceThickness * MAX_POCKET_FRACTION, ...depths);
   return Math.max(0, Math.min(config.pocketDepthMm, cap));
 }
 
@@ -179,6 +184,7 @@ export function decoratorHasInk(decorator: DecoratorConfig): boolean {
  * here.)
  */
 export async function buildNameDisplayBlocks(config: NameDisplayBlocksConfig): Promise<NameDisplayBlocks> {
+  await initializeHollowGeometry();
   const [rawInitial, rawName, decorators] = await Promise.all([
     buildTextBlock({
       id: 'initial',
@@ -249,21 +255,20 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   // the one pocket floor, so one subtraction covers the lot.
   const decoratorRegions = blocks.decorators.map((decorator) => blockRegion(decorator.block, [], decoratorPlacement(decorator, config)));
   const inlayRegion: Region = [...nameRegion, ...decoratorRegions.flat()];
+  const hollow = config.hollowEnabled ? buildHollowInitial(face, inlayRegion, config, pocketDepth) : null;
 
   const parts: THREE.BufferGeometry[] = [];
-  const backSlab = extrudeMmShapes(regionToShapes(face), backDepth);
-  if (backSlab) {
-    parts.push(backSlab);
-  }
-
-  if (pocketDepth > 0) {
-    const frontShapes = regionToShapes(subtractRegions(face, growRegion(inlayRegion, config.pocketClearanceMm)));
-    // Started just below the back slab's top so the two overlap; the pocket
-    // floor still lands exactly at backDepth, since that is the back slab's top.
-    const frontSlab = extrudeMmShapes(frontShapes, pocketDepth + SLAB_OVERLAP_MM);
-    if (frontSlab) {
-      frontSlab.translate(0, 0, backDepth - SLAB_OVERLAP_MM);
-      parts.push(frontSlab);
+  if (!hollow) {
+    const backSlab = extrudeMmShapes(regionToShapes(face), backDepth);
+    if (backSlab) parts.push(backSlab);
+    if (pocketDepth > 0) {
+      const frontShapes = regionToShapes(subtractRegions(face, growRegion(inlayRegion, config.pocketClearanceMm)));
+      // Overlap the two slabs while leaving the pocket floor at backDepth.
+      const frontSlab = extrudeMmShapes(frontShapes, pocketDepth + SLAB_OVERLAP_MM);
+      if (frontSlab) {
+        frontSlab.translate(0, 0, backDepth - SLAB_OVERLAP_MM);
+        parts.push(frontSlab);
+      }
     }
   }
 
@@ -274,7 +279,7 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   const loose = new Set(
     loosePieceIds(
       [
-        { id: 'initial', region: face, zRange: [0, config.initialDepthMm], anchor: true },
+        { id: 'initial', region: hollow?.supportRegion ?? face, zRange: [0, config.initialDepthMm], anchor: true },
         ...(blocks.name ? [{ id: 'name', region: nameRegion, zRange: [backDepth, backDepth + config.nameDepthMm] } satisfies SolidPiece] : []),
         ...blocks.decorators.map(
           (decorator, i): SolidPiece => ({
@@ -289,7 +294,9 @@ export function assembleNameDisplay(blocks: NameDisplayBlocks, config: NameDispl
   );
 
   return {
-    initialGeometry: combineGeometries(parts),
+    initialGeometry: hollow?.bowlGeometry ?? combineGeometries(parts),
+    lidGeometry: hollow?.lidGeometry ?? null,
+    cavityDepthMm: hollow?.cavityDepthMm ?? 0,
     protrusionMm: blocks.name ? config.nameDepthMm - pocketDepth : 0,
     nameZMm: backDepth,
     heldByInitial: !loose.has('name'),

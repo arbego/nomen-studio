@@ -15,11 +15,13 @@ interface NameDisplaySceneProps {
   blocks: NameDisplayBlocks;
   assembly: NameDisplayAssembly;
   config: NameDisplayConfig;
+  showLid?: boolean;
   onNameOffsetCommit: (offset: { x: number; y: number }) => void;
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void;
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void;
   /** A piece was clicked rather than dragged — the product points at the controls that shape it. */
   onInitialTap?: () => void;
+  onLidTap?: () => void;
   onNameTap?: () => void;
   onDecoratorTap?: (id: string) => void;
 }
@@ -35,10 +37,12 @@ export function NameDisplayScene({
   blocks,
   assembly,
   config,
+  showLid = true,
   onNameOffsetCommit,
   onNameLetterGapCommit,
   onDecoratorOffsetCommit,
   onInitialTap,
+  onLidTap,
   onNameTap,
   onDecoratorTap,
 }: NameDisplaySceneProps) {
@@ -46,6 +50,7 @@ export function NameDisplayScene({
   // its pointer handlers do — and because it never captures the pointer or
   // suspends the controls, orbiting the view from the letter still works.
   const initialTap = useTapGesture();
+  const lidTap = useTapGesture();
   // Memoized because it allocates: React Three Fiber never disposes a geometry
   // handed to it via the `geometry` prop, so rebuilding it on every render
   // (a slider drag is dozens per second) would leak GPU buffers. Only the
@@ -58,6 +63,7 @@ export function NameDisplayScene({
   // at `-pivot` reproduces `R(p - pivot) + pivot + offset` — placePoint's rule.
   const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.namePlacement;
   const nameAnchor: [number, number, number] = [translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm];
+  const showInlays = !assembly.lidGeometry || showLid;
 
   return (
     <group>
@@ -76,9 +82,20 @@ export function NameDisplayScene({
         <meshStandardMaterial color={config.initialColor} roughness={0.55} metalness={0.05} />
       </mesh>
       {initialRail && <StandMesh geometry={initialRail} color={config.standColor} />}
+      {assembly.lidGeometry && showLid && (
+        <mesh
+          geometry={assembly.lidGeometry}
+          castShadow
+          receiveShadow
+          onPointerDown={onLidTap && ((event) => lidTap.press(event))}
+          onPointerUp={onLidTap && ((event) => { if (lidTap.release(event)) onLidTap(); })}
+        >
+          <meshStandardMaterial color={config.lidColor} roughness={0.55} metalness={0.05} />
+        </mesh>
+      )}
 
       {/* Seated at the pocket floor, so the name visibly sits *in* the initial and stands proud of it by exactly protrusionMm. */}
-      {blocks.name && (
+      {showInlays && blocks.name && (
         <group position={nameAnchor} rotation={[0, 0, rotationRad]}>
           <TextBlockMesh
             block={blocks.name}
@@ -106,7 +123,7 @@ export function NameDisplayScene({
           and turned the same way, and drags the same way. dragMode="whole" is
           what makes a word ornament grabbable anywhere along it: an ornament is
           placed, not kerned, so it has no gaps of its own to retune. */}
-      {blocks.decorators.map((decorator, i) => {
+      {showInlays && blocks.decorators.map((decorator, i) => {
         const { rotationRad = 0, pivot = { x: 0, y: 0 }, translate = { x: 0, y: 0 } } = assembly.decorators[i].placement;
         return (
           <group key={decorator.id} position={[translate.x + pivot.x, translate.y + pivot.y, assembly.nameZMm]} rotation={[0, 0, rotationRad]}>
@@ -137,6 +154,7 @@ export function NameDisplayScene({
 /** The name display's scene as the product registry mounts it. */
 export function NameDisplaySceneContent() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
+  const showLid = useNameDisplayStore((s) => s.showLid);
   const setNameOffset = useNameDisplayStore((s) => s.setNameOffset);
   const setNameLetterGap = useNameDisplayStore((s) => s.setNameLetterGap);
   const setDecoratorOffset = useNameDisplayStore((s) => s.setDecoratorOffset);
@@ -152,10 +170,12 @@ export function NameDisplaySceneContent() {
       blocks={blocks}
       assembly={assembly}
       config={config}
+      showLid={showLid}
       onNameOffsetCommit={setNameOffset}
       onNameLetterGapCommit={setNameLetterGap}
       onDecoratorOffsetCommit={setDecoratorOffset}
       onInitialTap={() => focus(SECTIONS.initial, INITIAL_FOCUS_KEY)}
+      onLidTap={() => focus(SECTIONS.hollow)}
       onNameTap={() => focus(SECTIONS.name, NAME_FOCUS_KEY)}
       onDecoratorTap={(id) => focus(SECTIONS.decorators, decoratorFocusKey(id))}
     />

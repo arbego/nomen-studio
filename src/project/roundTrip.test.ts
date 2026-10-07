@@ -44,6 +44,24 @@ function resetWithoutDecorators() {
 }
 
 describe('name display round trip', () => {
+  it('preserves the hollow bowl and lid settings while excluding the open-lid preview', () => {
+    resetWithoutDecorators();
+    const store = useNameDisplayStore.getState();
+    store.setConfig({ hollowEnabled: true, initialDepthMm: 30, wallThicknessMm: 2.6, lidThicknessMm: 3.4, lidClearanceMm: 0.3, initialColor: '#f7f5f2', lidColor: '#d9a9ab' });
+    store.setShowLid(false);
+    const { saved, loaded } = roundTrip('name-display');
+    expect(loaded).toEqual(saved);
+    expect(loaded).not.toHaveProperty('showLid');
+    expect(useNameDisplayStore.getState().showLid).toBe(true);
+  });
+
+  it('keeps older projects solid and repairs impossible hollow dimensions', () => {
+    expect(parseNameDisplayConfig({ name: 'Mia' }).hollowEnabled).toBe(false);
+    const parsed = parseNameDisplayConfig({ hollowEnabled: true, initialDepthMm: 2, wallThicknessMm: 10, lidThicknessMm: 10, lidClearanceMm: 20 });
+    expect(parsed.initialDepthMm).toBeGreaterThan(parsed.wallThicknessMm + parsed.lidThicknessMm);
+    expect(parsed.lidClearanceMm).toBe(1);
+  });
+
   it.each(['', '   '])('preserves a nameless design and names its project after the initial (%j)', (name) => {
     resetWithoutDecorators();
     const store = useNameDisplayStore.getState();

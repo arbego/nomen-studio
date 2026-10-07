@@ -1,3 +1,4 @@
+import { DEFAULT_NAME_DISPLAY_CONFIG } from './store';
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, namePrintGeometry, placedNameGeometry } from './geometry';
@@ -7,6 +8,7 @@ import { pointIsInsideSolid } from '../../test-setup/pointInSolid';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
+  ...DEFAULT_NAME_DISPLAY_CONFIG,
   initial: 'M',
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,
@@ -112,6 +114,24 @@ describe('placing the name for export', () => {
 });
 
 describe('what the name display puts in the file', () => {
+  it('exports the hollow bowl and fitted lid as separate, colored parts', async () => {
+    const built = await build({ hollowEnabled: true, initialDepthMm: 30, lidColor: '#b7c4ac' });
+    const objects = printObjects(built.blocks, built.assembly, built.config);
+    expect(objects.map((object) => object.name)).toEqual(['M (bowl)', 'M (lid)', 'Matilde (name)']);
+    expect(objects.map((object) => object.color)).toEqual(['#d9a9ab', '#b7c4ac', '#f7f5f2']);
+    expect(bounds(objects[1].geometry).min.z).toBeCloseTo(built.config.initialDepthMm - built.config.lidThicknessMm, 4);
+    expect(bounds(objects[1].geometry).max.z).toBeCloseTo(built.config.initialDepthMm, 4);
+    const text = new TextDecoder().decode(combined3mfBinary(built.blocks, built.assembly, built.config));
+    expect(text).toContain('value="M (bowl)"');
+    expect(text).toContain('value="M (lid)"');
+    expect(text).toContain('#B7C4AC');
+  }, 30000);
+
+  it('exports a nameless hollow initial, lid and base rail', async () => {
+    const built = await build({ name: '', hollowEnabled: true, initialDepthMm: 30, standMode: 'rail' });
+    expect(printObjects(built.blocks, built.assembly, built.config).map((object) => object.name)).toEqual(['M (bowl)', 'Base rail', 'M (lid)']);
+  }, 30000);
+
   it('keeps the rail and decorated pockets when the name is absent', async () => {
     const built = await build({
       name: '',

@@ -1,3 +1,4 @@
+import { DEFAULT_NAME_DISPLAY_CONFIG } from './store';
 import { describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import ReactThreeTestRenderer from '@react-three/test-renderer';
@@ -10,6 +11,7 @@ import { placePoint } from '../../geometry/placement';
 import type { NameDisplayConfig } from './config';
 
 const config: NameDisplayConfig = {
+  ...DEFAULT_NAME_DISPLAY_CONFIG,
   initial: 'M',
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,
@@ -42,13 +44,14 @@ async function renderScene(
   onNameOffsetCommit: (offset: { x: number; y: number }) => void = () => {},
   onNameLetterGapCommit: (gapIndex: number, gapMm: number) => void = () => {},
   onDecoratorOffsetCommit: (id: string, offset: { x: number; y: number }) => void = () => {},
-  taps: { onInitialTap?: () => void; onNameTap?: () => void; onDecoratorTap?: (id: string) => void } = {},
+  taps: { onInitialTap?: () => void; onLidTap?: () => void; onNameTap?: () => void; onDecoratorTap?: (id: string) => void } = {},
+  showLid = true,
 ) {
   const merged = { ...config, ...overrides };
   const blocks = await buildNameDisplayBlocks(merged);
   const assembly = assembleNameDisplay(blocks, merged);
   const renderer = await ReactThreeTestRenderer.create(
-    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} {...taps} />,
+    <NameDisplayScene blocks={blocks} assembly={assembly} config={merged} showLid={showLid} onNameOffsetCommit={onNameOffsetCommit} onNameLetterGapCommit={onNameLetterGapCommit} onDecoratorOffsetCommit={onDecoratorOffsetCommit} {...taps} />,
   );
   return { renderer, blocks, assembly, config: merged };
 }
@@ -99,6 +102,26 @@ function pointerEventAt(referenceObject: THREE.Object3D, localX: number, localY:
 }
 
 describe('NameDisplayScene (React Three Fiber wiring)', () => {
+  it('renders the hollow bowl and fitted lid in their own colors', async () => {
+    const { renderer, assembly } = await renderScene({ hollowEnabled: true, initialDepthMm: 30, lidColor: '#b7c4ac' });
+    const meshes = directMeshes(root(renderer));
+    expect(meshes).toHaveLength(2);
+    const bowl = meshes[0].instance as unknown as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    const lid = meshes[1].instance as unknown as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    expect(bowl.geometry).toBe(assembly.initialGeometry);
+    expect(lid.geometry).toBe(assembly.lidGeometry);
+    expect(bowl.material.color.getHexString()).toBe('d9a9ab');
+    expect(lid.material.color.getHexString()).toBe('b7c4ac');
+  }, 30000);
+
+  it('reveals the bowl without the lid or its inlays when the preview is open', async () => {
+    const { renderer, assembly } = await renderScene({ hollowEnabled: true, initialDepthMm: 30 }, undefined, undefined, undefined, {}, false);
+    expect(directMeshes(root(renderer))).toHaveLength(1);
+    expect(root(renderer).children.filter((child) => child.type === 'Group')).toHaveLength(0);
+    // The lid still exists for export; this changes only what is drawn.
+    expect(assembly.lidGeometry).not.toBeNull();
+  }, 30000);
+
   it.each(['', '  '])('renders the initial without a name group (%j)', async (name) => {
     const { renderer } = await renderScene({ name, standMode: 'rail' });
     expect(directMeshes(root(renderer))).toHaveLength(2);
@@ -416,6 +439,16 @@ describe('clicking a piece of the display rather than dragging it', () => {
     await act(async () => (letter.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 481, y: 360 })));
 
     expect(onNameTap).toHaveBeenCalledTimes(1);
+  }, 30000);
+
+  it('points at the hollow controls when the lid is clicked', async () => {
+    const onLidTap = vi.fn();
+    const { renderer } = await renderScene({ hollowEnabled: true, initialDepthMm: 30 }, undefined, undefined, undefined, { onLidTap });
+    const lid = directMeshes(root(renderer))[1];
+    const object = lid.instance as unknown as THREE.Object3D;
+    await act(async () => (lid.props.onPointerDown as Handler)(pointerEventAt(object, 0, 0, { x: 400, y: 300 })));
+    await act(async () => (lid.props.onPointerUp as Handler)(pointerEventAt(object, 0, 0, { x: 400, y: 300 })));
+    expect(onLidTap).toHaveBeenCalledTimes(1);
   }, 30000);
 
   it('points at the one ornament that was clicked, by its own id', async () => {

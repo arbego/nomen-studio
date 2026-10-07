@@ -61,7 +61,7 @@ describe('share URLs', () => {
 
   it('preserves the complete design after loading reorders JSON object keys', async () => {
     const product = getProduct('name-display')!;
-    const original = { design: LIAM_DESIGN };
+    const original = { design: { ...DEFAULT_NAME_DISPLAY_CONFIG, ...LIAM_DESIGN } };
     const captured = { ...product, project: { ...product.project, snapshot: () => ({ name: 'Liam', design: original!.design }) } };
     const before = await createShareUrl(captured, 'https://studio.example/');
     product.project.load(original!.design);
@@ -88,13 +88,30 @@ describe('share URLs', () => {
 
   it('preserves a name display with no name', async () => {
     const product = getProduct('name-display')!;
-    const design = { ...LIAM_DESIGN, name: '', nameLetterGapsMm: [] };
+    const design = { ...DEFAULT_NAME_DISPLAY_CONFIG, ...LIAM_DESIGN, name: '', nameLetterGapsMm: [] };
     product.project.load(design);
     const url = await createShareUrl(product, 'https://studio.example/');
     const shared = await readSharedProject(url, known);
     expect(shared?.design).toEqual(design);
     product.project.load(shared!.design);
     expect(product.project.snapshot().design).toEqual(design);
+  });
+
+  it('preserves a hollow bowl, lid, colors and dimensions through sharing', async () => {
+    const product = getProduct('name-display')!;
+    const design = { ...DEFAULT_NAME_DISPLAY_CONFIG, hollowEnabled: true, initialDepthMm: 35, wallThicknessMm: 2.4, lidThicknessMm: 3.6, lidClearanceMm: 0.35, lidColor: '#d9a9ab', initialColor: '#f7f5f2' };
+    product.project.load(design);
+    const url = await createShareUrl(product, 'https://studio.example/');
+    const shared = await readSharedProject(url, known);
+    product.project.load(shared!.design);
+    expect(product.project.snapshot().design).toEqual(design);
+  });
+
+  it('opens an older shared display as a solid initial', async () => {
+    const shared = await readSharedProject(urlForJson([PROJECT_VERSION, 'name-display', LIAM_DESIGN]), known);
+    const product = getProduct('name-display')!;
+    product.project.load(shared!.design);
+    expect(product.project.snapshot().design).toMatchObject({ ...LIAM_DESIGN, hollowEnabled: false });
   });
 
   it('preserves partial snapshots without inserting fields that were absent', async () => {
@@ -107,7 +124,7 @@ describe('share URLs', () => {
 
   it('restores the explicit design even when application defaults change', async () => {
     const product = getProduct('name-display')!;
-    const originalDesign = LIAM_DESIGN;
+    const originalDesign = { ...DEFAULT_NAME_DISPLAY_CONFIG, ...LIAM_DESIGN };
     const url = await createShareUrl({ ...product, project: { ...product.project, snapshot: () => ({ name: 'Liam', design: originalDesign }) } }, 'https://studio.example/');
     const defaults = { ...DEFAULT_NAME_DISPLAY_CONFIG };
     try {

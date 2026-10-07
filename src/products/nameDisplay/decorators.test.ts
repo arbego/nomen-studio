@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { assembleNameDisplay, blockRegion, buildNameDisplayBlocks, placedDecoratorGeometry } from './geometry';
 import { growRegion, regionToShapes } from '../../geometry/clipper';
 import { printObjects } from './export';
-import { useNameDisplayStore } from './store';
+import { DEFAULT_NAME_DISPLAY_CONFIG, useNameDisplayStore } from './store';
 import type { DecoratorConfig, NameDisplayConfig, TextDecoratorConfig } from './config';
 
 const base: NameDisplayConfig = {
+  ...DEFAULT_NAME_DISPLAY_CONFIG,
   initial: 'M',
   initialFontId: 'alfa-slab-one',
   initialHeightMm: 120,
@@ -271,6 +272,12 @@ function resetWithoutDecorators() {
 }
 
 describe('decorator store', () => {
+  it('increases total thickness when necessary to preserve space for the hollow bowl and lid', () => {
+    resetWithoutDecorators();
+    useNameDisplayStore.getState().setConfig({ initialDepthMm: 5, hollowEnabled: true, wallThicknessMm: 4, lidThicknessMm: 4 });
+    expect(useNameDisplayStore.getState().initialDepthMm).toBeGreaterThan(4 + 4 + 1.2);
+  });
+
   it('adds one with an icon, a size and a place to stand', () => {
     resetWithoutDecorators();
     const id = useNameDisplayStore.getState().addDecorator({ kind: 'icon', iconName: 'star' });

@@ -1,4 +1,4 @@
-import { asArray, asNumber, asNumberArray, asOffset, asOneOf, asString, field } from '../../project/coerce';
+import { asArray, asBoolean, asNumber, asNumberArray, asOffset, asOneOf, asString, field } from '../../project/coerce';
 import { STAND_MODES } from '../../geometry/baseGeometry';
 import { getIcon } from '../../icons/catalog';
 import type { ProductProject, ProjectSnapshot } from '../types';
@@ -10,7 +10,7 @@ import {
   useNameDisplayStore,
   selectNameDisplayConfig,
 } from './store';
-import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, inlayDepthsMm, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
+import { DECORATOR_KINDS, DECORATOR_TEXT_MAX_LENGTH, inlayDepthsMm, minimumHollowDepthMm, type DecoratorConfig, type DecoratorPlacementConfig, type NameDisplayConfig } from './config';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -67,6 +67,10 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
   const name = asString(field(raw, 'name'), defaults.name, 20);
   const decorators = asArray(field(raw, 'decorators'), parseDecorator, 50);
   const nameDepthMm = asNumber(field(raw, 'nameDepthMm'), defaults.nameDepthMm, { min: 0.1, max: 50 });
+  const hollowEnabled = asBoolean(field(raw, 'hollowEnabled'), defaults.hollowEnabled);
+  const wallThicknessMm = asNumber(field(raw, 'wallThicknessMm'), defaults.wallThicknessMm, { min: 0.8, max: 10 });
+  const lidThicknessMm = asNumber(field(raw, 'lidThicknessMm'), defaults.lidThicknessMm, { min: 1, max: 10 });
+  const initialDepthMm = asNumber(field(raw, 'initialDepthMm'), defaults.initialDepthMm, { min: 1, max: 100 });
 
   const nameColor = asString(field(raw, 'nameColor'), defaults.nameColor, 32);
 
@@ -91,8 +95,13 @@ export function parseNameDisplayConfig(raw: unknown): NameDisplayConfig {
     initial: asString(field(raw, 'initial'), defaults.initial, 1),
     initialFontId: asString(field(raw, 'initialFontId'), defaults.initialFontId, 100),
     initialHeightMm: asNumber(field(raw, 'initialHeightMm'), defaults.initialHeightMm, { min: 10, max: 500 }),
-    initialDepthMm: asNumber(field(raw, 'initialDepthMm'), defaults.initialDepthMm, { min: 1, max: 100 }),
+    initialDepthMm: hollowEnabled ? Math.max(initialDepthMm, Math.ceil(minimumHollowDepthMm({ wallThicknessMm, lidThicknessMm }))) : initialDepthMm,
     initialColor: asString(field(raw, 'initialColor'), defaults.initialColor, 32),
+    hollowEnabled,
+    wallThicknessMm,
+    lidThicknessMm,
+    lidClearanceMm: asNumber(field(raw, 'lidClearanceMm'), defaults.lidClearanceMm, { min: 0, max: 1 }),
+    lidColor: asString(field(raw, 'lidColor'), defaults.lidColor, 32),
 
     name,
     nameFontId: asString(field(raw, 'nameFontId'), defaults.nameFontId, 100),

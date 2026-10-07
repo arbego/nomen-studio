@@ -9,6 +9,7 @@
 /** The panel's sections, in the order they appear. The first is the one a fresh panel opens on. */
 export const SECTIONS = {
   initial: 'initial',
+  hollow: 'hollow',
   name: 'name',
   inlay: 'inlay',
   decorators: 'decorators',
