@@ -18,7 +18,7 @@ interface OutlineControlsProps {
   onChangeColor: (hex: string) => void;
   depthMm: number;
   onChangeDepth: (depthMm: number) => void;
-  /** The word's own thickness — the card's height is capped here so it can never grow tall enough to become flush with (and so hide) the letters. */
+  /** The word's own thickness — the card's thickness is capped here so it cannot hide the letters. */
   maxDepthMm: number;
   /** Every counter hole (e.g. the "a" in a script font) currently detected at this growMm. */
   holeCandidates: OutlineHoleCandidate[];
@@ -75,16 +75,16 @@ export function OutlineControls({
       {enabled && (
         <>
           <p className="text-xs text-stone-400 dark:text-stone-500">
-            A separate solid card behind the name, shaped to its outline. Grow it until a disconnected part (like an "i" dot) merges into the card.
+            A separate solid card behind the name, shaped to its outline. Increase the border width until disconnected parts, such as an “i” dot, touch the card.
           </p>
-          <SliderField label="Grow" value={growMm} onChange={onChangeGrow} min={GROW_RANGE.min} max={GROW_RANGE.max} step={GROW_RANGE.step} />
-          <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} variant="field" />
+          <SliderField label="Border width" value={growMm} onChange={onChangeGrow} min={GROW_RANGE.min} max={GROW_RANGE.max} step={GROW_RANGE.step} />
+          <ColorSwatchPicker label="Card color" value={color} onChange={onChangeColor} variant="field" />
           <PrintSettings>
-            <SliderField label="Height" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={maxDepthMm} step={0.25} />
+            <SliderField label="Thickness" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={maxDepthMm} step={0.25} />
             {holeCandidates.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-stone-600 dark:text-stone-400">Counter holes</span>
+                  <span className="text-sm text-stone-600 dark:text-stone-400">Letter holes</span>
                   <button
                     type="button"
                     onClick={() => onSetAllHoles(holeCandidates.map((candidate) => candidate.key), !allClosed)}

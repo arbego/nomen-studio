@@ -40,7 +40,7 @@ export function SizePicker({ label = 'Size (word width)', value, onChange, depth
         ))}
       </div>
       <SliderField label="Width" value={value} onChange={onChange} min={MIN_MM} max={MAX_MM} className="pt-1" />
-      <SliderField label="Height" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={MAX_DEPTH_MM} step={DEPTH_STEP_MM} className="pt-2" />
+      <SliderField label="Thickness" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={MAX_DEPTH_MM} step={DEPTH_STEP_MM} className="pt-2" />
     </div>
   );
 }

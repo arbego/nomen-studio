@@ -54,7 +54,7 @@ export function StickControls({
           <div className="flex flex-col gap-2">
             {pickIds.map((blockId) => (
               <div key={blockId} className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-                <span>Sticks amount</span>
+                <span>Number of sticks</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

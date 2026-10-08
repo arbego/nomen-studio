@@ -118,7 +118,7 @@ export function CakeTopperControls() {
           />
         </CollapsibleSection>
 
-        <CollapsibleSection id={SECTIONS.outline} title="Outline card" summary={config.outlineEnabled ? `${config.outlineGrowMm} mm, ${colorName(config.outlineColor)}` : 'Off'} className={SECTION}>
+        <CollapsibleSection id={SECTIONS.outline} title="Backing card" summary={config.outlineEnabled ? `${config.outlineGrowMm} mm border, ${colorName(config.outlineColor)}` : 'Off'} className={SECTION}>
           <OutlineControls
             enabled={config.outlineEnabled}
             onChangeEnabled={(outlineEnabled) => onChange({ outlineEnabled })}
