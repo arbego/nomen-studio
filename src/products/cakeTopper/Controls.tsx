@@ -6,6 +6,7 @@ import { FontField } from '../../ui/controls/FontField';
 import { SizePicker } from '../../ui/controls/SizePicker';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { CollapsibleSection } from '../../ui/controls/CollapsibleSection';
+import { FocusTarget } from '../../ui/FocusTarget';
 import { StickControls } from './StickControls';
 import { DecoratorControls } from './DecoratorControls';
 import { OutlineControls } from '../../ui/controls/OutlineControls';
@@ -80,9 +81,9 @@ export function CakeTopperControls() {
           />
         </CollapsibleSection>
 
-        <CollapsibleSection id={SECTIONS.color} title="Color" summary={colorName(config.previewColor)} className={SECTION}>
-          <ColorSwatchPicker label={null} value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
-        </CollapsibleSection>
+        <FocusTarget focusKey={SECTIONS.color} className={SECTION}>
+          <ColorSwatchPicker label="Color" value={config.previewColor} onChange={(previewColor) => onChange({ previewColor })} />
+        </FocusTarget>
 
         <CollapsibleSection id={SECTIONS.sticks} title="Sticks" summary={stickCount === 0 ? 'None' : `${stickCount}, ${config.stickLengthMm} mm`} className={SECTION}>
           <StickControls
