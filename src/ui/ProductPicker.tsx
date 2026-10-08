@@ -11,7 +11,7 @@ interface ProductPickerProps {
 export function ProductPicker({ onSelect }: ProductPickerProps) {
   return (
     <div className="h-screen w-screen overflow-y-auto bg-stone-100 dark:bg-stone-950">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-16">
+      <div className="mx-auto flex min-h-full max-w-3xl flex-col gap-8 px-6 py-16">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -43,6 +43,9 @@ export function ProductPicker({ onSelect }: ProductPickerProps) {
             </button>
           ))}
         </div>
+        <footer className="mt-auto pt-8 text-center text-xs text-stone-500 dark:text-stone-400">
+          Version {import.meta.env.VITE_GIT_VERSION ?? 'unavailable'}
+        </footer>
       </div>
     </div>
   );
