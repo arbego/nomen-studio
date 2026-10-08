@@ -115,6 +115,13 @@ afterEach(() => {
 });
 
 describe('project navigation', () => {
+  it('links the footer to the standalone open-source license page', () => {
+    const link = [...container.querySelectorAll('footer a')].find((entry) => entry.textContent?.trim() === 'Open-source licenses')!;
+    expect(link.getAttribute('href')).toBe('/licenses.html');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
   it('opens a project from the start page directly into its editor', async () => {
     expect(button('Open project')).toBeDefined();
     const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;

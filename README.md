@@ -23,6 +23,35 @@ Two maintainer scripts regenerate the generated catalogues, and are not part of
 the build: `npm run fonts:catalog` (every Google Fonts family) and
 `npm run icons:catalog` (every icon in each of the three self-hosted icon fonts).
 
+## Open-source licenses
+
+The landing-page footer opens `licenses.html`, a searchable inventory of
+third-party packages, fonts, icons, and data with license texts and upstream
+links. The page is built from [licenses/open-source-licenses.json](licenses/open-source-licenses.json)
+and supports downloading that inventory. On-demand fonts appear together under
+one Google Fonts entry; the JSON retains each family's license and source link.
+Bundled fonts remain listed individually with their notices.
+
+After changing dependency imports or updating dependencies, run
+`npm run licenses:catalog` and review the JSON changes. It runs a production build
+in memory to identify packages shipped to browsers, then collects their versions
+and notices. Build and test tools, unused dependencies, and server-only native
+libraries are excluded. Generation requires installed dependencies and works
+offline; it leaves `dist` untouched.
+
+`npm run licenses:check` (also run by the production build) detects changes to
+the lockfile, catalogs, and maintained notice inputs. Production builds also
+verify that the bundled package list still matches the inventory.
+
+Maintain non-package assets and embedded components in
+`licenses/extra-components.json`. Keep verified per-family font license metadata
+in `licenses/google-fonts-licenses.json`, and upstream license texts in
+`licenses/upstream-notices.json`. When regenerating the font catalog, review and
+add any new families' upstream licenses before regenerating the inventory; the
+generator rejects families without license metadata. On-demand font entries link
+to their upstream family notices; locally bundled assets include their notices
+in the inventory.
+
 ## Products
 
 - **Cake Topper** — a name on picks, to stand in a cake. One to three lines of

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "font:calistoga",
+    "name": "Calistoga",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Calistoga",
+    "noticeFiles": [
+      "src/assets/fonts/calistoga/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:alfa-slab-one",
+    "name": "Alfa Slab One",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Alfa+Slab+One",
+    "noticeFiles": [
+      "src/assets/fonts/alfa-slab-one/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:dancing-script",
+    "name": "Dancing Script",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Dancing+Script",
+    "noticeFiles": [
+      "src/assets/fonts/dancing-script/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:allura",
+    "name": "Allura",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Allura",
+    "noticeFiles": [
+      "src/assets/fonts/allura/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:pacifico",
+    "name": "Pacifico",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Pacifico",
+    "noticeFiles": [
+      "src/assets/fonts/pacifico/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:parisienne",
+    "name": "Parisienne",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Parisienne",
+    "noticeFiles": [
+      "src/assets/fonts/parisienne/OFL.txt"
+    ]
+  },
+  {
+    "id": "font:sacramento",
+    "name": "Sacramento",
+    "category": "Bundled fonts",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://fonts.google.com/specimen/Sacramento",
+    "noticeFiles": [
+      "src/assets/fonts/sacramento/OFL.txt"
+    ]
+  },
+  {
+    "id": "icon:material-icons",
+    "name": "Material Icons",
+    "category": "Icons",
+    "license": "Apache-2.0",
+    "sourceUrl": "https://github.com/google/material-design-icons",
+    "noticeFiles": [
+      "src/assets/icons/material-icons/LICENSE"
+    ]
+  },
+  {
+    "id": "icon:phosphor-fill",
+    "name": "Phosphor Icons (Fill)",
+    "category": "Icons",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/phosphor-icons/web",
+    "noticeFiles": [
+      "src/assets/icons/phosphor-fill/LICENSE"
+    ]
+  },
+  {
+    "id": "icon:noto-emoji",
+    "name": "Noto Emoji",
+    "category": "Icons",
+    "license": "OFL-1.1",
+    "sourceUrl": "https://github.com/googlefonts/noto-emoji",
+    "noticeFiles": [
+      "src/assets/icons/noto-emoji/LICENSE"
+    ]
+  },
+  {
+    "id": "data:unicode",
+    "name": "Unicode emoji data",
+    "category": "Icons",
+    "license": "Unicode-3.0",
+    "sourceUrl": "https://unicode.org/Public/emoji/latest/emoji-test.txt"
+  },
+  {
+    "id": "data:cldr",
+    "name": "Unicode CLDR English annotations",
+    "category": "Icons",
+    "license": "Unicode-3.0",
+    "sourceUrl": "https://github.com/unicode-org/cldr"
+  },
+  {
+    "id": "data:jsbn",
+    "name": "JSBN (embedded in Clipper)",
+    "category": "App dependencies",
+    "license": "LicenseRef-JSBN",
+    "sourceUrl": "https://github.com/andyperlitch/jsbn"
+  }
+]

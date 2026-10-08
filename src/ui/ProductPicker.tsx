@@ -46,6 +46,14 @@ export function ProductPicker({ onSelect }: ProductPickerProps) {
         <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-8 text-xs text-stone-500 dark:text-stone-400">
           <span>Version {import.meta.env.VITE_GIT_VERSION ?? 'unavailable'}</span>
           <a
+            href={`${import.meta.env.BASE_URL}licenses.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-8 items-center rounded underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-stone-100"
+          >
+            Open-source licenses
+          </a>
+          <a
             href="https://github.com/arbego/nomen-studio/"
             target="_blank"
             rel="noopener noreferrer"

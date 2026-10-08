@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run licenses:check && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "fonts:catalog": "node scripts/generate-font-catalog.mjs",
-    "icons:catalog": "node scripts/generate-icon-catalog.mjs"
+    "icons:catalog": "node scripts/generate-icon-catalog.mjs",
+    "licenses:catalog": "node scripts/generate-license-catalog.mjs",
+    "licenses:check": "node scripts/generate-license-catalog.mjs --check"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
