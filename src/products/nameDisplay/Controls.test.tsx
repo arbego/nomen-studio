@@ -102,7 +102,7 @@ describe('hollow initial in the editor', () => {
     expect(container.textContent).not.toContain('Move cable hole in preview');
     expect(container.textContent).toContain('Click the hole to highlight it, then drag it');
     expect(container.textContent).toContain('Hole diameter');
-    const diameter = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Hole diameter'))!.querySelector('input')!;
+    const diameter = container.querySelector<HTMLInputElement>('input[aria-label="Hole diameter value"]')!;
     act(() => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(diameter, '8');
       diameter.dispatchEvent(new Event('input', { bubbles: true }));

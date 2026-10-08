@@ -1,3 +1,4 @@
+import { useId, useState } from 'react';
 import { DesignInput } from '../DesignHistory';
 
 interface SliderFieldProps {
@@ -12,18 +13,67 @@ interface SliderFieldProps {
   className?: string;
 }
 
-/** A labelled slider with its current value read out alongside — the shape every numeric control in the panels uses. */
+/** A slider for exploring, with an editable value for precise dimensions. */
 export function SliderField({ label, value, onChange, min, max, step = 1, unit = 'mm', hint, className = '' }: SliderFieldProps) {
+  const id = useId();
+  const [draft, setDraft] = useState(String(value));
+  const [previousValue, setPreviousValue] = useState(value);
+  if (value !== previousValue) {
+    setPreviousValue(value);
+    setDraft(String(value));
+  }
+
+  function finish(raw: string) {
+    if (raw.trim() === '' || !Number.isFinite(Number(raw))) {
+      setDraft(String(value));
+      return;
+    }
+    const bounded = Math.min(max, Math.max(min, Number(raw)));
+    setDraft(String(bounded));
+    if (bounded !== value) onChange(bounded);
+  }
+
   return (
-    <label className={`flex flex-col gap-1.5 ${className}`}>
+    <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-        <span>{label}</span>
-        <span className="tabular-nums text-stone-400 dark:text-stone-500">
-          {value} {unit}
-        </span>
+        <label htmlFor={`${id}-value`}>{label}</label>
+        <div className="flex items-center gap-1.5">
+          <DesignInput
+            id={`${id}-value`}
+            type="number"
+            inputMode="decimal"
+            aria-label={`${label} value`}
+            aria-describedby={hint ? `${id}-hint` : undefined}
+            min={min}
+            max={max}
+            step={step}
+            value={draft}
+            onChange={(event) => {
+              const raw = event.target.value;
+              setDraft(raw);
+              const next = Number(raw);
+              if (raw !== '' && Number.isFinite(next) && next >= min && next <= max) onChange(next);
+            }}
+            onBlur={(event) => finish(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.value = String(value);
+                setDraft(String(value));
+                event.currentTarget.blur();
+              } else if (event.key === 'Enter') {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+            }}
+            className="w-20 rounded-md border border-stone-200 bg-white px-2 py-1 text-right tabular-nums text-stone-700 focus:border-stone-500 focus:outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+          />
+          <span className="text-xs text-stone-500 dark:text-stone-400">{unit}</span>
+        </div>
       </div>
-      <DesignInput type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
-      {hint && <span className="text-xs text-stone-400 dark:text-stone-500">{hint}</span>}
-    </label>
+      <DesignInput type="range" aria-label={label} aria-describedby={hint ? `${id}-hint` : undefined} min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+      {hint && <p id={`${id}-hint`} className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
+    </div>
   );
 }

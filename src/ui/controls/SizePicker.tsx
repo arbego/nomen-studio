@@ -1,4 +1,4 @@
-import { DesignInput } from '../DesignHistory';
+import { SliderField } from './SliderField';
 import { SIZE_PRESETS_MM } from '../presets';
 
 interface SizePickerProps {
@@ -39,33 +39,8 @@ export function SizePicker({ label = 'Size (word width)', value, onChange, depth
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-3 pt-1">
-        <DesignInput
-          type="range"
-          min={MIN_MM}
-          max={MAX_MM}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="h-1.5 flex-1 accent-stone-800 dark:accent-stone-300"
-        />
-        <span className="w-16 shrink-0 text-right text-sm tabular-nums text-stone-600 dark:text-stone-400">{value} mm</span>
-      </div>
-
-      <label className="flex flex-col gap-1.5 pt-2">
-        <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-          <span>Height</span>
-          <span className="tabular-nums text-stone-400 dark:text-stone-500">{depthMm} mm</span>
-        </div>
-        <DesignInput
-          type="range"
-          min={MIN_DEPTH_MM}
-          max={MAX_DEPTH_MM}
-          step={DEPTH_STEP_MM}
-          value={depthMm}
-          onChange={(e) => onChangeDepth(Number(e.target.value))}
-          className="h-1.5 accent-stone-800 dark:accent-stone-300"
-        />
-      </label>
+      <SliderField label="Width" value={value} onChange={onChange} min={MIN_MM} max={MAX_MM} className="pt-1" />
+      <SliderField label="Height" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={MAX_DEPTH_MM} step={DEPTH_STEP_MM} className="pt-2" />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { DesignInput } from '../DesignHistory';
+import { SliderField } from './SliderField';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { MODES } from './standModes';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
@@ -65,40 +65,10 @@ export function StandControls({
 
       {mode === 'rail' && (
         <>
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Rail height</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{railHeightMm} mm</span>
-            </div>
-            <DesignInput type="range" min={2} max={25} step={0.5} value={railHeightMm} onChange={(e) => onChangeRailHeight(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
-            <span className="text-xs text-stone-400 dark:text-stone-500">Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it.</span>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Rail depth</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{railDepthMm} mm</span>
-            </div>
-            <DesignInput type="range" min={8} max={60} step={1} value={railDepthMm} onChange={(e) => onChangeRailDepth(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
-          </label>
+          <SliderField label="Rail height" value={railHeightMm} onChange={onChangeRailHeight} min={2} max={25} step={0.5} hint="Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it." />
+          <SliderField label="Rail depth" value={railDepthMm} onChange={onChangeRailDepth} min={8} max={60} />
           {railSocketDepthMm !== undefined && onChangeRailSocketDepth && (
-            <label className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-                <span>Socket depth</span>
-                <span className="tabular-nums text-stone-400 dark:text-stone-500">{railSocketDepthMm} mm</span>
-              </div>
-              <DesignInput
-                type="range"
-                min={0}
-                max={20}
-                step={0.5}
-                value={railSocketDepthMm}
-                onChange={(e) => onChangeRailSocketDepth(Number(e.target.value))}
-                className="h-1.5 accent-stone-800 dark:accent-stone-300"
-              />
-              <span className="text-xs text-stone-400 dark:text-stone-500">
-                How far the piece sits down into the rail. They print as two parts and go together afterwards, so deeper holds better — and hides that much of the piece.
-              </span>
-            </label>
+            <SliderField label="Socket depth" value={railSocketDepthMm} onChange={onChangeRailSocketDepth} min={0} max={20} step={0.5} hint="How far the piece sits down into the rail. They print as two parts and go together afterwards, so deeper holds better — and hides that much of the piece." />
           )}
           {color !== undefined && onChangeColor && (
             <ColorSwatchPicker value={color} onChange={onChangeColor} label="Rail color" variant="field" />
@@ -107,17 +77,7 @@ export function StandControls({
       )}
 
       {mode === 'trim' && (
-        <label className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-            <span>Cut height</span>
-            <span className="tabular-nums text-stone-400 dark:text-stone-500">
-              {trimOffsetMm > 0 ? '+' : ''}
-              {trimOffsetMm} mm
-            </span>
-          </div>
-          <DesignInput type="range" min={-10} max={15} step={0.5} value={trimOffsetMm} onChange={(e) => onChangeTrimOffset(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
-          <span className="text-xs text-stone-400 dark:text-stone-500">Relative to the text's baseline. 0 removes just the descenders.</span>
-        </label>
+        <SliderField label="Cut height" value={trimOffsetMm} onChange={onChangeTrimOffset} min={-10} max={15} step={0.5} hint="Relative to the text's baseline. 0 removes just the descenders." />
       )}
     </div>
   );

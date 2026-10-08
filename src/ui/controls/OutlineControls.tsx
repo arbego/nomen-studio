@@ -1,4 +1,4 @@
-import { DesignInput } from '../DesignHistory';
+import { SliderField } from './SliderField';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import type { OutlineHoleCandidate } from '../../geometry/outline';
 import { usePanelStore } from '../panelStore';
@@ -76,36 +76,8 @@ export function OutlineControls({
           <p className="text-xs text-stone-400 dark:text-stone-500">
             A separate solid card behind the name, shaped to its outline. Grow it until a disconnected part (like an "i" dot) merges into the card.
           </p>
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Grow</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{growMm} mm</span>
-            </div>
-            <DesignInput
-              type="range"
-              min={GROW_RANGE.min}
-              max={GROW_RANGE.max}
-              step={GROW_RANGE.step}
-              value={growMm}
-              onChange={(e) => onChangeGrow(Number(e.target.value))}
-              className="h-1.5 accent-stone-800 dark:accent-stone-300"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Height</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{depthMm} mm</span>
-            </div>
-            <DesignInput
-              type="range"
-              min={MIN_DEPTH_MM}
-              max={maxDepthMm}
-              step={0.25}
-              value={depthMm}
-              onChange={(e) => onChangeDepth(Number(e.target.value))}
-              className="h-1.5 accent-stone-800 dark:accent-stone-300"
-            />
-          </label>
+          <SliderField label="Grow" value={growMm} onChange={onChangeGrow} min={GROW_RANGE.min} max={GROW_RANGE.max} step={GROW_RANGE.step} />
+          <SliderField label="Height" value={depthMm} onChange={onChangeDepth} min={MIN_DEPTH_MM} max={maxDepthMm} step={0.25} />
           <ColorSwatchPicker label="Outline color" value={color} onChange={onChangeColor} variant="field" />
           {holeCandidates.length > 0 && (
             <div className="flex flex-col gap-1.5">

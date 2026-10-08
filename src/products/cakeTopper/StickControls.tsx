@@ -1,4 +1,4 @@
-import { DesignInput } from '../../ui/DesignHistory';
+import { SliderField } from '../../ui/controls/SliderField';
 import type { CakeTopperBlockId } from './config';
 
 interface StickControlsProps {
@@ -80,37 +80,9 @@ export function StickControls({
             ))}
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Width</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{widthMm} mm</span>
-            </div>
-            <DesignInput
-              type="range"
-              min={WIDTH_RANGE.min}
-              max={WIDTH_RANGE.max}
-              step={WIDTH_RANGE.step}
-              value={widthMm}
-              onChange={(e) => onChangeWidth(Number(e.target.value))}
-              className="h-1.5 accent-stone-800 dark:accent-stone-300"
-            />
-          </label>
+          <SliderField label="Width" value={widthMm} onChange={onChangeWidth} min={WIDTH_RANGE.min} max={WIDTH_RANGE.max} step={WIDTH_RANGE.step} />
 
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-              <span>Length</span>
-              <span className="tabular-nums text-stone-400 dark:text-stone-500">{lengthMm} mm</span>
-            </div>
-            <DesignInput
-              type="range"
-              min={LENGTH_RANGE.min}
-              max={LENGTH_RANGE.max}
-              step={LENGTH_RANGE.step}
-              value={lengthMm}
-              onChange={(e) => onChangeLength(Number(e.target.value))}
-              className="h-1.5 accent-stone-800 dark:accent-stone-300"
-            />
-          </label>
+          <SliderField label="Length" value={lengthMm} onChange={onChangeLength} min={LENGTH_RANGE.min} max={LENGTH_RANGE.max} step={LENGTH_RANGE.step} />
         </>
       )}
     </div>
