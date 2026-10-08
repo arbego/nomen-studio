@@ -2,6 +2,7 @@
 import { act } from 'react';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { fontFixturePath } from '../../test-setup/fontFixtures';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveAs } from 'file-saver';
@@ -20,10 +21,10 @@ let root: Root;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  // jsdom gives bundled assets localhost URLs, without a Vite server to serve them.
+  // Serve remote font fixtures and local icon assets without a Vite server.
   vi.stubGlobal('fetch', async (input: string) => {
     const url = new URL(input);
-    const path = url.protocol === 'file:' ? fileURLToPath(url) : `${process.cwd()}${url.pathname}`;
+    const path = fontFixturePath(input) ?? (url.protocol === 'file:' ? fileURLToPath(url) : `${process.cwd()}${url.pathname}`);
     return new Response(await readFile(path), { status: 200 });
   });
   vi.mocked(saveAs).mockClear();

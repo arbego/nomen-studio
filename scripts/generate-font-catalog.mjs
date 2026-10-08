@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // One-time/occasionally-rerun maintainer script — NOT part of the app build or
 // runtime. Generates src/fonts/googleFontsCatalog.json: every Google Fonts
-// family (minus the 5 already hand-curated in src/fonts/registry.ts) with a
-// direct fonts.gstatic.com .ttf URL for its regular/400 static instance.
+// family with a direct fonts.gstatic.com .ttf URL for its regular/400 static
+// instance (Dancing Script uses 700 to preserve the studio's default weight).
 //
 // Two public Google endpoints, neither requiring an API key:
 //   - fonts.google.com/metadata/fonts: family list + category + popularity.
@@ -20,10 +20,13 @@ import { fileURLToPath } from 'node:url';
 const METADATA_URL = 'https://fonts.google.com/metadata/fonts';
 const LEGACY_CSS_URL = 'https://fonts.googleapis.com/css';
 const OLD_BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/534.34 (KHTML, like Gecko)';
+// Include the extended characters supported by the studio's suggested fonts.
+const FONT_SUBSETS = 'latin,latin-ext,vietnamese,cyrillic,cyrillic-ext';
 const OUTPUT_PATH = fileURLToPath(new URL('../src/fonts/googleFontsCatalog.json', import.meta.url));
 
-// Keep in sync with the curated entries in src/fonts/registry.ts.
-const CURATED_FAMILIES = new Set(['Dancing Script', 'Allura', 'Pacifico', 'Parisienne', 'Sacramento']);
+const FONT_WEIGHTS = new Map([['Dancing Script', 700]]);
+// A partial catalog must never drop the studio's saved-project/default IDs.
+const REQUIRED_FAMILIES = ['Calistoga', 'Alfa Slab One', 'Dancing Script', 'Allura', 'Pacifico', 'Parisienne', 'Sacramento'];
 
 const CATEGORY_MAP = {
   'Sans Serif': 'sans-serif',
@@ -55,14 +58,13 @@ async function fetchFamilyList() {
   const text = (await response.text()).replace(/^\)\]\}'\n?/, '');
   const data = JSON.parse(text);
   return data.familyMetadataList
-    .filter((f) => !CURATED_FAMILIES.has(f.family))
     .map((f) => ({ family: f.family, category: CATEGORY_MAP[f.category], popularity: f.popularity }));
 }
 
 /** One legacy-CSS batch request -> Map<family, ttfUrl>. */
 async function fetchTtfUrls(families) {
-  const query = families.map(encodeURIComponent).join('|');
-  const response = await fetch(`${LEGACY_CSS_URL}?family=${query}`, { headers: { 'User-Agent': OLD_BROWSER_USER_AGENT } });
+  const query = families.map((family) => encodeURIComponent(FONT_WEIGHTS.has(family) ? `${family}:${FONT_WEIGHTS.get(family)}` : family)).join('|');
+  const response = await fetch(`${LEGACY_CSS_URL}?family=${query}&subset=${FONT_SUBSETS}`, { headers: { 'User-Agent': OLD_BROWSER_USER_AGENT } });
   if (!response.ok) {
     console.warn(`  batch request failed (${response.status}) for: ${families.join(', ')}`);
     return new Map();
@@ -90,7 +92,7 @@ function chunk(array, size) {
 async function main() {
   console.log('Fetching Google Fonts family metadata...');
   const families = await fetchFamilyList();
-  console.log(`${families.length} families to resolve (curated ones excluded).`);
+  console.log(`${families.length} families to resolve.`);
 
   const catalog = [];
   const chunks = chunk(families, CHUNK_SIZE);
@@ -109,6 +111,9 @@ async function main() {
     if (i < chunks.length - 1) await sleep(CHUNK_DELAY_MS);
   }
   console.log(`\nResolved ${catalog.length}/${families.length} families.`);
+
+  const missing = REQUIRED_FAMILIES.filter((family) => !catalog.some((font) => font.family === family));
+  if (missing.length) throw new Error(`Missing suggested fonts; keeping the existing catalog: ${missing.join(', ')}`);
 
   catalog.sort((a, b) => a.popularity - b.popularity);
   await writeFile(OUTPUT_PATH, JSON.stringify(catalog), 'utf8');

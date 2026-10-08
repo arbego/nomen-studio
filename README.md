@@ -2,8 +2,8 @@
 
 Design personalized 3D-printable lettering — preview it live in 3D and export
 print-ready files. Pick a product on the landing screen, then design in that
-product's studio. All fonts are free Google Fonts; the curated defaults are
-self-hosted, and the full catalogue loads on demand.
+product's studio. All text fonts are free Google Fonts and load on demand,
+including the suggested defaults. A first load requires internet access.
 
 ## Getting started
 
@@ -22,15 +22,18 @@ npm run dev
 Two maintainer scripts regenerate the generated catalogues, and are not part of
 the build: `npm run fonts:catalog` (every Google Fonts family) and
 `npm run icons:catalog` (every icon in each of the three self-hosted icon fonts).
+The font generator includes the suggested fonts, preserves Dancing Script's bold
+weight, and requests extended character coverage. When suggested-font URLs
+change, refresh their downloaded test fixtures in `src/test-setup/fonts`.
 
 ## Open-source licenses
 
 The landing-page footer opens `licenses.html`, a searchable inventory of
 third-party packages, fonts, icons, and data with license texts and upstream
 links. The page is built from [licenses/open-source-licenses.json](licenses/open-source-licenses.json)
-and supports downloading that inventory. On-demand fonts appear together under
+and supports downloading that inventory. All text fonts appear together under
 one Google Fonts entry; the JSON retains each family's license and source link.
-Bundled fonts remain listed individually with their notices.
+The category is **Fonts**; icons retain their own notices under **Icons**.
 
 After changing dependency imports or updating dependencies, run
 `npm run licenses:catalog` and review the JSON changes. It runs a production build
@@ -49,7 +52,7 @@ in `licenses/google-fonts-licenses.json`, and upstream license texts in
 `licenses/upstream-notices.json`. When regenerating the font catalog, review and
 add any new families' upstream licenses before regenerating the inventory; the
 generator rejects families without license metadata. On-demand font entries link
-to their upstream family notices; locally bundled assets include their notices
+to their upstream family notices; locally bundled icon assets include their notices
 in the inventory.
 
 ## Products
@@ -210,8 +213,7 @@ existing products are the template — and add one entry
 to `products/registry.ts`. Nothing else in the app
 changes. A `ProductDefinition` exposes only what the shell has to mount, so the
 shell never knows a product's shape. (Same pattern as `fonts/registry.ts`: add a
-font by dropping its `.ttf` + `OFL.txt` under `src/assets/fonts/<id>/` and adding
-one registry entry.)
+suggested font by adding its ID from the Google Fonts catalog to the registry.)
 
 Because a product's controls and its scene are mounted in separate subtrees
 (sidebar and canvas), anything they share — above all the one async geometry
@@ -398,5 +400,6 @@ them is a real way to make one of these.
 
 ## Tests
 
-`npm test` runs the full pipeline against the real font files (not mocks), plus
+`npm test` runs the full pipeline against downloaded font fixtures (without
+network access), plus
 React Three Fiber scene-wiring tests via `@react-three/test-renderer`.

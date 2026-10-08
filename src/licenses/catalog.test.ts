@@ -26,8 +26,10 @@ describe('open-source inventory', () => {
   it('covers all selectable fonts and resolves every notice', () => {
     const fonts = JSON.parse(readFileSync(new URL('../fonts/googleFontsCatalog.json', import.meta.url), 'utf8')) as { id: string }[];
     const ids = new Set(catalog.components.map((entry) => entry.id));
-    for (const font of fonts) expect(ids.has(`font:${font.id}`) || ids.has(`google-font:${font.id}`)).toBe(true);
-    expect(catalog.components.filter((entry) => entry.category === 'Bundled fonts')).toHaveLength(7);
+    for (const font of fonts) expect(ids.has(`google-font:${font.id}`)).toBe(true);
+    expect(catalog.components.filter((entry) => entry.category === 'Fonts')).toHaveLength(fonts.length);
+    expect(catalog.components.some((entry) => entry.category === 'Bundled fonts' || entry.category === 'On-demand fonts')).toBe(false);
+    for (const id of ['calistoga', 'alfa-slab-one', 'dancing-script', 'allura', 'pacifico', 'parisienne', 'sacramento']) expect(ids.has(`google-font:${id}`)).toBe(true);
     for (const entry of catalog.components) {
       expect(entry.sourceUrl).toMatch(/^https:\/\//);
       for (const id of entry.noticeIds) expect(catalog.notices[id]?.text.trim()).toBeTruthy();

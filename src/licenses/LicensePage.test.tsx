@@ -10,7 +10,7 @@ const catalog: LicenseCatalog = {
   schemaVersion: 1,
   components: [
     { id: 'react', name: 'React', version: '19.2.8', category: 'App dependencies', license: 'MIT', sourceUrl: 'https://github.com/facebook/react', noticeIds: ['mit'] },
-    { id: 'font:test', name: 'Test Font', category: 'Bundled fonts', license: 'OFL-1.1', sourceUrl: 'https://fonts.google.com/', noticeIds: ['ofl'] },
+    { id: 'icon:test', name: 'Test Icons', category: 'Icons', license: 'OFL-1.1', sourceUrl: 'https://github.com/googlefonts/noto-emoji', noticeIds: ['ofl'] },
   ],
   notices: { mit: { text: 'Copyright React contributors\nMIT license terms <script>example</script>', source: 'React/LICENSE' }, ofl: { text: 'Open Font License terms', source: 'OFL.txt' } },
 };
@@ -29,13 +29,13 @@ afterEach(() => {
 });
 
 describe('license page', () => {
-  it('groups on-demand fonts while preserving bundled fonts and every distinct license notice', async () => {
+  it('groups all text fonts under Fonts while retaining every distinct license notice', async () => {
     const fontCatalog: LicenseCatalog = {
       ...catalog,
       components: [
         ...catalog.components,
         ...['Remote Font A', 'Remote Font B', 'Remote Font C', 'Remote Font D'].map((name, index) => ({
-          id: `google-font:${index}`, name, category: 'On-demand fonts',
+          id: `google-font:${index}`, name, category: 'Fonts',
           license: index < 2 ? 'OFL-1.1' : index === 2 ? 'Apache-2.0' : 'Ubuntu-font-1.0',
           sourceUrl: 'https://fonts.google.com/', noticeIds: [index < 2 ? 'ofl' : index === 2 ? 'apache' : 'ubuntu'],
         })),
@@ -44,11 +44,12 @@ describe('license page', () => {
     };
     act(() => root.render(<LicensePage catalog={fontCatalog} downloadUrl="/inventory.json" />));
     expect(container.querySelectorAll('li')).toHaveLength(3);
-    expect(container.textContent).toContain('Test Font');
+    expect(container.textContent).toContain('Test Icons');
     expect(container.textContent).not.toContain('Remote Font A');
     expect(container.querySelector('[role="status"]')!.textContent).toContain('3 matching entries · 3 total');
     const select = container.querySelector('select')!;
-    act(() => { select.value = 'On-demand fonts'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect([...select.options].map((option) => option.value)).toEqual(['All components', 'App dependencies', 'Fonts', 'Icons']);
+    act(() => { select.value = 'Fonts'; select.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelectorAll('li')).toHaveLength(1);
     const group = container.querySelector('li')!;
     expect(group.querySelector('h2')!.textContent).toBe('Google Fonts ');
@@ -64,9 +65,9 @@ describe('license page', () => {
   it('filters by category and displays notices as plain text', async () => {
     act(() => root.render(<LicensePage catalog={catalog} downloadUrl="/inventory.json" />));
     const select = container.querySelector('select')!;
-    act(() => { select.value = 'Bundled fonts'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    act(() => { select.value = 'Icons'; select.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelectorAll('li')).toHaveLength(1);
-    expect(container.querySelector('li')!.textContent).toContain('Test Font');
+    expect(container.querySelector('li')!.textContent).toContain('Test Icons');
     act(() => { select.value = 'All components'; select.dispatchEvent(new Event('change', { bubbles: true })); });
     const details = container.querySelector('details')!;
     await act(async () => { details.open = true; details.dispatchEvent(new Event('toggle')); });
@@ -82,7 +83,7 @@ describe('license page', () => {
     const search = (value: string) => act(() => { setter.call(input, value); input.dispatchEvent(new Event('input', { bubbles: true })); });
     search('ofl-1.1');
     expect(container.querySelectorAll('li')).toHaveLength(1);
-    expect(container.querySelector('li')!.textContent).toContain('Test Font');
+    expect(container.querySelector('li')!.textContent).toContain('Test Icons');
     search('REACT MIT');
     expect(container.querySelector('li')!.textContent).toContain('React');
     search('missing');

@@ -1,31 +1,30 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('./googleFontsCatalog.json', () => ({
-  default: [{ id: 'roboto', family: 'Roboto', category: 'sans-serif', popularity: 2, url: 'https://fonts.gstatic.com/roboto.ttf' }],
-}));
-
-const { FONT_REGISTRY, getFontDefinition } = await import('./registry');
+import { describe, expect, it } from 'vitest';
+import { FONT_REGISTRY, getFontDefinition } from './registry';
+import { getCatalogEntry } from './catalog';
 
 describe('getFontDefinition', () => {
-  it('resolves a curated (self-hosted) font by id', () => {
+  it('resolves a suggested font through the on-demand catalog', () => {
     const def = getFontDefinition('pacifico');
     expect(def.family).toBe('Pacifico');
-    expect(def.url).toContain('assets/fonts');
+    expect(def).toBe(getCatalogEntry('pacifico'));
+    expect(def.url).toMatch(/^https:\/\/fonts\.gstatic\.com\//);
   });
 
   it('falls back to the generated catalogue when the id is not one of the curated fonts', () => {
     const def = getFontDefinition('roboto');
     expect(def.family).toBe('Roboto');
-    expect(def.url).toBe('https://fonts.gstatic.com/roboto.ttf');
+    expect(def).toBe(getCatalogEntry('roboto'));
   });
 
   it('throws for an id that is neither curated nor in the catalogue', () => {
     expect(() => getFontDefinition('not-a-real-font')).toThrow();
   });
 
-  it('is entirely self-hosted, so the curated fonts work with no network', () => {
+  it('keeps all seven suggested fonts available with on-demand TTF URLs', () => {
+    expect(FONT_REGISTRY.map((font) => font.id)).toEqual(['calistoga', 'alfa-slab-one', 'dancing-script', 'allura', 'pacifico', 'parisienne', 'sacramento']);
     for (const font of FONT_REGISTRY) {
-      expect(font.url, font.id).toContain('assets/fonts');
+      expect(font.url, font.id).toMatch(/^https:\/\/fonts\.gstatic\.com\/.+\.ttf$/);
+      expect(font).toBe(getCatalogEntry(font.id));
     }
   });
 

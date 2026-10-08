@@ -17,8 +17,8 @@ const inputFiles = [
   'licenses/google-fonts-licenses.json', 'licenses/upstream-notices.json',
   'src/fonts/googleFontsCatalog.json', 'src/fonts/registry.ts',
   ...['materialIconsCatalog', 'phosphorCatalog', 'notoEmojiCatalog', 'iconKeywords'].map((name) => `src/icons/${name}.json`),
-  ...['fonts', 'icons'].flatMap((group) => readdirSync(resolve(root, `src/assets/${group}`)).flatMap((name) =>
-    readdirSync(resolve(root, `src/assets/${group}/${name}`)).map((file) => `src/assets/${group}/${name}/${file}`))),
+  ...readdirSync(resolve(root, 'src/assets/icons')).flatMap((name) =>
+    readdirSync(resolve(root, `src/assets/icons/${name}`)).map((file) => `src/assets/icons/${name}/${file}`)),
   'scripts/generate-license-catalog.mjs',
   'scripts/browser-license-packages.mjs', 'vite.config.ts',
 ];
@@ -106,15 +106,13 @@ for (const { noticeFiles = [], noticeKeys = [], ...component } of extras) {
   ]);
 }
 const fontLicenses = json('licenses/google-fonts-licenses.json').families;
-const bundled = new Set(extras.filter((entry) => entry.category === 'Bundled fonts').map((entry) => entry.id.replace('font:', '')));
 for (const font of json('src/fonts/googleFontsCatalog.json')) {
-  if (bundled.has(font.id)) continue;
   const info = fontLicenses[font.id];
   if (!info) throw new Error(`Review and add license metadata for Google Font: ${font.family}`);
-  add({ id: `google-font:${font.id}`, name: font.family, category: 'On-demand fonts',
+  add({ id: `google-font:${font.id}`, name: font.family, category: 'Fonts',
     license: info.license, sourceUrl: info.sourceUrl, assetUrl: font.url,
     description: 'Downloaded only when selected in the studio. See upstream for family-specific copyright notices.',
-  }, info.notice ? [{ text: `${info.copyright}\n\n${info.notice}`, source: info.sourceUrl }] : []);
+  }, info.notice ? [{ text: [info.copyright, info.notice].filter(Boolean).join('\n\n'), source: info.sourceUrl }] : []);
 }
 components.sort((a, b) => a.name.localeCompare(b.name, 'en') || (a.version ?? '').localeCompare(b.version ?? '', 'en'));
 writeFileSync(resolve(root, output), `${JSON.stringify({ schemaVersion: 1, inputs, bundledPackages, components, notices }, null, 2)}\n`);

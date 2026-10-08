@@ -26,18 +26,18 @@ export function LicensePage({ catalog, downloadUrl }: { catalog: LicenseCatalog;
   const [category, setCategory] = useState('All components');
   const [limit, setLimit] = useState(40);
   const entries = useMemo(() => {
-    const fonts = catalog.components.filter((entry) => entry.category === 'On-demand fonts');
+    const fonts = catalog.components.filter((entry) => entry.category === 'Fonts');
     if (fonts.length === 0) return catalog.components;
     const googleFonts: LicenseComponent = {
       id: 'google-fonts',
       name: 'Google Fonts',
-      category: 'On-demand fonts',
+      category: 'Fonts',
       license: [...new Set(fonts.map((font) => font.license))].sort().join(' / '),
       sourceUrl: 'https://github.com/google/fonts#license',
       description: `${fonts.length.toLocaleString()} font families available on demand. Each family has its own license and copyright notices; the full JSON inventory links to those details.`,
       noticeIds: [...new Set(fonts.flatMap((font) => font.noticeIds))],
     };
-    return [...catalog.components.filter((entry) => entry.category !== 'On-demand fonts'), googleFonts]
+    return [...catalog.components.filter((entry) => entry.category !== 'Fonts'), googleFonts]
       .sort((a, b) => a.name.localeCompare(b.name, 'en'));
   }, [catalog]);
   const categories = useMemo(() => [...new Set(entries.map((entry) => entry.category))].sort(), [entries]);
@@ -60,7 +60,7 @@ export function LicensePage({ catalog, downloadUrl }: { catalog: LicenseCatalog;
         </header>
         <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Open-source licenses</h1>
         <p className="mt-4 leading-relaxed">Nomen Studio is built with open-source software, fonts, icons, and data. Thank you to their authors and contributors.</p>
-        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">This inventory covers software included in the browser app, bundled fonts and icons, catalog data, and fonts available on demand. Upstream links provide additional project and copyright information.</p>
+        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">This inventory covers software included in the browser app, icons, catalog data, and fonts available on demand. Upstream links provide additional project and copyright information.</p>
         <div className="mt-5 flex flex-wrap gap-5 text-sm">
           <a className={linkClass} href={import.meta.env.BASE_URL}>← Back to studio</a>
           <a className={linkClass} href={downloadUrl} download="open-source-licenses.json">Download inventory (JSON)</a>

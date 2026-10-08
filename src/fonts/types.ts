@@ -5,7 +5,7 @@ export interface FontDefinition {
   id: string;
   label: string;
   category: FontCategory;
-  /** Resolved asset URL of the .ttf file, produced via `new URL(..., import.meta.url)`. */
+  /** On-demand Google Fonts TTF URL, or a resolved local icon-font asset URL. */
   url: string;
   /** Google Fonts family name, for display/attribution. */
   family: string;
