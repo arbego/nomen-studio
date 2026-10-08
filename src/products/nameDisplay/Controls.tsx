@@ -16,6 +16,7 @@ import { useNameDisplayGeometry } from './geometryContext';
 import { effectivePocketDepthMm } from './geometry';
 import { inlayDepthsMm, minimumHollowDepthMm } from './config';
 import { DesignInput } from '../../ui/DesignHistory';
+import { PrintSettings } from '../../ui/controls/PrintSettings';
 
 const SECTION = 'border-t border-stone-100 dark:border-stone-800 pt-5';
 
@@ -84,10 +85,6 @@ export function NameDisplayControls() {
           </label>
           {config.hollowEnabled && (
             <>
-              <p className="text-xs text-stone-400 dark:text-stone-500">A removable lid sits flush inside the rim on a 45° support ramp. Print the bowl back-down and the lid underside-down as separate pieces.</p>
-              <SliderField label="Wall thickness" value={config.wallThicknessMm} onChange={(wallThicknessMm) => onChange({ wallThicknessMm })} min={0.8} max={10} step={0.2} hint="Applies to the bowl's walls and back floor. Narrow strokes stay solid." />
-              <SliderField label="Lid thickness" value={config.lidThicknessMm} onChange={(lidThicknessMm) => onChange({ lidThicknessMm })} min={1} max={10} step={0.2} hint="Name and decorator pockets are limited to leave a solid lid underneath." />
-              <SliderField label="Lid clearance" value={config.lidClearanceMm} onChange={(lidClearanceMm) => onChange({ lidClearanceMm })} min={0} max={1} step={0.05} hint="The gap all round the lid. Increase it for an easier fit." />
               <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Bowl color" variant="field" />
               <ColorSwatchPicker value={config.lidColor} onChange={(lidColor) => onChange({ lidColor })} label="Lid color" variant="field" />
               {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Use the lid button beside the preview's shadow button to see inside.</p>}
@@ -107,6 +104,12 @@ export function NameDisplayControls() {
                   </>
                 )}
               </FocusTarget>
+              <PrintSettings>
+                <p className="text-xs text-stone-400 dark:text-stone-500">A removable lid sits flush inside the rim on a 45° support ramp. Print the bowl back-down and the lid underside-down as separate pieces.</p>
+                <SliderField label="Wall thickness" value={config.wallThicknessMm} onChange={(wallThicknessMm) => onChange({ wallThicknessMm })} min={0.8} max={10} step={0.2} hint="Applies to the bowl's walls and back floor. Narrow strokes stay solid." />
+                <SliderField label="Lid thickness" value={config.lidThicknessMm} onChange={(lidThicknessMm) => onChange({ lidThicknessMm })} min={1} max={10} step={0.2} hint="Name and decorator pockets are limited to leave a solid lid underneath." />
+                <SliderField label="Lid clearance" value={config.lidClearanceMm} onChange={(lidClearanceMm) => onChange({ lidClearanceMm })} min={0} max={1} step={0.05} hint="The gap all round the lid. Increase it for an easier fit." />
+              </PrintSettings>
             </>
           )}
         </CollapsibleSection>

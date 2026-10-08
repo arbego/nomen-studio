@@ -1,4 +1,5 @@
 import { SliderField } from './SliderField';
+import { PrintSettings } from './PrintSettings';
 import type { StandMode } from '../../geometry/baseGeometry';
 import { MODES } from './standModes';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
@@ -65,14 +66,16 @@ export function StandControls({
 
       {mode === 'rail' && (
         <>
-          <SliderField label="Rail height" value={railHeightMm} onChange={onChangeRailHeight} min={2} max={25} step={0.5} hint="Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it." />
-          <SliderField label="Rail depth" value={railDepthMm} onChange={onChangeRailDepth} min={8} max={60} />
-          {railSocketDepthMm !== undefined && onChangeRailSocketDepth && (
-            <SliderField label="Socket depth" value={railSocketDepthMm} onChange={onChangeRailSocketDepth} min={0} max={20} step={0.5} hint="How far the piece sits down into the rail. They print as two parts and go together afterwards, so deeper holds better — and hides that much of the piece." />
-          )}
           {color !== undefined && onChangeColor && (
             <ColorSwatchPicker value={color} onChange={onChangeColor} label="Rail color" variant="field" />
           )}
+          <PrintSettings>
+            <SliderField label="Rail height" value={railHeightMm} onChange={onChangeRailHeight} min={2} max={25} step={0.5} hint="Measured below the baseline. Grows on its own if descenders reach lower, so they end up inside the rail rather than poking out of it." />
+            <SliderField label="Rail depth" value={railDepthMm} onChange={onChangeRailDepth} min={8} max={60} />
+            {railSocketDepthMm !== undefined && onChangeRailSocketDepth && (
+              <SliderField label="Socket depth" value={railSocketDepthMm} onChange={onChangeRailSocketDepth} min={0} max={20} step={0.5} hint="How far the piece sits down into the rail. They print as two parts and go together afterwards, so deeper holds better — and hides that much of the piece." />
+            )}
+          </PrintSettings>
         </>
       )}
 
