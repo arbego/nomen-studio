@@ -74,7 +74,7 @@ export function OutlineControls({
 
       {enabled && (
         <>
-          <p className="text-xs text-stone-400 dark:text-stone-500">
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             A separate solid card behind the name, shaped to its outline. Increase the border width until disconnected parts, such as an “i” dot, touch the card.
           </p>
           <SliderField label="Border width" value={growMm} onChange={onChangeGrow} min={GROW_RANGE.min} max={GROW_RANGE.max} step={GROW_RANGE.step} />
@@ -88,12 +88,12 @@ export function OutlineControls({
                   <button
                     type="button"
                     onClick={() => onSetAllHoles(holeCandidates.map((candidate) => candidate.key), !allClosed)}
-                    className="shrink-0 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+                    className="control-action shrink-0"
                   >
                     {allClosed ? 'Open all' : 'Fill all in'}
                   </button>
                 </div>
-                <p className="text-xs text-stone-400 dark:text-stone-500">
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   Fill one in if you'd rather it print solid, like the rest of the card. Or hold Ctrl in the preview and click the hole itself.
                 </p>
                 <div className="flex flex-col gap-1">

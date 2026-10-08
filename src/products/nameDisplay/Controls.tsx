@@ -88,7 +88,7 @@ export function NameDisplayControls() {
             <>
               <ColorSwatchPicker value={config.initialColor} onChange={(initialColor) => onChange({ initialColor })} label="Bowl color" variant="field" />
               <ColorSwatchPicker value={config.lidColor} onChange={(lidColor) => onChange({ lidColor })} label="Lid color" variant="field" />
-              {assembly?.lidGeometry && <p className="text-xs text-stone-400 dark:text-stone-500">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Use the lid button beside the preview's shadow button to see inside.</p>}
+              {assembly?.lidGeometry && <p className="text-xs text-stone-500 dark:text-stone-400">{assembly.cavityDepthMm.toFixed(1)} mm inside from floor to lid. Use the lid button beside the preview's shadow button to see inside.</p>}
               <FocusTarget focusKey={CABLE_HOLE_FOCUS_KEY} className="flex flex-col gap-4 border-t border-stone-100 pt-4 dark:border-stone-800">
                 <label className="flex items-center justify-between gap-3 text-sm text-stone-600 dark:text-stone-400">
                   <span>Cable hole</span>
@@ -100,13 +100,13 @@ export function NameDisplayControls() {
                 {config.cableHoleEnabled && (
                   <>
                     <SliderField label="Hole diameter" value={config.cableHoleDiameterMm} onChange={(cableHoleDiameterMm) => onChange({ cableHoleDiameterMm })} min={2} max={30} step={0.5} hint="Make room for the cable or connector you plan to pass through." />
-                    <p className="text-xs text-stone-400 dark:text-stone-500">Click the hole to highlight it, then drag it to move it. Make the lid transparent or orbit to the back to reach the hole. Orbit the view to reach the side walls.</p>
-                    <button type="button" onClick={() => onChange({ cableHolePlacement: null })} className="self-start text-xs text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200">Reset hole position</button>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">Click the hole to highlight it, then drag it to move it. Make the lid transparent or orbit to the back to reach the hole. Orbit the view to reach the side walls.</p>
+                    <button type="button" onClick={() => onChange({ cableHolePlacement: null })} className="control-action self-start">Reset hole position</button>
                   </>
                 )}
               </FocusTarget>
               <PrintSettings>
-                <p className="text-xs text-stone-400 dark:text-stone-500">A removable lid sits flush inside the rim on a 45° support ramp. Print the bowl back-down and the lid underside-down as separate pieces.</p>
+                <p className="text-xs text-stone-500 dark:text-stone-400">A removable lid sits flush inside the rim on a 45° support ramp. Print the bowl back-down and the lid underside-down as separate pieces.</p>
                 <SliderField label="Wall thickness" value={config.wallThicknessMm} onChange={(wallThicknessMm) => onChange({ wallThicknessMm })} min={0.8} max={10} step={0.2} hint="Applies to the bowl's walls and back floor. Narrow strokes stay solid." />
                 <SliderField label="Lid thickness" value={config.lidThicknessMm} onChange={(lidThicknessMm) => onChange({ lidThicknessMm })} min={1} max={10} step={0.2} hint="Name and decorator pockets are limited to leave a solid lid underneath." />
                 <SliderField label="Lid clearance" value={config.lidClearanceMm} onChange={(lidClearanceMm) => onChange({ lidClearanceMm })} min={0} max={1} step={0.05} hint="The gap all round the lid. Increase it for an easier fit." />
@@ -119,7 +119,7 @@ export function NameDisplayControls() {
           <FocusTarget focusKey={NAME_FOCUS_KEY} className="-mx-2 -my-1 px-2 py-1">
             <TextField label="Name" value={config.name} onChange={(name) => onChange({ name })} maxLength={20} placeholder="Liam" />
           </FocusTarget>
-          <p className="text-xs text-stone-400 dark:text-stone-500">Leave empty for an initial with optional decorators only.</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Leave empty for an initial with optional decorators only.</p>
           {hasName && (
             <>
               <FontField
@@ -142,10 +142,10 @@ export function NameDisplayControls() {
                 hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
               />
               <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
-              <p className="flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
+              <p className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
                 <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
                 {hasCustomGaps && (
-                  <button type="button" onClick={resetNameLetterGaps} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+                  <button type="button" onClick={resetNameLetterGaps} className="control-action shrink-0">
                     Reset spacing
                   </button>
                 )}
@@ -156,7 +156,7 @@ export function NameDisplayControls() {
         </CollapsibleSection>
 
         <CollapsibleSection id={SECTIONS.inlay} title="Inlay" summary={hasInlays ? `${pocketDepth.toFixed(2)} mm deep` : 'No inlays'} className={SECTION}>
-          <p className="text-xs text-stone-400 dark:text-stone-500">Names and decorators are recessed into the initial's face, so the pieces lock together. Print them in different filaments.</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Names and decorators are recessed into the initial's face, so the pieces lock together. Print them in different filaments.</p>
           <SliderField
             label="Pocket depth"
             value={config.pocketDepthMm}

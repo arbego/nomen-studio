@@ -45,7 +45,7 @@ export function StandControls({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      {hint && <p className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
+      {hint && <p className="text-xs text-stone-500 dark:text-stone-400">{hint}</p>}
 
       <div className="flex gap-1 rounded-lg bg-stone-100 dark:bg-stone-800 p-1">
         {MODES.map((option) => (
@@ -62,7 +62,7 @@ export function StandControls({
           </button>
         ))}
       </div>
-      {active && <p className="text-xs text-stone-400 dark:text-stone-500">{active.hint}</p>}
+      {active && <p className="text-xs text-stone-500 dark:text-stone-400">{active.hint}</p>}
 
       {mode === 'rail' && (
         <>

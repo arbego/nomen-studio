@@ -36,7 +36,7 @@ function IconName({ id }: { id: string }) {
   const icon = getIcon(id);
   return (
     <>
-      {icon.name} <span className="text-xs text-stone-400 dark:text-stone-500">{getIconSet(icon.set).label}</span>
+      {icon.name} <span className="text-xs text-stone-500 dark:text-stone-400">{getIconSet(icon.set).label}</span>
     </>
   );
 }
@@ -89,7 +89,7 @@ function DecoratorCard({
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 shrink-0 text-stone-500 dark:text-stone-400 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
           >
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -98,7 +98,7 @@ function DecoratorCard({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${getIcon(decorator.iconName).name}`}
-          className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-red-700 dark:hover:text-red-400"
+          className="control-action shrink-0 hover:text-red-700 dark:hover:text-red-400"
         >
           Remove
         </button>
@@ -153,7 +153,7 @@ export function DecoratorControls({ decorators, placements, colors, fallbackColo
 
   return (
     <>
-      <p className="text-xs text-stone-400 dark:text-stone-500">
+      <p className="text-xs text-stone-500 dark:text-stone-400">
         Symbols printed alongside the lettering, each in its own filament. Drag one in the preview to move it — keep it over the lettering, or over the backing card, so
         the printed piece holds together.
       </p>

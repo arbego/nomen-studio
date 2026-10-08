@@ -107,7 +107,7 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
         />
         {/* "Done", not "Cancel": a pick lands on the piece the moment it is
             made, so by the time you close this there is nothing left to undo. */}
-        <button type="button" onClick={onClose} className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+        <button type="button" onClick={onClose} className="control-action shrink-0">
           Done
         </button>
       </div>
@@ -135,17 +135,17 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
         ))}
       </div>
 
-      {set && <p className="text-xs text-stone-400 dark:text-stone-500">{getIconSet(set).blurb}</p>}
+      {set && <p className="text-xs text-stone-500 dark:text-stone-400">{getIconSet(set).blurb}</p>}
 
-      <div className="flex items-center justify-between gap-2 text-xs text-stone-400 dark:text-stone-500">
+      <div className="flex items-center justify-between gap-2 text-xs text-stone-500 dark:text-stone-400">
         <span>{showAll && !query.trim() ? `All ${total} icons` : `${results.length} ${results.length === 1 ? 'icon' : 'icons'}`}</span>
         {capped ? (
-          <button type="button" onClick={() => setShowAll(true)} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+          <button type="button" onClick={() => setShowAll(true)} className="control-action shrink-0">
             Show all {total}
           </button>
         ) : (
           showAll && (
-            <button type="button" onClick={() => setShowAll(false)} className="shrink-0 text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+            <button type="button" onClick={() => setShowAll(false)} className="control-action shrink-0">
               Show fewer
             </button>
           )
@@ -153,7 +153,7 @@ export function IconPicker({ value, onChange, onClose, browse, onBrowse }: IconP
       </div>
 
       {results.length === 0 ? (
-        <p className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">No icon matches “{query.trim()}”.</p>
+        <p className="py-4 text-center text-xs text-stone-500 dark:text-stone-400">No icon matches “{query.trim()}”.</p>
       ) : (
         <div className="grid max-h-64 grid-cols-[repeat(auto-fill,44px)] gap-1 overflow-y-auto">
           {results.map((icon) => (

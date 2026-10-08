@@ -81,7 +81,7 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
       <span className="w-full truncate text-lg leading-tight" style={loaded ? { fontFamily: previewFontFamily(entry.id) } : undefined}>
         {previewText}
       </span>
-      <span className={`text-xs ${selected ? 'text-stone-300 dark:text-stone-600' : 'text-stone-400 dark:text-stone-500'}`}>{entry.family}</span>
+      <span className={`text-xs ${selected ? 'text-stone-300 dark:text-stone-600' : 'text-stone-500 dark:text-stone-400'}`}>{entry.family}</span>
     </button>
   );
 }
@@ -125,7 +125,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
           <button
             type="button"
             onClick={onDone}
-            className="shrink-0 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+            className="control-action shrink-0"
           >
             Done
           </button>
@@ -176,7 +176,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
       </div>
 
       <div ref={resultsRef} onKeyDown={(event) => navigateFonts(event, results, event.currentTarget, true)} className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
-        {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-400 dark:text-stone-500">No fonts match your search.</p>}
+        {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-500 dark:text-stone-400">No fonts match your search.</p>}
         {results.map((entry) => (
           <FontResultRow key={entry.id} entry={entry} previewText={previewText} selected={value === entry.id} onSelect={() => onChange(entry.id)} />
         ))}

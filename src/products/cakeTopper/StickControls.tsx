@@ -49,7 +49,7 @@ export function StickControls({
 
       {enabled && (
         <>
-          <p className="text-xs text-stone-400 dark:text-stone-500">Drag a stick in the preview to reposition it.</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Drag a stick in the preview to reposition it.</p>
 
           <div className="flex flex-col gap-2">
             {pickIds.map((blockId) => (
@@ -61,7 +61,7 @@ export function StickControls({
                     onClick={() => onRemoveStick(blockId)}
                     disabled={stickCounts[blockId] <= 1}
                     aria-label={`Remove a ${PICK_LABELS[blockId]} stick`}
-                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     −
                   </button>
@@ -71,7 +71,7 @@ export function StickControls({
                     onClick={() => onAddStick(blockId)}
                     disabled={stickCounts[blockId] >= MAX_STICKS_PER_BLOCK}
                     aria-label={`Add a ${PICK_LABELS[blockId]} stick`}
-                    className="flex h-6 w-6 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 transition-colors hover:border-stone-400 dark:hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     +
                   </button>

@@ -49,7 +49,7 @@ function IconName({ id }: { id: string }) {
   const icon = getIcon(id);
   return (
     <>
-      {icon.name} <span className="text-xs text-stone-400 dark:text-stone-500">{getIconSet(icon.set).label}</span>
+      {icon.name} <span className="text-xs text-stone-500 dark:text-stone-400">{getIconSet(icon.set).label}</span>
     </>
   );
 }
@@ -105,7 +105,7 @@ function DecoratorCard({
             <Icon name={decorator.iconName} className="text-[22px]" />
           </button>
         ) : (
-          <Icon name="text_fields" className="h-10 shrink-0 text-[22px] leading-10 text-stone-400 dark:text-stone-500" />
+          <Icon name="text_fields" className="h-10 shrink-0 text-[22px] leading-10 text-stone-500 dark:text-stone-400" />
         )}
         <button type="button" onClick={() => setOpen(id, !open)} aria-expanded={open} className="group flex min-w-0 flex-1 items-center gap-2 text-left">
           <span className="min-w-0 flex-1 truncate text-sm text-stone-600 dark:text-stone-400">
@@ -118,7 +118,7 @@ function DecoratorCard({
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 shrink-0 text-stone-500 dark:text-stone-400 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
           >
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -127,7 +127,7 @@ function DecoratorCard({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${name}`}
-          className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-red-700 dark:hover:text-red-400"
+          className="control-action shrink-0 hover:text-red-700 dark:hover:text-red-400"
         >
           Remove
         </button>
@@ -204,7 +204,7 @@ export function DecoratorControls({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <p className="text-xs text-stone-400 dark:text-stone-500">
+      <p className="text-xs text-stone-500 dark:text-stone-400">
         Icons and words inlaid into the initial, each in its own pocket and its own filament. Drag one in the preview to move it.
       </p>
 
@@ -247,7 +247,7 @@ export function DecoratorControls({
                 <button
                   type="button"
                   onClick={() => toggle(decorator.id, 'font')}
-                  className="shrink-0 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200"
+                  className="control-action shrink-0"
                 >
                   {editor?.id === decorator.id && editor.what === 'font' ? 'Done' : 'Change'}
                 </button>

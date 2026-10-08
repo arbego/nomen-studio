@@ -65,7 +65,7 @@ export function ColorSwatchPicker({ value, onChange, label = 'Preview color', va
       </div>
       {open && (
         <div id={paletteId} className="flex flex-col gap-1.5" role="group" aria-label={`${pickerLabel} options`}>
-          {hint && <p className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
+          {hint && <p className="text-xs text-stone-500 dark:text-stone-400">{hint}</p>}
           <div className="grid w-full grid-cols-[repeat(auto-fill,32px)] gap-2 p-1">
             {COLOR_PRESETS.map((color) => (
               <button

@@ -36,7 +36,7 @@ export function FontField({ label, value, onChange, previewText, open, onOpenCha
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="shrink-0 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+          className="control-action shrink-0"
         >
           Change
         </button>

@@ -76,7 +76,7 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
       </div>
       <DesignInput type="range" aria-label={label} aria-describedby={description} min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
       {notice && <p id={`${id}-notice`} className="text-xs font-medium text-amber-700 dark:text-amber-400">{notice}</p>}
-      {hint && <p id={`${id}-hint`} className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
+      {hint && <p id={`${id}-hint`} className="text-xs text-stone-500 dark:text-stone-400">{hint}</p>}
     </div>
   );
 }

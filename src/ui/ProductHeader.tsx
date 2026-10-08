@@ -19,7 +19,7 @@ export function ProductHeader({ product, onBack }: ProductHeaderProps) {
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-1 rounded px-1 py-0.5 text-xs text-stone-400 dark:text-stone-500 transition-colors hover:text-stone-700 dark:hover:text-stone-300"
+            className="flex items-center gap-1 rounded px-1 py-0.5 text-xs text-stone-500 dark:text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-300"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <path d="M15 18l-6-6 6-6" />

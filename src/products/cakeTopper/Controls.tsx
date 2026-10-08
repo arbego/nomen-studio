@@ -62,10 +62,10 @@ export function CakeTopperControls() {
             open={fontOpen}
             onOpenChange={setFontOpen}
           />
-          <p className="-mt-2 flex items-center justify-between text-xs text-stone-400 dark:text-stone-500">
+          <p className="-mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
             <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
             {hasCustomLetterGaps && (
-              <button type="button" onClick={onResetLetterGaps} className="text-stone-500 dark:text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200">
+              <button type="button" onClick={onResetLetterGaps} className="control-action">
                 Reset spacing
               </button>
             )}

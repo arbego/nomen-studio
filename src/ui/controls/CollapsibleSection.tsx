@@ -46,7 +46,7 @@ export function CollapsibleSection({ id, title, defaultOpen = false, summary, cl
         className={`group -mt-5 flex w-full items-center gap-2 pt-5 text-left ${open ? '' : '-mb-5 pb-5'}`}
       >
         <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{title}</span>
-        <span className="min-w-0 flex-1 truncate text-right text-xs text-stone-400 dark:text-stone-500">{open ? '' : summary}</span>
+        <span className="min-w-0 flex-1 truncate text-right text-xs text-stone-500 dark:text-stone-400">{open ? '' : summary}</span>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -54,7 +54,7 @@ export function CollapsibleSection({ id, title, defaultOpen = false, summary, cl
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`h-4 w-4 shrink-0 text-stone-400 dark:text-stone-500 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-stone-500 dark:text-stone-400 transition-transform group-hover:text-stone-700 dark:group-hover:text-stone-300 ${open ? 'rotate-180' : ''}`}
         >
           <path d="m6 9 6 6 6-6" />
         </svg>
