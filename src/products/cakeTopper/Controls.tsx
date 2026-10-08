@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ControlPane } from '../../ui/controls/ControlPane';
 import { useShallow } from 'zustand/react/shallow';
 import { detectOutlineHoleCandidates } from '../../geometry/outline';
 import { LinesControls } from '../../ui/controls/LinesControls';
@@ -49,7 +50,7 @@ export function CakeTopperControls() {
   const stickCount = config.stickOffsets.word.length;
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+    <ControlPane loading={loading} error={error}>
       <div className="flex flex-col gap-5">
         <CollapsibleSection id={SECTIONS.text} title="Text" defaultOpen summary={config.lines.filter(Boolean).join(' ')}>
           <LinesControls lines={config.lines} onChangeLine={onChangeLine} onAddLine={onAddLine} onRemoveLine={onRemoveLine} focusKeyForLine={lineFocusKey} />
@@ -137,17 +138,6 @@ export function CakeTopperControls() {
         </CollapsibleSection>
       </div>
 
-      {/* Only ever present while there is something to say — exporting moved to
-          the preview, so an always-on footer would be an empty rule. */}
-      {(error || loading) && (
-        <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : (
-            <p className="text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>
-          )}
-        </div>
-      )}
-    </div>
+    </ControlPane>
   );
 }

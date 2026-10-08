@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ControlPane } from '../../ui/controls/ControlPane';
 import { useShallow } from 'zustand/react/shallow';
 import { TextField } from '../../ui/controls/TextField';
 import { FontField } from '../../ui/controls/FontField';
@@ -47,7 +48,7 @@ export function NameDisplayControls() {
   const detachedDecoratorIds = assembly ? assembly.decorators.filter((decorator) => !decorator.heldByInitial).map((decorator) => decorator.id) : [];
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+    <ControlPane loading={loading} error={error}>
       <div className="flex flex-col gap-5">
         <CollapsibleSection id={SECTIONS.initial} title="Initial" defaultOpen summary={`${config.initial} in ${getFontDefinition(config.initialFontId).family}`}>
           {/* The field alone, not the section: clicking the letter asks what
@@ -163,9 +164,10 @@ export function NameDisplayControls() {
             min={0}
             max={10}
             step={0.25}
+            notice={pocketCapped ? `Applied depth: ${pocketDepth.toFixed(2)} mm (requested ${config.pocketDepthMm.toFixed(2)} mm).` : undefined}
             hint={
               pocketCapped
-                ? `Capped at ${pocketDepth.toFixed(2)} mm — it can't exceed the thinnest inlay or cut through the ${config.hollowEnabled ? 'lid' : 'initial'}.`
+                ? `Depth is limited by the thinnest inlay and the ${config.hollowEnabled ? 'lid' : 'initial'} thickness.`
                 : hasName
                   ? `The name stands ${(config.nameDepthMm - pocketDepth).toFixed(2)} mm proud of the initial.`
                   : hasInlays
@@ -224,17 +226,6 @@ export function NameDisplayControls() {
         </CollapsibleSection>
       </div>
 
-      {/* Only ever present while there is something to say — exporting moved to
-          the preview, so an always-on footer would be an empty rule. */}
-      {(error || loading) && (
-        <div className="mt-auto border-t border-stone-200 dark:border-stone-700 pt-4">
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : (
-            <p className="text-sm text-stone-400 dark:text-stone-500">Generating geometry…</p>
-          )}
-        </div>
-      )}
-    </div>
+    </ControlPane>
   );
 }

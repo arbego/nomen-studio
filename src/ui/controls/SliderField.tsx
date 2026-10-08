@@ -10,14 +10,16 @@ interface SliderFieldProps {
   step?: number;
   unit?: string;
   hint?: string;
+  notice?: string;
   className?: string;
 }
 
 /** A slider for exploring, with an editable value for precise dimensions. */
-export function SliderField({ label, value, onChange, min, max, step = 1, unit = 'mm', hint, className = '' }: SliderFieldProps) {
+export function SliderField({ label, value, onChange, min, max, step = 1, unit = 'mm', hint, notice, className = '' }: SliderFieldProps) {
   const id = useId();
   const [draft, setDraft] = useState(String(value));
   const [previousValue, setPreviousValue] = useState(value);
+  const description = [hint && `${id}-hint`, notice && `${id}-notice`].filter(Boolean).join(' ') || undefined;
   if (value !== previousValue) {
     setPreviousValue(value);
     setDraft(String(value));
@@ -43,7 +45,7 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
             type="number"
             inputMode="decimal"
             aria-label={`${label} value`}
-            aria-describedby={hint ? `${id}-hint` : undefined}
+            aria-describedby={description}
             min={min}
             max={max}
             step={step}
@@ -72,7 +74,8 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
           <span className="text-xs text-stone-500 dark:text-stone-400">{unit}</span>
         </div>
       </div>
-      <DesignInput type="range" aria-label={label} aria-describedby={hint ? `${id}-hint` : undefined} min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+      <DesignInput type="range" aria-label={label} aria-describedby={description} min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 accent-stone-800 dark:accent-stone-300" />
+      {notice && <p id={`${id}-notice`} className="text-xs font-medium text-amber-700 dark:text-amber-400">{notice}</p>}
       {hint && <p id={`${id}-hint`} className="text-xs text-stone-400 dark:text-stone-500">{hint}</p>}
     </div>
   );
