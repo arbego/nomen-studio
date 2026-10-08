@@ -11,11 +11,13 @@ interface SliderFieldProps {
   unit?: string;
   hint?: string;
   notice?: string;
+  onReset?: () => void;
+  resetDisabled?: boolean;
   className?: string;
 }
 
 /** A slider for exploring, with an editable value for precise dimensions. */
-export function SliderField({ label, value, onChange, min, max, step = 1, unit = 'mm', hint, notice, className = '' }: SliderFieldProps) {
+export function SliderField({ label, value, onChange, min, max, step = 1, unit = 'mm', hint, notice, onReset, resetDisabled = false, className = '' }: SliderFieldProps) {
   const id = useId();
   const [draft, setDraft] = useState(String(value));
   const [previousValue, setPreviousValue] = useState(value);
@@ -38,7 +40,10 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-        <label htmlFor={`${id}-value`}>{label}</label>
+        <div className="flex items-center gap-1">
+          <label htmlFor={`${id}-value`}>{label}</label>
+          {onReset && <button type="button" onClick={onReset} disabled={resetDisabled} aria-label={`Reset ${label.toLowerCase()}`} className="control-action disabled:cursor-default disabled:opacity-40">Reset</button>}
+        </div>
         <div className="flex items-center gap-1.5">
           <DesignInput
             id={`${id}-value`}

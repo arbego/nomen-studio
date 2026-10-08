@@ -10,6 +10,7 @@ interface StickControlsProps {
   onChangeLength: (lengthMm: number) => void;
   stickCounts: Record<CakeTopperBlockId, number>;
   onAddStick: (blockId: CakeTopperBlockId) => void;
+  onResetPositions: () => void;
   onRemoveStick: (blockId: CakeTopperBlockId) => void;
   className?: string;
 }
@@ -29,6 +30,7 @@ export function StickControls({
   onChangeLength,
   stickCounts,
   onAddStick,
+  onResetPositions,
   onRemoveStick,
   className = '',
 }: StickControlsProps) {
@@ -80,6 +82,7 @@ export function StickControls({
             ))}
           </div>
 
+          <button type="button" onClick={onResetPositions} className="control-action self-start" title="Space sticks evenly along the baseline">Reset stick positions</button>
           <SliderField label="Width" value={widthMm} onChange={onChangeWidth} min={WIDTH_RANGE.min} max={WIDTH_RANGE.max} step={WIDTH_RANGE.step} />
 
           <SliderField label="Length" value={lengthMm} onChange={onChangeLength} min={LENGTH_RANGE.min} max={LENGTH_RANGE.max} step={LENGTH_RANGE.step} />

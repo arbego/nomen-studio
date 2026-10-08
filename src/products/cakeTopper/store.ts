@@ -101,6 +101,7 @@ const MAX_STICKS_PER_BLOCK = 5;
 interface CakeTopperStore extends CakeTopperConfig {
   setConfig: (partial: Partial<CakeTopperConfig>) => void;
   setStickOffset: (blockId: CakeTopperBlockId, index: number, offset: Offset2D) => void;
+  resetStickPositions: (blockId: CakeTopperBlockId) => void;
   addStick: (blockId: CakeTopperBlockId) => void;
   removeStick: (blockId: CakeTopperBlockId, index: number) => void;
   setSticksEnabled: (blockId: CakeTopperBlockId, enabled: boolean) => void;
@@ -108,6 +109,7 @@ interface CakeTopperStore extends CakeTopperConfig {
   addLine: () => void;
   removeLine: (index: number) => void;
   setLineOffset: (index: number, offset: Offset2D) => void;
+  resetLinePositions: () => void;
   setLetterGap: (lineIndex: number, gapIndex: number, gapMm: number) => void;
   resetLetterGaps: () => void;
   toggleClosedOutlineHole: (key: string) => void;
@@ -116,6 +118,7 @@ interface CakeTopperStore extends CakeTopperConfig {
   updateDecorator: (id: string, patch: Partial<Omit<CakeTopperDecoratorConfig, 'id'>>) => void;
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
+  resetDecoratorPosition: (id: string) => void;
   setDecoratorAngle: (id: string, angleDeg: number) => void;
   setDecoratorColor: (id: string, color: string) => void;
   /** Fills a whole set of holes in at once, or opens them all — "fill all in" over the checklist. */
@@ -158,6 +161,9 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
         [blockId]: state.stickOffsets[blockId].map((existing, i) => (i === index ? offset : existing)),
       },
     })),
+  resetStickPositions: (blockId) => set((state) => ({
+    stickOffsets: { ...state.stickOffsets, [blockId]: state.stickOffsets[blockId].map((_, index, offsets) => ({ x: (index - (offsets.length - 1) / 2) * NEW_STICK_SPACING_MM, y: 0 })) },
+  })),
   addStick: (blockId) =>
     set((state) => {
       const existing = state.stickOffsets[blockId];
@@ -217,6 +223,7 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
     set((state) => ({
       lineOffsets: state.lineOffsets.map((existing, i) => (i === index ? offset : existing)),
     })),
+  resetLinePositions: () => set((state) => ({ lineOffsets: state.lines.map(() => ({ x: 0, y: 0 })) })),
   setLetterGap: (lineIndex, gapIndex, gapMm) =>
     set((state) => ({
       letterGapsMm: state.letterGapsMm.map((gaps, i) => (i === lineIndex ? gaps.map((existing, gi) => (gi === gapIndex ? gapMm : existing)) : gaps)),
@@ -265,6 +272,11 @@ export const useCakeTopperStore = create<CakeTopperStore>((set) => ({
     }),
   setDecoratorOffset: (id, offset) =>
     set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
+  resetDecoratorPosition: (id) => set((state) => {
+    const index = state.decorators.findIndex((decorator) => decorator.id === id);
+    if (index < 0) return {};
+    return { decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset: defaultDecoratorPlacement(index).offset } } };
+  }),
   setDecoratorAngle: (id, angleDeg) =>
     set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),

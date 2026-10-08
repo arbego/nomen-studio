@@ -33,6 +33,9 @@ export function CakeTopperControls() {
   const onChangeLine = useCakeTopperStore((s) => s.setLineText);
   const onAddLine = useCakeTopperStore((s) => s.addLine);
   const onRemoveLine = useCakeTopperStore((s) => s.removeLine);
+  const onResetLinePositions = useCakeTopperStore((s) => s.resetLinePositions);
+  const onResetStickPositions = useCakeTopperStore((s) => s.resetStickPositions);
+  const onResetDecoratorPosition = useCakeTopperStore((s) => s.resetDecoratorPosition);
   const onResetLetterGaps = useCakeTopperStore((s) => s.resetLetterGaps);
   const onToggleClosedOutlineHole = useCakeTopperStore((s) => s.toggleClosedOutlineHole);
   const onSetClosedOutlineHoles = useCakeTopperStore((s) => s.setClosedOutlineHoles);
@@ -62,14 +65,11 @@ export function CakeTopperControls() {
             open={fontOpen}
             onOpenChange={setFontOpen}
           />
-          <p className="-mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-            <span>Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</span>
-            {hasCustomLetterGaps && (
-              <button type="button" onClick={onResetLetterGaps} className="control-action">
-                Reset spacing
-              </button>
-            )}
-          </p>
+          <p className="-mt-2 text-xs text-stone-500 dark:text-stone-400">Drag a letter in the preview to close its gap, or the first letter of a line to move the whole line.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onResetLinePositions} className="control-action" title="Restore the text's natural line layout">Reset line positions</button>
+            {hasCustomLetterGaps && <button type="button" onClick={onResetLetterGaps} className="control-action">Reset spacing</button>}
+          </div>
         </CollapsibleSection>
 
         <CollapsibleSection id={SECTIONS.size} title="Size" summary={`${config.sizeMm} mm wide, ${config.extrudeDepthMm} mm thick`} className={SECTION}>
@@ -95,6 +95,7 @@ export function CakeTopperControls() {
             onChangeWidth={(stickWidthMm) => onChange({ stickWidthMm })}
             onChangeLength={(stickLengthMm) => onChange({ stickLengthMm })}
             stickCounts={{ word: stickCount }}
+            onResetPositions={() => onResetStickPositions('word')}
             onAddStick={onAddStick}
             onRemoveStick={(blockId) => onRemoveStick(blockId, config.stickOffsets[blockId].length - 1)}
           />
@@ -114,6 +115,7 @@ export function CakeTopperControls() {
             onAdd={onAddDecorator}
             onUpdate={onUpdateDecorator}
             onRemove={onRemoveDecorator}
+            onResetPosition={onResetDecoratorPosition}
             onChangeAngle={onSetDecoratorAngle}
             onChangeColor={onSetDecoratorColor}
           />

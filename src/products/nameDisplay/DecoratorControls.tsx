@@ -30,6 +30,7 @@ interface DecoratorControlsProps {
   onUpdate: (id: string, patch: DecoratorPatch) => void;
   onRemove: (id: string) => void;
   onChangeAngle: (id: string, angleDeg: number) => void;
+  onResetPosition: (id: string) => void;
   onChangeColor: (id: string, color: string) => void;
 }
 
@@ -156,6 +157,7 @@ export function DecoratorControls({
   onUpdate,
   onRemove,
   onChangeAngle,
+  onResetPosition,
   onChangeColor,
 }: DecoratorControlsProps) {
   const [editor, setEditor] = useState<OpenEditor>(null);
@@ -251,6 +253,7 @@ export function DecoratorControls({
             </>
           )}
 
+          <button type="button" onClick={() => onResetPosition(decorator.id)} className="control-action self-start" title="Return this decorator to its starting position">Reset position</button>
           <SliderField label="Width" value={decorator.widthMm} onChange={(widthMm) => onUpdate(decorator.id, { widthMm })} min={5} max={MAX_WIDTH_MM[decorator.kind]} />
           <SliderField
             label="Thickness"
@@ -261,7 +264,7 @@ export function DecoratorControls({
             step={0.5}
             hint={`Can't go below the ${pocketDepthMm.toFixed(2)} mm pocket, or it would disappear into it.`}
           />
-          <SliderField label="Angle" value={placements[decorator.id]?.angleDeg ?? 0} onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)} min={-180} max={180} unit="°" />
+          <SliderField label="Angle" value={placements[decorator.id]?.angleDeg ?? 0} onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)} min={-180} max={180} unit="°" onReset={() => onChangeAngle(decorator.id, 0)} resetDisabled={(placements[decorator.id]?.angleDeg ?? 0) === 0} />
           <ColorSwatchPicker
             label="Color"
             variant="field"

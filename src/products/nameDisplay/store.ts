@@ -128,6 +128,7 @@ interface NameDisplayStore extends NameDisplayConfig {
   setLidTransparent: (transparent: boolean) => void;
   setConfig: (partial: Partial<NameDisplayConfig>) => void;
   setNameOffset: (offset: Offset2D) => void;
+  resetNamePosition: () => void;
   setNameLetterGap: (gapIndex: number, gapMm: number) => void;
   resetNameLetterGaps: () => void;
   setStandMode: (mode: StandMode) => void;
@@ -136,6 +137,7 @@ interface NameDisplayStore extends NameDisplayConfig {
   updateDecorator: (id: string, patch: DecoratorPatch) => void;
   removeDecorator: (id: string) => void;
   setDecoratorOffset: (id: string, offset: Offset2D) => void;
+  resetDecoratorPosition: (id: string) => void;
   setDecoratorAngle: (id: string, angleDeg: number) => void;
   setDecoratorColor: (id: string, color: string) => void;
   /** Replaces the whole design at once, from a project file. Deliberately not setConfig: its corrections exist to keep an *edit* coherent, and would fight a design that is already coherent. */
@@ -189,6 +191,7 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
       return next;
     }),
   setNameOffset: (nameOffset) => set({ nameOffset }),
+  resetNamePosition: () => set({ nameOffset: { ...DEFAULT_NAME_DISPLAY_CONFIG.nameOffset } }),
   setNameLetterGap: (gapIndex, gapMm) =>
     set((state) => ({
       nameLetterGapsMm: state.nameLetterGapsMm.map((existing, i) => (i === gapIndex ? gapMm : existing)),
@@ -247,6 +250,12 @@ export const useNameDisplayStore = create<NameDisplayStore>((set) => ({
       return { decorators: state.decorators.filter((decorator) => decorator.id !== id), decoratorPlacements, decoratorColors };
     }),
   setDecoratorOffset: (id, offset) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset } } })),
+  resetDecoratorPosition: (id) => set((state) => {
+    const index = state.decorators.findIndex((decorator) => decorator.id === id);
+    if (index < 0) return {};
+    const offset = DEFAULT_NAME_DISPLAY_CONFIG.decoratorPlacements[id]?.offset ?? defaultDecoratorPlacement(index).offset;
+    return { decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], offset: { ...offset } } } };
+  }),
   setDecoratorAngle: (id, angleDeg) => set((state) => ({ decoratorPlacements: { ...state.decoratorPlacements, [id]: { ...state.decoratorPlacements[id], angleDeg } } })),
   setDecoratorColor: (id, color) => set((state) => ({ decoratorColors: { ...state.decoratorColors, [id]: color } })),
   loadConfig: (config) => {

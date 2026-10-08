@@ -21,6 +21,7 @@ interface DecoratorControlsProps {
   onUpdate: (id: string, patch: Partial<Omit<CakeTopperDecoratorConfig, 'id'>>) => void;
   onRemove: (id: string) => void;
   onChangeAngle: (id: string, angleDeg: number) => void;
+  onResetPosition: (id: string) => void;
   onChangeColor: (id: string, color: string) => void;
 }
 
@@ -117,7 +118,7 @@ function DecoratorCard({
  * Icons only. A word belongs in the lettering, which already sets it in the
  * piece's own face and at the piece's own scale, and wraps it in the same card.
  */
-export function DecoratorControls({ decorators, placements, colors, fallbackColor, onAdd, onUpdate, onRemove, onChangeAngle, onChangeColor }: DecoratorControlsProps) {
+export function DecoratorControls({ decorators, placements, colors, fallbackColor, onAdd, onUpdate, onRemove, onChangeAngle, onResetPosition, onChangeColor }: DecoratorControlsProps) {
   const [editingIconOf, setEditingIconOf] = useState<string | null>(null);
   // Whether the grid for adding one is open. It belongs to no ornament yet —
   // the first pick makes one and hands the grid over to that ornament's card.
@@ -180,9 +181,10 @@ export function DecoratorControls({ decorators, placements, colors, fallbackColo
             </div>
           )}
 
+          <button type="button" onClick={() => onResetPosition(decorator.id)} className="control-action self-start" title="Return this decorator to its starting position">Reset position</button>
           <SliderField label="Size" value={decorator.widthMm} onChange={(widthMm) => onUpdate(decorator.id, { widthMm })} min={5} max={120} />
           <SliderField label="Thickness" value={decorator.depthMm} onChange={(depthMm) => onUpdate(decorator.id, { depthMm })} min={0.5} max={15} step={0.5} />
-          <SliderField label="Angle" value={placements[decorator.id]?.angleDeg ?? 0} onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)} min={-180} max={180} unit="°" />
+          <SliderField label="Angle" value={placements[decorator.id]?.angleDeg ?? 0} onChange={(angleDeg) => onChangeAngle(decorator.id, angleDeg)} min={-180} max={180} unit="°" onReset={() => onChangeAngle(decorator.id, 0)} resetDisabled={(placements[decorator.id]?.angleDeg ?? 0) === 0} />
           <ColorSwatchPicker label="Color" variant="field" hint={null} value={colors[decorator.id] ?? fallbackColor} onChange={(color) => onChangeColor(decorator.id, color)} />
         </DecoratorCard>
       ))}

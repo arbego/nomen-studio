@@ -28,6 +28,8 @@ export function NameDisplayControls() {
   const config = useNameDisplayStore(useShallow(selectNameDisplayConfig));
   const onChange = useNameDisplayStore((s) => s.setConfig);
   const setStandMode = useNameDisplayStore((s) => s.setStandMode);
+  const resetNamePosition = useNameDisplayStore((s) => s.resetNamePosition);
+  const resetDecoratorPosition = useNameDisplayStore((s) => s.resetDecoratorPosition);
   const resetNameLetterGaps = useNameDisplayStore((s) => s.resetNameLetterGaps);
   const addDecorator = useNameDisplayStore((s) => s.addDecorator);
   const updateDecorator = useNameDisplayStore((s) => s.updateDecorator);
@@ -139,17 +141,16 @@ export function NameDisplayControls() {
                 min={-45}
                 max={45}
                 unit="°"
+                onReset={() => onChange({ nameAngleDeg: 0 })}
+                resetDisabled={config.nameAngleDeg === 0}
                 hint="Tilts the name across the initial, turning about its own center. The pocket follows it."
               />
               <ColorSwatchPicker value={config.nameColor} onChange={(nameColor) => onChange({ nameColor })} label="Name color" variant="field" />
-              <p className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-                <span>Drag the name in the preview to move it, or any later letter to close its gap.</span>
-                {hasCustomGaps && (
-                  <button type="button" onClick={resetNameLetterGaps} className="control-action shrink-0">
-                    Reset spacing
-                  </button>
-                )}
-              </p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Drag the name in the preview to move it, or any later letter to close its gap.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={resetNamePosition} className="control-action" title="Return the name to its starting position">Reset position</button>
+                {hasCustomGaps && <button type="button" onClick={resetNameLetterGaps} className="control-action">Reset spacing</button>}
+              </div>
               {detached && <p className="text-xs text-amber-700 dark:text-amber-400">The name doesn't overlap the initial, so nothing holds it — drag it back over the letter.</p>}
             </>
           )}
@@ -202,6 +203,7 @@ export function NameDisplayControls() {
             onAdd={addDecorator}
             onUpdate={updateDecorator}
             onRemove={removeDecorator}
+            onResetPosition={resetDecoratorPosition}
             onChangeAngle={setDecoratorAngle}
             onChangeColor={setDecoratorColor}
           />
