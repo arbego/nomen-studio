@@ -74,7 +74,7 @@ export function SliderField({ label, value, onChange, min, max, step = 1, unit =
                 event.currentTarget.blur();
               }
             }}
-            className="w-20 rounded-md border border-stone-200 bg-white px-2 py-1 text-right tabular-nums text-stone-700 focus:border-stone-500 focus:outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+            className="w-14 rounded-md border border-stone-200 bg-white px-1.5 py-1 text-right tabular-nums text-stone-700 [appearance:textfield] focus:border-stone-500 focus:outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-xs text-stone-500 dark:text-stone-400">{unit}</span>
         </div>
