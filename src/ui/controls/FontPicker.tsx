@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { FONT_REGISTRY, getFontDefinition } from '../../fonts/registry';
 import { searchCatalog, type CatalogFontEntry } from '../../fonts/catalog';
 import type { FontCategory } from '../../fonts/types';
+import { DEFAULT_FONT_BROWSE, type FontBrowse } from './fontBrowse';
 
 interface FontPickerProps {
   label: string;
@@ -11,6 +12,8 @@ interface FontPickerProps {
   previewText: string;
   /** Given when the picker is opened on demand (see FontField), which puts a way of closing it again in its own heading. */
   onDone?: () => void;
+  browse?: FontBrowse;
+  onBrowse?: (browse: FontBrowse) => void;
 }
 
 const CATEGORY_OPTIONS: { value: FontCategory | ''; label: string }[] = [
@@ -86,10 +89,11 @@ function FontResultRow({ entry, previewText, selected, onSelect }: { entry: Cata
   );
 }
 
-export function FontPicker({ label, value, onChange, previewText, onDone }: FontPickerProps) {
+export function FontPicker({ label, value, onChange, previewText, onDone, browse, onBrowse }: FontPickerProps) {
   const resultsRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<FontCategory | ''>('');
+  const [localBrowse, setLocalBrowse] = useState(DEFAULT_FONT_BROWSE);
+  const { query, category } = browse ?? localBrowse;
+  const updateBrowse = onBrowse ?? setLocalBrowse;
 
   const results = searchCatalog(query, category || undefined);
   const selectedDefinition = getFontDefinition(value);
@@ -118,7 +122,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold uppercase tracking-wide text-stone-700 dark:text-stone-300">{label}</span>
         {onDone && (
@@ -131,7 +135,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-2" onKeyDown={(event) => navigateFonts(event, FONT_REGISTRY, event.currentTarget, true)}>
+      <div className="flex shrink-0 gap-2 overflow-x-auto pb-1" aria-label="Suggested fonts" onKeyDown={(event) => navigateFonts(event, FONT_REGISTRY, event.currentTarget, true)}>
         {FONT_REGISTRY.map((font) => (
           <button
             key={font.id}
@@ -139,7 +143,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
             onClick={() => onChange(font.id)}
             data-font-id={font.id}
             aria-pressed={value === font.id}
-            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+            className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               value === font.id
                 ? 'border-stone-800 dark:border-stone-200 bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900'
                 : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500'
@@ -156,15 +160,17 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => updateBrowse({ query: e.target.value, category })}
           onKeyDown={(event) => navigateFonts(event, results, resultsRef.current, false)}
           aria-label="Search Google Fonts"
           placeholder="Search Google Fonts…"
+          autoFocus
           className="min-w-0 flex-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none transition-colors focus:border-stone-500 dark:focus:border-stone-400"
         />
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value as FontCategory | '')}
+          onChange={(e) => updateBrowse({ query, category: e.target.value as FontCategory | '' })}
+          aria-label="Font category"
           className="rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-2 py-2 text-sm text-stone-700 dark:text-stone-300 outline-none transition-colors focus:border-stone-500 dark:focus:border-stone-400"
         >
           {CATEGORY_OPTIONS.map((opt) => (
@@ -175,7 +181,7 @@ export function FontPicker({ label, value, onChange, previewText, onDone }: Font
         </select>
       </div>
 
-      <div ref={resultsRef} onKeyDown={(event) => navigateFonts(event, results, event.currentTarget, true)} className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
+      <div ref={resultsRef} onKeyDown={(event) => navigateFonts(event, results, event.currentTarget, true)} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-700 p-1">
         {results.length === 0 && <p className="px-2 py-3 text-center text-sm text-stone-500 dark:text-stone-400">No fonts match your search.</p>}
         {results.map((entry) => (
           <FontResultRow key={entry.id} entry={entry} previewText={previewText} selected={value === entry.id} onSelect={() => onChange(entry.id)} />

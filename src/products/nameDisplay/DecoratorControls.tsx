@@ -2,13 +2,12 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SliderField } from '../../ui/controls/SliderField';
 import { ColorSwatchPicker } from '../../ui/controls/ColorSwatchPicker';
 import { TextField } from '../../ui/controls/TextField';
-import { FontPicker } from '../../ui/controls/FontPicker';
+import { FontField } from '../../ui/controls/FontField';
 import { Icon, IconPicker } from '../../ui/controls/IconPicker';
 import { NEW_ICON_BROWSE, type IconBrowse } from '../../ui/controls/iconBrowse';
 import { FocusTarget } from '../../ui/FocusTarget';
 import { useIsOpen, usePanelStore } from '../../ui/panelStore';
 import { decoratorFocusKey } from './focus';
-import { getFontDefinition } from '../../fonts/registry';
 import { getIcon, getIconSet } from '../../icons/catalog';
 import { DECORATOR_TEXT_MAX_LENGTH, type DecoratorConfig, type DecoratorPlacementConfig } from './config';
 import type { DecoratorPatch, NewDecorator } from './store';
@@ -239,27 +238,15 @@ export function DecoratorControls({
                 maxLength={DECORATOR_TEXT_MAX_LENGTH}
                 placeholder="est. 2019"
               />
-              {/* Behind a link rather than always open: the font list is a tall
-                  search panel, and several of them stacked down the sidebar
-                  would bury the ornaments themselves. */}
-              <div className="flex items-center justify-between gap-2 text-sm text-stone-600 dark:text-stone-400">
-                <span className="min-w-0 truncate">Font: {getFontDefinition(decorator.fontId).family}</span>
-                <button
-                  type="button"
-                  onClick={() => toggle(decorator.id, 'font')}
-                  className="control-action shrink-0"
-                >
-                  {editor?.id === decorator.id && editor.what === 'font' ? 'Done' : 'Change'}
-                </button>
-              </div>
-              {editor?.id === decorator.id && editor.what === 'font' && (
-                <FontPicker
-                  label="Decorator font"
-                  value={decorator.fontId}
-                  onChange={(fontId) => onUpdate(decorator.id, { fontId })}
-                  previewText={decorator.text || 'Text'}
-                />
-              )}
+              <FontField
+                label="Decorator font"
+                browseKey={`decorator-font-${decorator.id}`}
+                value={decorator.fontId}
+                onChange={(fontId) => onUpdate(decorator.id, { fontId })}
+                previewText={decorator.text || 'Text'}
+                open={editor?.id === decorator.id && editor.what === 'font'}
+                onOpenChange={(open) => setEditor(open ? { id: decorator.id, what: 'font' } : null)}
+              />
               {!decorator.text.trim() && <p className="text-xs text-amber-700 dark:text-amber-400">Nothing to print yet — type something and it appears on the initial.</p>}
             </>
           )}
