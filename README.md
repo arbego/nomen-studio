@@ -57,6 +57,24 @@ in the inventory.
 
 ## Products
 
+- **Sticky Name** — separate puffy letters with optional magnets embedded during
+  printing. Start with Coiny (the default), Lilita One or Calistoga, or choose
+  another font from the catalogue. Bubble rounds the glyph contours and inflates
+  the entire front surface, with a flat back for printing. Set height, thickness,
+  spacing, contour rounding and bubbliness. Each occurrence of a letter has its
+  own 0–6 magnets, diameter, thickness, height above the back and XY positions.
+  Automatic placement follows the actual solid; select a magnet and click its
+  letter diagram or enter coordinates to override it. Clearance is added to the
+  magnet diameter and thickness. Cavities must retain at least 0.8 mm of material
+  on all sides and between magnets; invalid cavities block export.
+  The 3MF contains independently arrangeable letters with sealed cavities, all
+  assigned to one filament. Cavity roof heights appear in the controls and part
+  names: add a slicer pause **before the layer that covers each cavity**, insert
+  magnets, then continue printing. Pauses are not generated automatically; check
+  layer rounding and bridging in the slicer. Dots and accents remain separate
+  printable pieces and are reported in the panel. Changing text clears magnet
+  assignments; changing font or height retains dimensions and auto-places again.
+  Undo/redo, project files and sharing include all design settings.
 - **Cake Topper** — a name on picks, to stand in a cake. One to three lines of
   script lettering, individually draggable letters, optional sticks and an
   optional solid backing card. Icons can be dropped on alongside the lettering,

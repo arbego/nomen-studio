@@ -11,6 +11,9 @@ import * as THREE from 'three';
  */
 export function pointIsInsideSolid(geometry: THREE.BufferGeometry, x: number, y: number, z: number): boolean {
   const position = geometry.getAttribute('position');
+  const index = geometry.getIndex();
+  const cornerCount = index?.count ?? position.count;
+  const vertex = (corner: number) => index ? index.getX(corner) : corner;
   // A deliberately crooked direction, so the ray is vanishingly unlikely to
   // graze an edge or a vertex shared by two triangles and count it twice.
   const ray = new THREE.Ray(new THREE.Vector3(x, y, z), new THREE.Vector3(0.317, 0.428, 0.847).normalize());
@@ -20,10 +23,10 @@ export function pointIsInsideSolid(geometry: THREE.BufferGeometry, x: number, y:
   const hit = new THREE.Vector3();
 
   let crossings = 0;
-  for (let i = 0; i < position.count; i += 3) {
-    a.fromBufferAttribute(position, i);
-    b.fromBufferAttribute(position, i + 1);
-    c.fromBufferAttribute(position, i + 2);
+  for (let i = 0; i < cornerCount; i += 3) {
+    a.fromBufferAttribute(position, vertex(i));
+    b.fromBufferAttribute(position, vertex(i + 1));
+    c.fromBufferAttribute(position, vertex(i + 2));
     if (ray.intersectTriangle(a, b, c, false, hit)) {
       crossings += 1;
     }

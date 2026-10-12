@@ -7,6 +7,7 @@ describe('PRODUCT_REGISTRY', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain('cake-topper');
     expect(ids).toContain('name-display');
+    expect(ids).toContain('sticky-name');
   });
 
   it('gives every product everything the shell needs to mount it', () => {

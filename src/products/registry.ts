@@ -1,6 +1,7 @@
 import type { ProductDefinition } from './types';
 import { cakeTopperProduct } from './cakeTopper';
 import { nameDisplayProduct } from './nameDisplay';
+import { stickyNameProduct } from './stickyName';
 
 /**
  * Every product the studio can design, in the order the picker lists them.
@@ -10,7 +11,7 @@ import { nameDisplayProduct } from './nameDisplay';
  * entry here. Nothing else in the app needs to change — same pattern as
  * fonts/registry.ts.
  */
-export const PRODUCT_REGISTRY: ProductDefinition[] = [cakeTopperProduct, nameDisplayProduct];
+export const PRODUCT_REGISTRY: ProductDefinition[] = [cakeTopperProduct, nameDisplayProduct, stickyNameProduct];
 
 export function getProduct(id: string): ProductDefinition | undefined {
   return PRODUCT_REGISTRY.find((product) => product.id === id);

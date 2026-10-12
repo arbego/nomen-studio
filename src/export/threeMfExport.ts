@@ -20,6 +20,15 @@ export interface ThreeMfObject {
   geometry: THREE.BufferGeometry;
 }
 
+export interface ThreeMfOptions {
+  /** Independently printable pieces that a slicer can arrange on the plate. */
+  separateModels?: boolean;
+  /** Pieces printed in one filament, even when there are many of them. */
+  singleFilament?: boolean;
+  /** Preserve indexed topology and tiny edges, including coincident tangencies. */
+  preserveVertexPrecision?: boolean;
+}
+
 const MODEL_PATH = '3D/3dmodel.model';
 
 /**
@@ -64,7 +73,7 @@ function displayColor(color: string): string {
  * is read through its index rather than straight down the position buffer,
  * which would otherwise silently emit a mesh of nonsense triangles.
  */
-function meshXml(geometry: THREE.BufferGeometry): string {
+function meshXml(geometry: THREE.BufferGeometry, preservePrecision = false): string {
   const position = geometry.getAttribute('position');
   const index = geometry.getIndex();
   const cornerCount = index ? index.count : position.count;
@@ -72,18 +81,22 @@ function meshXml(geometry: THREE.BufferGeometry): string {
   const seen = new Map<string, number>();
   const vertices: string[] = [];
   const triangles: string[] = [];
+  const coordinate = preservePrecision ? String : mm;
 
   function vertexIndex(i: number): number {
-    const key = `${mm(position.getX(i))} ${mm(position.getY(i))} ${mm(position.getZ(i))}`;
+    const coordinates = `${coordinate(position.getX(i))} ${coordinate(position.getY(i))} ${coordinate(position.getZ(i))}`;
+    // Indexed solid meshes already describe connectivity. Welding coincident
+    // vertices can join two tangent surfaces into a non-manifold edge.
+    const key = preservePrecision && index ? `vertex-${i}` : coordinates;
     const existing = seen.get(key);
     if (existing !== undefined) {
       return existing;
     }
-    const [x, y, z] = key.split(' ');
-    const index = vertices.length;
+    const [x, y, z] = coordinates.split(' ');
+    const vertexId = vertices.length;
     vertices.push(`<vertex x="${x}" y="${y}" z="${z}"/>`);
-    seen.set(key, index);
-    return index;
+    seen.set(key, vertexId);
+    return vertexId;
   }
 
   for (let i = 0; i < cornerCount; i += 3) {
@@ -119,21 +132,23 @@ const assemblyId = (count: number) => partId(count);
  * object they arrive as one model with named parts, no question asked, each
  * still selectable and assignable to its own filament.
  */
-function modelXml(objects: ThreeMfObject[], title: string): string {
+function modelXml(objects: ThreeMfObject[], title: string, options: ThreeMfOptions): string {
   const bases = objects.map((o) => `<base name="${escapeXml(o.name)}" displaycolor="${displayColor(o.color)}"/>`).join('');
   const parts = objects
-    .map((o, i) => `<object id="${partId(i)}" type="model" name="${escapeXml(o.name)}" pid="${MATERIALS_ID}" pindex="${i}">${meshXml(o.geometry)}</object>`)
+    .map((o, i) => `<object id="${partId(i)}" type="model" name="${escapeXml(o.name)}" pid="${MATERIALS_ID}" pindex="${i}">${meshXml(o.geometry, options.preserveVertexPrecision)}</object>`)
     .join('');
   // No transform on a component: each piece already carries the coordinates it
   // was designed at, which is what keeps them fitted together.
   const components = objects.map((_, i) => `<component objectid="${partId(i)}"/>`).join('');
+  const assembly = options.separateModels ? '' : `<object id="${assemblyId(objects.length)}" type="model" name="${escapeXml(title)}"><components>${components}</components></object>`;
+  const build = options.separateModels ? objects.map((_, i) => `<item objectid="${partId(i)}"/>`).join('') : `<item objectid="${assemblyId(objects.length)}"/>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
 <metadata name="Title">${escapeXml(title)}</metadata>
 <metadata name="Application">Nomen Studio</metadata>
-<resources><basematerials id="${MATERIALS_ID}">${bases}</basematerials>${parts}<object id="${assemblyId(objects.length)}" type="model" name="${escapeXml(title)}"><components>${components}</components></object></resources>
-<build><item objectid="${assemblyId(objects.length)}"/></build>
+<resources><basematerials id="${MATERIALS_ID}">${bases}</basematerials>${parts}${assembly}</resources>
+<build>${build}</build>
 </model>`;
 }
 
@@ -143,7 +158,12 @@ function modelXml(objects: ThreeMfObject[], title: string): string {
  * which for a design whose whole point is two colors is most of the way back to
  * an STL.
  */
-function settingsXml(objects: ThreeMfObject[], title: string): string {
+function settingsXml(objects: ThreeMfObject[], title: string, options: ThreeMfOptions): string {
+  if (options.separateModels) {
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<config>\n${objects.map((o, i) =>
+      `<object id="${partId(i)}"><metadata key="name" value="${escapeXml(o.name)}"/><metadata key="extruder" value="${options.singleFilament ? 1 : i + 1}"/><part id="${partId(i)}" subtype="normal_part"><metadata key="name" value="${escapeXml(o.name)}"/><metadata key="extruder" value="${options.singleFilament ? 1 : i + 1}"/></part></object>`,
+    ).join('\n')}\n</config>`;
+  }
   const parts = objects
     .map(
       (o, i) =>
@@ -151,7 +171,7 @@ function settingsXml(objects: ThreeMfObject[], title: string): string {
         `    <metadata key="name" value="${escapeXml(o.name)}"/>\n` +
         // One filament per piece, numbered in order — the design is two-color by
         // construction, so it arrives ready to print that way.
-        `    <metadata key="extruder" value="${i + 1}"/>\n` +
+        `    <metadata key="extruder" value="${options.singleFilament ? 1 : i + 1}"/>\n` +
         `  </part>\n`,
     )
     .join('');
@@ -165,13 +185,13 @@ ${parts}  </object>
 }
 
 /** A complete .3mf package: the named pieces, each in its own color, as parts of one model. */
-export function threeMfBinary(objects: ThreeMfObject[], title: string): Uint8Array {
+export function threeMfBinary(objects: ThreeMfObject[], title: string, options: ThreeMfOptions = {}): Uint8Array {
   const encoder = new TextEncoder();
   return zipStore([
     { path: '[Content_Types].xml', data: encoder.encode(CONTENT_TYPES) },
     { path: '_rels/.rels', data: encoder.encode(RELATIONSHIPS) },
-    { path: MODEL_PATH, data: encoder.encode(modelXml(objects, title)) },
-    { path: SETTINGS_PATH, data: encoder.encode(settingsXml(objects, title)) },
+    { path: MODEL_PATH, data: encoder.encode(modelXml(objects, title, options)) },
+    { path: SETTINGS_PATH, data: encoder.encode(settingsXml(objects, title, options)) },
   ]);
 }
 
